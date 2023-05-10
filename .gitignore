@@ -1,0 +1,17 @@
+# files used in tuning: store results for more detail.  Machine-specific; NO need to save them
+2NByNBlockSizes
+2NByNGrowthParameters
+e9By5Threshold
+e7By4Threshold
+BestThresholds
+
+# executables
+*.exe
+*.obj
+*.dll
+
+
+# directories to ignore
+.vs/
+Debug/
+x64/
