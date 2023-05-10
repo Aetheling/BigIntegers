@@ -1,4 +1,4 @@
-Not for comercial purposes.  All rights reserved.
+Not for commercial purposes.  All rights reserved.
 
 Built with MS Visual Studio; you see the project in the top-level directory.
 This has three subprojects: big integers, test code, and RSA.
@@ -83,6 +83,8 @@ size_t CUnsignedArithmeticHelper::MultOracle(size_t      nXSize,
 
 Some performance numbers.  All results were from my machine, natch: Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz   3.41 GHz with 16.0 GB of RAM
 running Windows 10 Home.
+
+Unless otherwise noted, all tests use 32-bit DIGITs because it's faster that way.
 Multiplication:
 Multiplying two 2,000,000-BYTE numbers:
   Oracle:                      302,511,895 microseconds
@@ -144,3 +146,7 @@ RSA: times based on a 100,000-BYTE message
   modulus of 256 BYTEs:  36.44 kb/sec encrypt/decrypt cycle
   modulus of 512 BYTEs:  11.70 kb/sec encrypt/decrypt cycle
   modulus of 1024 BYTEs:  3.941 kb/sec encrypt/decrypt cycle
+
+Matrix multiplication: For these tests, only ran with 16-bit DIGITs
+  Multiply two 1536x1536 matrices with 32-BYTE entries -- oracle:    1,415,406 milliseconds
+  Multiply two 1536x1536 matrices with 32-BYTE entries -- optimized:   557,266 milliseconds
