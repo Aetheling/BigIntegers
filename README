@@ -1,0 +1,146 @@
+Not for comercial purposes.  All rights reserved.
+
+Built with MS Visual Studio; you see the project in the top-level directory.
+This has three subprojects: big integers, test code, and RSA.
+The first is the guts of the system: everything you need to do arithmetic on big numbers -- really big numbers.
+Test code is just that: it validates the various functions work correctly.  It also has tuning tests (to see
+where various thresholds should be set) and performance tests.
+RSA implements the encryption algorithm of that name.  As a sort of test project.
+The CBigInteger class represents the numbers; with it, you can do comparisons and some basic operations.  Most
+of the arithmetic functionality is meant to be accessed through an instance of CArithmeticBox (standard or modular,
+in the case you want to do modular arithmetic).  This is because many of the operations require a workspace for
+efficiency; the box handles that workspace for you.
+WARNING: the box is NOT thread safe!  It just has a single workspace.  If you want to do multiple arithmetic operations
+in parallel, use a box (and the corresponding workspace) for each.
+The system works with either 16 or 32 bit unsignedf values at base (determined at compile time with a flag that can be
+set in the BigIntegers/Constants.h file), dependiing on whether or not you machine has 64 bit hardware support (I assume most do
+these days, but it's not a given).  These are needed for overflow -- multiplying two 32-bit values results in a 64-bit
+one; if we use 32 bits as the base type, we're going to lose lots of data.
+If your system has hardware and compiler support for 128-bit (or larger) operands, adjusting the code to take advantage
+of it should be trivial: define DIGIT to unsigned _int64 and DOUBLEDIGIT to unsigned _int128 (or whatever the value
+is called by your compiler) in Constants.h
+WARNING: when switching from retail to debug or vice versa, or (especially) when changing the DIGIT type, the compiler seems
+to lose track of files.  Try build clean, then rebuild -- that always works for me.
+
+Operations supported:
+Add
+Subtract
+Multiply
+Multiply and add
+Square
+Divide
+GCD (greatest common divisor)
+Extended GCD
+Square root (find the largest integer n such that n*n <= m)
+Power-modulus
+
+Supplements:
+Matrix multiplication
+Quasi-inverse (for a square matrix M, find matrix M' s.t. M*M' = D, a diagonal matrix)
+
+There is Much Stuff involved in getting the code to run as fast as possible; check the comments with the code for more detailed explanations.
+Multiplication is the primary source here: addition and subtraction are trivial; get multiplication to work fast, and divide (implemented properly)
+follows -- and with divide, GCD and square root ALSO run fast.
+
+The basic multiplication algorithm is implemented by the oracle.  This is NOT used except for test purposes -- to validate that the code is correct,
+and to get a baseline for performance:
+size_t CUnsignedArithmeticHelper::MultOracle(size_t      nXSize,
+                                             size_t      nYSize,
+                                             const DIGIT *pX,
+                                             const DIGIT *pY,
+                                             DIGIT       *pZ)
+{
+    DOUBLEDIGIT nProduct,nCarry, nSum;
+    size_t      i,j;
+
+    if(0==nXSize || 0==nYSize)
+    {
+        return 0;
+    }
+    else
+    {
+        // zero out Z
+        for(i=0;i<nXSize+nYSize;i++)
+        {
+            pZ[i] = 0;
+        }
+        for(i=0;i<nXSize;i++)
+        {
+            nCarry = 0;
+            DOUBLEDIGIT nX = pX[i];
+            for(j=0;j<nYSize;j++)
+            {
+                nProduct = nX*pY[j];
+                nSum     = (nProduct&c_nClearHigh) + nCarry + pZ[i+j];
+                nCarry   = (nProduct>>c_nDigitSize)+(nSum>>c_nDigitSize);
+                pZ[i+j]  = (DIGIT) nSum;
+            }
+            pZ[i+j] = (DIGIT) nCarry;
+        }
+        return ((0<nCarry) ? i+j : i+j-1);
+    }
+}
+
+Some performance numbers.  All results were from my machine, natch: Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz   3.41 GHz with 16.0 GB of RAM
+running Windows 10 Home.
+Multiplication:
+Multiplying two 2,000,000-BYTE numbers:
+  Oracle:                      302,511,895 microseconds
+  Optimized multiplication:        266,725 microseconds
+  Optimized square:                204,069 microseconds
+Multiplying two 4,000,000-BYTE numbers:
+  Oracle:                    1,208,085,110 microseconds
+  Optimized multiplication:        544,087 microseconds
+  Optimized square:                430,137 microseconds
+Multiplying two 8,000,000-BYTE numbers:
+  Oracle:                   <not tested>
+  Optimized multiplication:      1,236,293 microseconds
+  Optimized square:              1,068,859 microseconds
+Multiplying two 128,000,000-BYTE numbers:
+  Oracle:                   <not tested>
+  Optimized multiplication:     40,685,548 microseconds
+  Optimized square:             37,907,852 microseconds
+  
+Divide:
+  Multiply two 10,000,000-BYTE numbers:                          7,802,610 microseconds
+  Divide 20,000,000 BYTE number by 10,000,000 BYTE number:      50,148,490 microseconds (divide:multiply ratio: 6.427143)
+  Multiply 10,000,000-BYTE by 20,000,000-BYTE:                  15,439,938 microseconds
+  Divide 30,000,000 BYTE number by 10,000,000 BYTE number:      98,853,049 microseconds (divide:multiply ratio: 6.402425)
+  Divide 30,000,000 BYTE number by 20,000,000 BYTE number:      56,814,540 microseconds (divide:multiply ratio: 3.679713)
+  Multiply two 100,000,000-BYTE numbers:                       103,448,897 microseconds
+  Divide 200,000,000 BYTE number by 100,000,000 BYTE number:   725,978,837 microseconds (divide:multiply ratio: 7.017753)
+  Multiply 100,000,000-BYTE by 200,000,000-BYTE:               232,934,948 microseconds
+  Divide 300,000,000 BYTE number by 100,000,000 BYTE number: 1,387,310,472 microseconds (divide:multiply ratio: 5.955785)
+  Divide 300,000,000 BYTE number by 200,000,000 BYTE number:   939,119,649 microseconds (divide:multiply ratio: 4.031682)
+
+GCD (extended): Note these times are in milliseconds, not microseconds
+  Time to get the GCD of 65536 pairs of 1024-BYTE numbers:        164,969 milliseconds
+  Time to get the GCD of 32768 pairs of 2048-BYTE numbers:        313,062 milliseconds
+  Time to get the GCD of 16384 pairs of 4096-BYTE numbers:        594,406 milliseconds
+  Time to get the GCD of 8192 pairs of 8192-BYTE numbers:       1,171,313 milliseconds
+  Time to get the GCD of 4096 pairs of 16384-BYTE numbers:      2,314,609 milliseconds
+
+Square root:
+  524288 square roots of a 128 bit number:                             62 milliseconds (0.000118 average)
+  524288 divides of a 128 bit number by its square root:               31 milliseconds (0.000059 average)
+  131072 square roots of a 512 bit number:                             78 milliseconds (0.000595 average)
+  131072 divides of a 512 bit number by its square root:               47 milliseconds (0.000359 average)
+  32768 square roots of a 2048 bit number:                             94 milliseconds (0.002869 average)
+  32768 divides of a 2048 bit number by its square root:               78 milliseconds (0.002380 average)
+  8192 square roots of a 8192 bit number:                             141 milliseconds (0.017212 average)
+  8192 divides of a 8192 bit number by its square root:               141 milliseconds (0.017212 average)
+  2048 square roots of a 32768 bit number:                            297 milliseconds (0.145020 average)
+  2048 divides of a 32768 bit number by its square root:              265 milliseconds (0.129395 average)
+  512 square roots of a 131072 bit number:                            594 milliseconds (1.160156 average)
+  512 divides of a 131072 bit number by its square root:              563 milliseconds (1.099609 average)
+  128 square roots of a 524288 bit number:                            985 milliseconds (7.695312 average)
+  128 divides of a 524288 bit number by its square root:             1000 milliseconds (7.812500 average)
+  1 square root of a 33554432 bit (4,194,304 BYTE) number:           2610 milliseconds
+  1 divide of a 33554432 bit number by its square root:              2640 milliseconds
+
+RSA: times based on a 100,000-BYTE message
+  modulus of 64 BYTES:  353 kb/sec encrypt/decrypt cycle
+  modulus of 128 BYTEs: 113.5 kb/sec encrypt/decrypt cycle
+  modulus of 256 BYTEs:  36.44 kb/sec encrypt/decrypt cycle
+  modulus of 512 BYTEs:  11.70 kb/sec encrypt/decrypt cycle
+  modulus of 1024 BYTEs:  3.941 kb/sec encrypt/decrypt cycle
