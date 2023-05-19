@@ -26,19 +26,11 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
                                            const DIGIT  *pX,
                                            const DIGIT  *pY,
                                            DIGIT        *pZ,
-#if(_CollectDetailedTimingData)
-                                           bool         bAddInitialZValueToProduct,
-                                           DWORD64      &dwTimestamp)
-#else
                                            bool         bAddInitialZValueToProduct)
-#endif
 {
     DOUBLEDIGIT	nProd,nCarry,nSum;
     size_t  	i,j;
     DIGIT       *pLast = pZ+nXSize+nYSize-1;
-#if(_CollectDetailedTimingData)
-    DWORD64     dwTime = dwTimestamp;
-#endif
 #if(_REGISTER_BLOCK_SIZE==1)
     DOUBLEDIGIT nX0;
     // special case: not doing any blocking of data
@@ -666,12 +658,5 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
     }
 #undef yTOP_MINUS_1
 #undef yTOP
-#endif
-#if(_CollectDetailedTimingData)
-#ifndef _TestingBasicMultiplyDirectly
-    dwTimestamp = s_Timer.GetMicroseconds();
-    s_nProcessTimes[eBasicMultiply] += dwTimestamp-dwTime;
-    s_nMultiplyCalls[eBasicMultiply]++;
-#endif
 #endif
 }

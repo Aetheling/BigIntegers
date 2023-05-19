@@ -267,46 +267,22 @@ void CArithmeticPerformanceTester::SpeedCheckBasicMultiply()
                 switch(nAlgorithm)
                 {
                 case 0:
-#if(_CollectDetailedTimingData)
-                    BasicMultiplyReg1(nSize,nSize,nX,nY,nZ,false,dwDummy);
-#else
                     BasicMultiplyReg1(nSize,nSize,nX,nY,nZ,false);
-#endif
                     break;
                 case 1:
-#if(_CollectDetailedTimingData)
-                    BasicMultiplyReg2(nSize,nSize,nX,nY,nZ,false,dwDummy);
-#else
                     BasicMultiplyReg2(nSize,nSize,nX,nY,nZ,false);
-#endif
                     break;
                 case 2:
-#if(_CollectDetailedTimingData)
-                    BasicMultiplyReg3(nSize,nSize,nX,nY,nZ,false,dwDummy);
-#else
                     BasicMultiplyReg3(nSize,nSize,nX,nY,nZ,false);
-#endif
                     break;
                 case 3:
-#if(_CollectDetailedTimingData)
-                    BasicMultiplyReg4(nSize,nSize,nX,nY,nZ,false,dwDummy);
-#else
                     BasicMultiplyReg4(nSize,nSize,nX,nY,nZ,false);
-#endif
                     break;
                 case 4:
-#if(_CollectDetailedTimingData)
-                    BasicMultiplyReg5(nSize,nSize,nX,nY,nZ,false,dwDummy);
-#else
                     BasicMultiplyReg5(nSize,nSize,nX,nY,nZ,false);
-#endif
                     break;
                 case 5:
-#if(_CollectDetailedTimingData)
-                    BasicMultiplyReg6(nSize,nSize,nX,nY,nZ,fnTalse,dwDummy);
-#else
                     BasicMultiplyReg6(nSize,nSize,nX,nY,nZ,false);
-#endif
                     break;
                 }
             }
@@ -662,24 +638,22 @@ FFT square:        537034445 microseconds
 */
 void CArithmeticPerformanceTester::CompareBaseMultiplicationToFFT()
 {
-    CBigIntegerForTest nX,nY,nProduct,nProductBaseline;
+    CBigIntegerForTest nX,nY,nXCopy,nYCopy,nProduct,nProductBaseline;
     DWORD64            dwStartTime;
     CArithmeticBox     cBox;
     CWorkspace         cWork;
     size_t             nProductSize;
     printf("If you're not doing this with a retail build, you're not getting good numbers\n");
-    // note size 5 DIGITs is the smallest size FFTMult will work with
-#ifndef _USESMALLDIGITS
-    for(size_t i=16; i<=((size_t) 1)<<31; i=i<<1)
-#else
-    for(size_t i=16; i<=((size_t) 1)<<31; i=i<<1)
-#endif
+    // note size 5 DIGITs is the smallest size FFTMult will work with; we start with 8 -- smallest power of 2 which is at least 5
+    for(size_t i=8*c_nDigitSize; i<=((size_t) 1)<<31; i=i<<1)
     {
         size_t nFFTLength,nFieldSize,nChunkSize;
         BYTE   byChunkSize;
         SBitShift nRoot;
         nX.SetRandom(i);
         nY.SetRandom(i);
+        nXCopy = nX;
+        nYCopy = nY;
         GetFFTSize(nX.GetSize(),nY.GetSize(),nFFTLength,nFieldSize,nChunkSize,byChunkSize,nRoot);
         nProduct.Reserve(nX.GetSize()+nY.GetSize()+1);
         nProductBaseline.Reserve(nX.GetSize()+nY.GetSize());
@@ -696,28 +670,10 @@ void CArithmeticPerformanceTester::CompareBaseMultiplicationToFFT()
         }
         ResetTimingData();
         dwStartTime = s_Timer.GetMicroseconds();
-#if _CollectDetailedTimingData
-        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-        MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProductBaseline.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel);
-#else
-        MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProductBaseline.GetValue(),cWork.GetSpace());
-#endif
+        Multiply(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProductBaseline.GetValue(),cWork.GetSpace());
         dwStartTime = s_Timer.GetMicroseconds()-dwStartTime;
-        if(1000000>dwStartTime)
-        {
-            // redo -- looks like it takes a while to load the basic code, throwing off timing
-            ResetTimingData();
-            dwStartTime = s_Timer.GetMicroseconds();
-#if _CollectDetailedTimingData
-            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-            MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProductBaseline.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel);
-#else
-            MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProductBaseline.GetValue(),cWork.GetSpace());
-#endif
-            dwStartTime = s_Timer.GetMicroseconds()-dwStartTime;
-        }
-        ReportTimingData();
         printf("Non-FFT multiply:  %I64u microseconds\n",dwStartTime);
+        ReportMeasuredComponentTimingData(eMultiplicationMeasured);
         nProductSize = nX.GetSize()+nY.GetSize();
         while(0<nProductSize && 0==nProductBaseline.GetValue()[nProductSize-1])
         {
@@ -730,29 +686,13 @@ void CArithmeticPerformanceTester::CompareBaseMultiplicationToFFT()
             break;
         }
         ResetTimingData();
-        ResetThresholdsForOptimization(); // so we DO use FFT multiply (if appropriate to the size)
+        ResetThresholdsForOptimization(); // so we DO use FFT multiply for subproblems (if appropriate to the size)
+        // force top level at least to use FFT
+        if (c_pnMultiplicationThresholds[e2NByN] <= nX.GetSize()) c_pnMultiplicationThresholds[e2NByN] = nX.GetSize() - 1;
+        if (c_pnMultiplicationThresholds[e2NByN] <= nY.GetSize()) c_pnMultiplicationThresholds[e2NByN] = nY.GetSize() - 1;
         dwStartTime = s_Timer.GetMicroseconds();
-#if _CollectDetailedTimingData
-        dwTimestamp = dwStartTime;
-        MultFFT(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel);
-#else
-        MultFFT(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace());
-#endif
+        Multiply(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace());
         dwStartTime = s_Timer.GetMicroseconds()-dwStartTime;
-        if(1000000>dwStartTime)
-        {
-            // redo -- looks like it takes a while to load the basic code, throwing off timing
-            ResetTimingData();
-            dwStartTime = s_Timer.GetMicroseconds();
-#if _CollectDetailedTimingData
-            dwTimestamp = dwStartTime;
-            MultFFT(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel);
-#else
-            MultFFT(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace());
-#endif
-            dwStartTime = s_Timer.GetMicroseconds()-dwStartTime;
-        }
-        ReportTimingData();
         nProductSize = nX.GetSize()+nY.GetSize();
         while(0<nProductSize && 0==nProduct.GetValue()[nProductSize-1])
         {
@@ -760,35 +700,25 @@ void CArithmeticPerformanceTester::CompareBaseMultiplicationToFFT()
         }
         nProduct.SetSize(nProductSize);
         printf("FFT multiply:      %I64u microseconds\tField size: %I64u Length: %I64u\n",dwStartTime, nFieldSize, nFFTLength);
+        ReportMeasuredComponentTimingData(eMultiplicationMeasured);
         if(nProduct != nProductBaseline)
         {
-            printf("Oopsie!\n");
+            printf("Oopsie!  Error found; best investigate\n");
         }
         ResetTimingData();
         ResetTimingData();
         dwStartTime = s_Timer.GetMicroseconds();
-#if _CollectDetailedTimingData
-        dwTimestamp = s_Timer.GetMicroseconds();
-        SquareFFT(nX.GetSize(),nX.GetValue(),nProduct.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel);
-#else
-        SquareFFT(nX.GetSize(),nX.GetValue(),nProduct.GetValue(),cWork.GetSpace());
-#endif
+        Square(nX.GetSize(),nX.GetValue(),nProduct.GetValue(),cWork.GetSpace());
         dwStartTime = s_Timer.GetMicroseconds()-dwStartTime;
         if(1000000>dwStartTime)
         {
             // redo -- looks like loading the basic code takes a while, throwing off timing data
             ResetTimingData();
             dwStartTime = s_Timer.GetMicroseconds();
-#if _CollectDetailedTimingData
-            dwTimestamp = s_Timer.GetMicroseconds();
-            SquareFFT(nX.GetSize(),nX.GetValue(),nProduct.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel);
-#else
-            SquareFFT(nX.GetSize(),nX.GetValue(),nProduct.GetValue(),cWork.GetSpace());
-#endif
-            dwStartTime = s_Timer.GetMicroseconds()-dwStartTime;
+            Square(nX.GetSize(),nX.GetValue(),nProduct.GetValue(),cWork.GetSpace());
         }
-        ReportTimingData();
-        printf("FFT square:        %I64u microseconds\n\n",dwStartTime);
+        printf("FFT square:        %I64u microseconds\n",dwStartTime);
+        ReportMeasuredComponentTimingData(eMultiplicationMeasured);
     }
 }
 
@@ -932,7 +862,7 @@ void CArithmeticPerformanceTester::TestMultiplyTimes()
         dwStartTime = s_Timer.GetMicroseconds();
 #if _CollectDetailedTimingData
         DWORD64 dwTimestamp = dwStartTime;
-        MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel);
+        MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace(),dwTimestamp);
 #else
         MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace());
 #endif
@@ -944,19 +874,19 @@ void CArithmeticPerformanceTester::TestMultiplyTimes()
             dwStartTime = s_Timer.GetMicroseconds();
 #if _CollectDetailedTimingData
             DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-            MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel,&nProductSize);
+            MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace(),dwTimestamp,&nProductSize);
 #else
             MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProduct.GetValue(),cWork.GetSpace(),&nProductSize);
 #endif
             dwStartTime = s_Timer.GetMicroseconds()-dwStartTime;
         }
-        ReportTimingData();
+        ReportMeasuredComponentTimingData(eMultiplicationMeasured);
         printf("Multiply two %i BYTE numbers:\t%I64u microseconds\n",nX.GetSize()*sizeof(DIGIT),dwStartTime);
         ResetTimingData();
         dwStartTime = s_Timer.GetMicroseconds();
 #if(_CollectDetailedTimingData)
         dwTimestamp = dwStartTime;
-        SquareUBackend(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace(), dwStartTime, eTopLevel);
+        SquareUBackend(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace(), dwStartTime);
 #else
         SquareUBackend(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace());
 #endif
@@ -968,13 +898,13 @@ void CArithmeticPerformanceTester::TestMultiplyTimes()
             dwStartTime = s_Timer.GetMicroseconds();
 #if(_CollectDetailedTimingData)
             dwTimestamp = dwStartTime;
-            SquareUBackend(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel);
+            SquareUBackend(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace(), dwTimestamp);
 #else
             SquareUBackend(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace());
 #endif
             dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
         }
-        ReportTimingData();
+        ReportMeasuredComponentTimingData(eMultiplicationMeasured);
         printf("Square   two %i BYTE numbers:\t%I64u microseconds\n", nX.GetSize() * sizeof(DIGIT), dwStartTime);
     }
 }
@@ -1144,6 +1074,1048 @@ Algorithm 2 for multiply size:    128000000x128000000 (BYTEs): 753919175 microse
 Algorithm 2 for square size:      128000000x128000000 (BYTEs): 690383404 microseconds
 Algorithm 1 for multiply size:    128000000x128000000 (BYTEs): 3080038231 microseconds
 Algorithm 1 for square size:      128000000x128000000 (BYTEs): 3079717233 microseconds
+full breakdown, 32 bit DIGITs
+FFT multiply for multiply size:    2000000x2000000 (BYTEs): 279015 microseconds
+1 calls to multiply
+  221157 calls to Basic multiply:
+    Basic multiply time:        123434 microseconds (0.558128 average)
+  73710 calls to 3 by 2 multiply:
+    Construct subproblems time: 5236 microseconds (0.071035 average)
+    Combine subproblems time:   12621 microseconds (0.171225 average)
+  8193 calls to 9 by 5 multiply:
+    Construct subproblems time: 10472 microseconds (1.278164 average)
+    Combine subproblems time:   29730 microseconds (3.628707 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 65199 microseconds (65199.000000 average)
+    Combine subproblems time:   32322 microseconds (32322.000000 average)
+Total multiply time: 279014 microseconds (279014.000000 average)
+
+FFT multiply for square size:      2000000x2000000 (BYTEs): 253914 microseconds
+1 calls to multiply
+  221166 calls to Basic multiply:
+    Basic multiply time:        133940 microseconds (0.605608 average)
+  73719 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   6358 microseconds (0.086246 average)
+  8192 calls to 9 by 5 multiply:
+    Construct subproblems time: 7438 microseconds (0.907959 average)
+    Combine subproblems time:   32659 microseconds (3.986694 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 35761 microseconds (35761.000000 average)
+    Combine subproblems time:   37757 microseconds (37757.000000 average)
+Total multiply time: 253913 microseconds (253913.000000 average)
+
+2n by n multiply for multiply size:    2000000x2000000 (BYTEs): 851676 microseconds
+1 calls to multiply
+  531441 calls to Basic multiply:
+    Basic multiply time:        457028 microseconds (0.859979 average)
+  66430 calls to 9 by 5 multiply:
+    Construct subproblems time: 82498 microseconds (1.241879 average)
+    Combine subproblems time:   312149 microseconds (4.698916 average)
+Total multiply time: 851675 microseconds (851675.000000 average)
+
+2n by n multiply for square size:      2000000x2000000 (BYTEs): 751808 microseconds
+1 calls to multiply
+  531441 calls to Basic multiply:
+    Basic multiply time:        424572 microseconds (0.798907 average)
+  66430 calls to 9 by 5 multiply:
+    Construct subproblems time: 40098 microseconds (0.603613 average)
+    Combine subproblems time:   287138 microseconds (4.322414 average)
+Total multiply time: 751808 microseconds (751808.000000 average)
+
+9 by 5 multiply for multiply size:    2000000x2000000 (BYTEs): 750701 microseconds
+1 calls to multiply
+  531441 calls to Basic multiply:
+    Basic multiply time:        405728 microseconds (0.763449 average)
+  66430 calls to 9 by 5 multiply:
+    Construct subproblems time: 72597 microseconds (1.092835 average)
+    Combine subproblems time:   272376 microseconds (4.100196 average)
+Total multiply time: 750701 microseconds (750701.000000 average)
+
+9 by 5 multiply for square size:      2000000x2000000 (BYTEs): 727223 microseconds
+1 calls to multiply
+  531441 calls to Basic multiply:
+    Basic multiply time:        412479 microseconds (0.776152 average)
+  66430 calls to 9 by 5 multiply:
+    Construct subproblems time: 39078 microseconds (0.588258 average)
+    Combine subproblems time:   275666 microseconds (4.149722 average)
+Total multiply time: 727223 microseconds (727223.000000 average)
+
+7 by 4 multiply for multiply size:    2000000x2000000 (BYTEs): 968733 microseconds
+1 calls to multiply
+  823543 calls to Basic multiply:
+    Basic multiply time:        587209 microseconds (0.713028 average)
+  137257 calls to 7 by 4 multiply:
+    Construct subproblems time: 77003 microseconds (0.561013 average)
+    Combine subproblems time:   300479 microseconds (2.189171 average)
+Total multiply time: 968733 microseconds (968733.000000 average)
+
+7 by 4 multiply for square size:      2000000x2000000 (BYTEs): 1037836 microseconds
+1 calls to multiply
+  823543 calls to Basic multiply:
+    Basic multiply time:        650283 microseconds (0.789616 average)
+  137257 calls to 7 by 4 multiply:
+    Construct subproblems time: 45666 microseconds (0.332704 average)
+    Combine subproblems time:   337491 microseconds (2.458825 average)
+Total multiply time: 1037834 microseconds (1037834.000000 average)
+
+5 by 3 multiply for multiply size:    2000000x2000000 (BYTEs): 1897821 microseconds
+1 calls to multiply
+  3482671 calls to Basic multiply:
+    Basic multiply time:        1148605 microseconds (0.329806 average)
+  1546023 calls to 3 by 2 multiply:
+    Construct subproblems time: 100086 microseconds (0.064738 average)
+    Combine subproblems time:   239633 microseconds (0.155000 average)
+  97656 calls to 5 by 3 multiply:
+    Construct subproblems time: 61499 microseconds (0.629751 average)
+    Combine subproblems time:   347997 microseconds (3.563498 average)
+Total multiply time: 1897820 microseconds (1897820.000000 average)
+
+5 by 3 multiply for square size:      2000000x2000000 (BYTEs): 1669506 microseconds
+1 calls to multiply
+  3449717 calls to Basic multiply:
+    Basic multiply time:        1135680 microseconds (0.329210 average)
+  1529546 calls to 3 by 2 multiply:
+    Construct subproblems time: 24241 microseconds (0.015848 average)
+    Combine subproblems time:   133049 microseconds (0.086986 average)
+  97656 calls to 5 by 3 multiply:
+    Construct subproblems time: 32984 microseconds (0.337757 average)
+    Combine subproblems time:   340774 microseconds (3.489535 average)
+Total multiply time: 1669506 microseconds (1669506.000000 average)
+
+3 by 2 multiply for multiply size:    2000000x2000000 (BYTEs): 4526684 microseconds
+1 calls to multiply
+  4782969 calls to Basic multiply:
+    Basic multiply time:        3417342 microseconds (0.714481 average)
+  2391484 calls to 3 by 2 multiply:
+    Construct subproblems time: 261718 microseconds (0.109437 average)
+    Combine subproblems time:   847623 microseconds (0.354434 average)
+Total multiply time: 4526683 microseconds (4526683.000000 average)
+
+3 by 2 multiply for square size:      2000000x2000000 (BYTEs): 4497674 microseconds
+1 calls to multiply
+  4782969 calls to Basic multiply:
+    Basic multiply time:        3404323 microseconds (0.711759 average)
+  2391484 calls to 3 by 2 multiply:
+    Construct subproblems time: 256314 microseconds (0.107178 average)
+    Combine subproblems time:   837037 microseconds (0.350007 average)
+Total multiply time: 4497674 microseconds (4497674.000000 average)
+
+Basic multiply for multiply size: 2000000x2000000 (BYTEs): 159750175 microseconds
+1 calls to multiply
+  1 calls to Basic multiply:
+    Basic multiply time:        159750175 microseconds (159750176.000000 average)
+Total multiply time: 159750175 microseconds (159750176.000000 average)
+
+Mult oracle for multiply size:    2000000x2000000 (BYTEs): 306703273 microseconds
+
+FFT multiply for multiply size:    4000000x4000000 (BYTEs): 623086 microseconds
+1 calls to multiply
+  442332 calls to Basic multiply:
+    Basic multiply time:        275283 microseconds (0.622345 average)
+  147438 calls to 3 by 2 multiply:
+    Construct subproblems time: 11779 microseconds (0.079891 average)
+    Combine subproblems time:   27513 microseconds (0.186607 average)
+  16384 calls to 9 by 5 multiply:
+    Construct subproblems time: 23147 microseconds (1.412781 average)
+    Combine subproblems time:   65272 microseconds (3.983887 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 134079 microseconds (134079.000000 average)
+    Combine subproblems time:   86012 microseconds (86012.000000 average)
+Total multiply time: 623085 microseconds (623085.000000 average)
+
+FFT multiply for square size:      4000000x4000000 (BYTEs): 459771 microseconds
+1 calls to multiply
+  442332 calls to Basic multiply:
+    Basic multiply time:        238125 microseconds (0.538340 average)
+  147438 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   11161 microseconds (0.075700 average)
+  16384 calls to 9 by 5 multiply:
+    Construct subproblems time: 12706 microseconds (0.775513 average)
+    Combine subproblems time:   58078 microseconds (3.544800 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 66876 microseconds (66876.000000 average)
+    Combine subproblems time:   72824 microseconds (72824.000000 average)
+Total multiply time: 459770 microseconds (459770.000000 average)
+
+2n by n multiply for multiply size:    4000000x4000000 (BYTEs): 2020507 microseconds
+1 calls to multiply
+  1594323 calls to Basic multiply:
+    Basic multiply time:        1192068 microseconds (0.747695 average)
+  531441 calls to 3 by 2 multiply:
+    Construct subproblems time: 39958 microseconds (0.075188 average)
+    Combine subproblems time:   105755 microseconds (0.198997 average)
+  66430 calls to 9 by 5 multiply:
+    Construct subproblems time: 140855 microseconds (2.120352 average)
+    Combine subproblems time:   541869 microseconds (8.156992 average)
+Total multiply time: 2020505 microseconds (2020505.000000 average)
+
+2n by n multiply for square size:      4000000x4000000 (BYTEs): 1836653 microseconds
+1 calls to multiply
+  1594323 calls to Basic multiply:
+    Basic multiply time:        1170902 microseconds (0.734420 average)
+  531441 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   44467 microseconds (0.083673 average)
+  66430 calls to 9 by 5 multiply:
+    Construct subproblems time: 72410 microseconds (1.090020 average)
+    Combine subproblems time:   548874 microseconds (8.262442 average)
+Total multiply time: 1836653 microseconds (1836653.000000 average)
+
+9 by 5 multiply for multiply size:    4000000x4000000 (BYTEs): 2010497 microseconds
+1 calls to multiply
+  1594323 calls to Basic multiply:
+    Basic multiply time:        1184220 microseconds (0.742773 average)
+  531441 calls to 3 by 2 multiply:
+    Construct subproblems time: 39975 microseconds (0.075220 average)
+    Combine subproblems time:   105042 microseconds (0.197655 average)
+  66430 calls to 9 by 5 multiply:
+    Construct subproblems time: 140485 microseconds (2.114783 average)
+    Combine subproblems time:   540774 microseconds (8.140509 average)
+Total multiply time: 2010496 microseconds (2010496.000000 average)
+
+9 by 5 multiply for square size:      4000000x4000000 (BYTEs): 1847956 microseconds
+1 calls to multiply
+  1594323 calls to Basic multiply:
+    Basic multiply time:        1175480 microseconds (0.737291 average)
+  531441 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   44675 microseconds (0.084064 average)
+  66430 calls to 9 by 5 multiply:
+    Construct subproblems time: 73332 microseconds (1.103899 average)
+    Combine subproblems time:   554468 microseconds (8.346651 average)
+Total multiply time: 1847955 microseconds (1847955.000000 average)
+
+7 by 4 multiply for multiply size:    4000000x4000000 (BYTEs): 2767619 microseconds
+1 calls to multiply
+  2470629 calls to Basic multiply:
+    Basic multiply time:        1782744 microseconds (0.721575 average)
+  823543 calls to 3 by 2 multiply:
+    Construct subproblems time: 60507 microseconds (0.073472 average)
+    Combine subproblems time:   160694 microseconds (0.195125 average)
+  137257 calls to 7 by 4 multiply:
+    Construct subproblems time: 150442 microseconds (1.096061 average)
+    Combine subproblems time:   609067 microseconds (4.437420 average)
+Total multiply time: 2767619 microseconds (2767619.000000 average)
+
+7 by 4 multiply for square size:      4000000x4000000 (BYTEs): 2497627 microseconds
+1 calls to multiply
+  2470629 calls to Basic multiply:
+    Basic multiply time:        1740899 microseconds (0.704638 average)
+  823543 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   67888 microseconds (0.082434 average)
+  137257 calls to 7 by 4 multiply:
+    Construct subproblems time: 76413 microseconds (0.556715 average)
+    Combine subproblems time:   608357 microseconds (4.432248 average)
+Total multiply time: 2497627 microseconds (2497627.000000 average)
+
+5 by 3 multiply for multiply size:    4000000x4000000 (BYTEs): 4959347 microseconds
+1 calls to multiply
+  5859375 calls to Basic multiply:
+    Basic multiply time:        3086363 microseconds (0.526739 average)
+  1953125 calls to 3 by 2 multiply:
+    Construct subproblems time: 132458 microseconds (0.067818 average)
+    Combine subproblems time:   328187 microseconds (0.168032 average)
+  488281 calls to 5 by 3 multiply:
+    Construct subproblems time: 218003 microseconds (0.446470 average)
+    Combine subproblems time:   1194335 microseconds (2.445999 average)
+Total multiply time: 4959346 microseconds (4959346.000000 average)
+
+5 by 3 multiply for square size:      4000000x4000000 (BYTEs): 4631867 microseconds
+1 calls to multiply
+  5859375 calls to Basic multiply:
+    Basic multiply time:        3120909 microseconds (0.532635 average)
+  1953125 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   151407 microseconds (0.077520 average)
+  488281 calls to 5 by 3 multiply:
+    Construct subproblems time: 124465 microseconds (0.254904 average)
+    Combine subproblems time:   1219912 microseconds (2.498381 average)
+Total multiply time: 4631866 microseconds (4631866.000000 average)
+
+3 by 2 multiply for multiply size:    4000000x4000000 (BYTEs): 13908457 microseconds
+1 calls to multiply
+  14348907 calls to Basic multiply:
+    Basic multiply time:        10490900 microseconds (0.731129 average)
+  7174453 calls to 3 by 2 multiply:
+    Construct subproblems time: 806511 microseconds (0.112414 average)
+    Combine subproblems time:   2611046 microseconds (0.363937 average)
+Total multiply time: 13908457 microseconds (13908457.000000 average)
+
+3 by 2 multiply for square size:      4000000x4000000 (BYTEs): 14154999 microseconds
+1 calls to multiply
+  14348907 calls to Basic multiply:
+    Basic multiply time:        10707982 microseconds (0.746258 average)
+  7174453 calls to 3 by 2 multiply:
+    Construct subproblems time: 820118 microseconds (0.114311 average)
+    Combine subproblems time:   2626899 microseconds (0.366146 average)
+Total multiply time: 14154999 microseconds (14154999.000000 average)
+
+Basic multiply for multiply size: 4000000x4000000 (BYTEs): 605137364 microseconds
+1 calls to multiply
+  1 calls to Basic multiply:
+    Basic multiply time:        605137363 microseconds (605137344.000000 average)
+Total multiply time: 605137363 microseconds (605137344.000000 average)
+
+Mult oracle for multiply size:    4000000x4000000 (BYTEs): 1271859277 microseconds
+
+FFT multiply for multiply size:    8000000x8000000 (BYTEs): 1820532 microseconds
+1 calls to multiply
+  1032156 calls to Basic multiply:
+    Basic multiply time:        816304 microseconds (0.790873 average)
+  9 calls to 3 by 2 multiply:
+    Construct subproblems time: 1 microseconds (0.111111 average)
+    Combine subproblems time:   1 microseconds (0.111111 average)
+  147447 calls to 7 by 4 multiply:
+    Construct subproblems time: 58464 microseconds (0.396509 average)
+    Combine subproblems time:   209420 microseconds (1.420307 average)
+  16384 calls to 9 by 5 multiply:
+    Construct subproblems time: 55997 microseconds (3.417786 average)
+    Combine subproblems time:   154920 microseconds (9.455566 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 284072 microseconds (284072.000000 average)
+    Combine subproblems time:   235555 microseconds (235555.000000 average)
+Total multiply time: 1820531 microseconds (1820531.000000 average)
+
+FFT multiply for square size:      8000000x8000000 (BYTEs): 1382114 microseconds
+1 calls to multiply
+  1032156 calls to Basic multiply:
+    Basic multiply time:        658689 microseconds (0.638168 average)
+  9 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   0 microseconds (0.000000 average)
+  147447 calls to 7 by 4 multiply:
+    Construct subproblems time: 26941 microseconds (0.182717 average)
+    Combine subproblems time:   170701 microseconds (1.157711 average)
+  16384 calls to 9 by 5 multiply:
+    Construct subproblems time: 28969 microseconds (1.768127 average)
+    Combine subproblems time:   129377 microseconds (7.896545 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 203591 microseconds (203591.000000 average)
+    Combine subproblems time:   158726 microseconds (158726.000000 average)
+Total multiply time: 1382114 microseconds (1382114.000000 average)
+
+2n by n multiply for multiply size:    8000000x8000000 (BYTEs): 5603444 microseconds
+12003 calls to multiply
+  3378406 calls to Basic multiply:
+    Basic multiply time:        3235702 microseconds (0.957760 average)
+  1121931 calls to 3 by 2 multiply:
+    Construct subproblems time: 96344 microseconds (0.085873 average)
+    Combine subproblems time:   248745 microseconds (0.221712 average)
+  140239 calls to 9 by 5 multiply:
+    Construct subproblems time: 328312 microseconds (2.341089 average)
+    Combine subproblems time:   1264689 microseconds (9.018098 average)
+  1 calls to 2n by n multiply:
+    Construct subproblems time: 106923 microseconds (106923.000000 average)
+    Combine subproblems time:   709179 microseconds (709179.000000 average)
+Total multiply time: 5603872 microseconds (466.872620 average)
+
+2n by n multiply for square size:      8000000x8000000 (BYTEs): 4685290 microseconds
+1 calls to multiply
+  3366260 calls to Basic multiply:
+    Basic multiply time:        2852572 microseconds (0.847401 average)
+  1121931 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   97085 microseconds (0.086534 average)
+  140239 calls to 9 by 5 multiply:
+    Construct subproblems time: 153170 microseconds (1.092207 average)
+    Combine subproblems time:   1159326 microseconds (8.266788 average)
+  1 calls to 2n by n multiply:
+    Construct subproblems time: 45416 microseconds (45416.000000 average)
+    Combine subproblems time:   700947 microseconds (700947.000000 average)
+Total multiply time: 4685290 microseconds (4685290.000000 average)
+
+9 by 5 multiply for multiply size:    8000000x8000000 (BYTEs): 5656424 microseconds
+1 calls to multiply
+  4782969 calls to Basic multiply:
+    Basic multiply time:        2888002 microseconds (0.603809 average)
+  597871 calls to 9 by 5 multiply:
+    Construct subproblems time: 585454 microseconds (0.979231 average)
+    Combine subproblems time:   2182967 microseconds (3.651234 average)
+Total multiply time: 5656423 microseconds (5656423.000000 average)
+
+9 by 5 multiply for square size:      8000000x8000000 (BYTEs): 5030270 microseconds
+1 calls to multiply
+  4782969 calls to Basic multiply:
+    Basic multiply time:        2695234 microseconds (0.563506 average)
+  597871 calls to 9 by 5 multiply:
+    Construct subproblems time: 288146 microseconds (0.481953 average)
+    Combine subproblems time:   2046889 microseconds (3.423630 average)
+Total multiply time: 5030269 microseconds (5030269.000000 average)
+
+7 by 4 multiply for multiply size:    8000000x8000000 (BYTEs): 7119434 microseconds
+1 calls to multiply
+  5764801 calls to Basic multiply:
+    Basic multiply time:        4312281 microseconds (0.748036 average)
+  960800 calls to 7 by 4 multiply:
+    Construct subproblems time: 559231 microseconds (0.582047 average)
+    Combine subproblems time:   2218474 microseconds (2.308986 average)
+Total multiply time: 7119433 microseconds (7119433.000000 average)
+
+7 by 4 multiply for square size:      8000000x8000000 (BYTEs): 6872003 microseconds
+1 calls to multiply
+  5764801 calls to Basic multiply:
+    Basic multiply time:        4312290 microseconds (0.748038 average)
+  960800 calls to 7 by 4 multiply:
+    Construct subproblems time: 296150 microseconds (0.308233 average)
+    Combine subproblems time:   2233477 microseconds (2.324601 average)
+Total multiply time: 6872001 microseconds (6872001.000000 average)
+
+5 by 3 multiply for multiply size:    8000000x8000000 (BYTEs): 13849201 microseconds
+1 calls to multiply
+  9765625 calls to Basic multiply:
+    Basic multiply time:        8860309 microseconds (0.907296 average)
+  2441406 calls to 5 by 3 multiply:
+    Construct subproblems time: 802408 microseconds (0.328666 average)
+    Combine subproblems time:   4186484 microseconds (1.714784 average)
+Total multiply time: 13849201 microseconds (13849201.000000 average)
+
+5 by 3 multiply for square size:      8000000x8000000 (BYTEs): 13884678 microseconds
+1 calls to multiply
+  9765625 calls to Basic multiply:
+    Basic multiply time:        9126718 microseconds (0.934576 average)
+  2441406 calls to 5 by 3 multiply:
+    Construct subproblems time: 460727 microseconds (0.188714 average)
+    Combine subproblems time:   4218331 microseconds (1.727829 average)
+Total multiply time: 13884677 microseconds (13884677.000000 average)
+
+3 by 2 multiply for multiply size:    8000000x8000000 (BYTEs): 42791402 microseconds
+1 calls to multiply
+  43046721 calls to Basic multiply:
+    Basic multiply time:        32297167 microseconds (0.750282 average)
+  21523360 calls to 3 by 2 multiply:
+    Construct subproblems time: 2477291 microseconds (0.115098 average)
+    Combine subproblems time:   8016944 microseconds (0.372476 average)
+Total multiply time: 42791402 microseconds (42791400.000000 average)
+
+3 by 2 multiply for square size:      8000000x8000000 (BYTEs): 41785091 microseconds
+1 calls to multiply
+  43046721 calls to Basic multiply:
+    Basic multiply time:        31559458 microseconds (0.733144 average)
+  21523360 calls to 3 by 2 multiply:
+    Construct subproblems time: 2411064 microseconds (0.112021 average)
+    Combine subproblems time:   7814569 microseconds (0.363074 average)
+Total multiply time: 41785091 microseconds (41785092.000000 average)
+
+FFT multiply for multiply size:    16000000x16000000 (BYTEs): 2695645 microseconds
+1 calls to multiply
+  2064312 calls to Basic multiply:
+    Basic multiply time:        1128716 microseconds (0.546776 average)
+  18 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   2 microseconds (0.111111 average)
+  294894 calls to 7 by 4 multiply:
+    Construct subproblems time: 78594 microseconds (0.266516 average)
+    Combine subproblems time:   289576 microseconds (0.981966 average)
+  32768 calls to 9 by 5 multiply:
+    Construct subproblems time: 83376 microseconds (2.544434 average)
+    Combine subproblems time:   222406 microseconds (6.787292 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 586001 microseconds (586001.000000 average)
+    Combine subproblems time:   298168 microseconds (298168.000000 average)
+Total multiply time: 2695644 microseconds (2695644.000000 average)
+
+FFT multiply for square size:      16000000x16000000 (BYTEs): 2353938 microseconds
+1 calls to multiply
+  2064312 calls to Basic multiply:
+    Basic multiply time:        1145357 microseconds (0.554837 average)
+  18 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   3 microseconds (0.166667 average)
+  294894 calls to 7 by 4 multiply:
+    Construct subproblems time: 45390 microseconds (0.153920 average)
+    Combine subproblems time:   294904 microseconds (1.000034 average)
+  32768 calls to 9 by 5 multiply:
+    Construct subproblems time: 51608 microseconds (1.574951 average)
+    Combine subproblems time:   225997 microseconds (6.896881 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 276033 microseconds (276033.000000 average)
+    Combine subproblems time:   305659 microseconds (305659.000000 average)
+Total multiply time: 2353937 microseconds (2353937.000000 average)
+
+2n by n multiply for multiply size:    16000000x16000000 (BYTEs): 12530343 microseconds
+1 calls to multiply
+  10097990 calls to Basic multiply:
+    Basic multiply time:        6344805 microseconds (0.628324 average)
+  1262170 calls to 9 by 5 multiply:
+    Construct subproblems time: 1123979 microseconds (0.890513 average)
+    Combine subproblems time:   4213595 microseconds (3.338374 average)
+  1 calls to 2n by n multiply:
+    Construct subproblems time: 195520 microseconds (195520.000000 average)
+    Combine subproblems time:   1390563 microseconds (1390563.000000 average)
+Total multiply time: 12530342 microseconds (12530342.000000 average)
+
+2n by n multiply for square size:      16000000x16000000 (BYTEs): 12317743 microseconds
+1 calls to multiply
+  10097846 calls to Basic multiply:
+    Basic multiply time:        6479528 microseconds (0.641674 average)
+  1262170 calls to 9 by 5 multiply:
+    Construct subproblems time: 614160 microseconds (0.486591 average)
+    Combine subproblems time:   4324350 microseconds (3.426123 average)
+  1 calls to 2n by n multiply:
+    Construct subproblems time: 99710 microseconds (99710.000000 average)
+    Combine subproblems time:   1497887 microseconds (1497887.000000 average)
+Total multiply time: 12317743 microseconds (12317743.000000 average)
+
+9 by 5 multiply for multiply size:    16000000x16000000 (BYTEs): 14022381 microseconds
+1 calls to multiply
+  14348907 calls to Basic multiply:
+    Basic multiply time:        7785620 microseconds (0.542593 average)
+  4782969 calls to 3 by 2 multiply:
+    Construct subproblems time: 331984 microseconds (0.069410 average)
+    Combine subproblems time:   806052 microseconds (0.168525 average)
+  597871 calls to 9 by 5 multiply:
+    Construct subproblems time: 1055333 microseconds (1.765152 average)
+    Combine subproblems time:   4043391 microseconds (6.762982 average)
+Total multiply time: 14022380 microseconds (14022380.000000 average)
+
+9 by 5 multiply for square size:      16000000x16000000 (BYTEs): 12890991 microseconds
+1 calls to multiply
+  14348907 calls to Basic multiply:
+    Basic multiply time:        7805282 microseconds (0.543964 average)
+  4782969 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   364694 microseconds (0.076248 average)
+  597871 calls to 9 by 5 multiply:
+    Construct subproblems time: 552890 microseconds (0.924765 average)
+    Combine subproblems time:   4168125 microseconds (6.971612 average)
+Total multiply time: 12890991 microseconds (12890991.000000 average)
+
+7 by 4 multiply for multiply size:    16000000x16000000 (BYTEs): 19422967 microseconds
+1 calls to multiply
+  17294403 calls to Basic multiply:
+    Basic multiply time:        12507592 microseconds (0.723216 average)
+  5764801 calls to 3 by 2 multiply:
+    Construct subproblems time: 424040 microseconds (0.073557 average)
+    Combine subproblems time:   1122041 microseconds (0.194637 average)
+  960800 calls to 7 by 4 multiply:
+    Construct subproblems time: 1039468 microseconds (1.081878 average)
+    Combine subproblems time:   4300836 microseconds (4.476307 average)
+Total multiply time: 19422966 microseconds (19422966.000000 average)
+
+7 by 4 multiply for square size:      16000000x16000000 (BYTEs): 17697470 microseconds
+1 calls to multiply
+  17294403 calls to Basic multiply:
+    Basic multiply time:        12302137 microseconds (0.711336 average)
+  5764801 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   476926 microseconds (0.082731 average)
+  960800 calls to 7 by 4 multiply:
+    Construct subproblems time: 544434 microseconds (0.566647 average)
+    Combine subproblems time:   4345458 microseconds (4.522750 average)
+Total multiply time: 17697469 microseconds (17697468.000000 average)
+
+5 by 3 multiply for multiply size:    16000000x16000000 (BYTEs): 38501231 microseconds
+1 calls to multiply
+  29296875 calls to Basic multiply:
+    Basic multiply time:        26029798 microseconds (0.888484 average)
+  9765625 calls to 3 by 2 multiply:
+    Construct subproblems time: 782357 microseconds (0.080113 average)
+    Combine subproblems time:   2118488 microseconds (0.216933 average)
+  2441406 calls to 5 by 3 multiply:
+    Construct subproblems time: 1456416 microseconds (0.596548 average)
+    Combine subproblems time:   8114172 microseconds (3.323565 average)
+Total multiply time: 38501231 microseconds (38501232.000000 average)
+
+5 by 3 multiply for square size:      16000000x16000000 (BYTEs): 34875755 microseconds
+1 calls to multiply
+  29296875 calls to Basic multiply:
+    Basic multiply time:        25249285 microseconds (0.861842 average)
+  9765625 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   890064 microseconds (0.091143 average)
+  2441406 calls to 5 by 3 multiply:
+    Construct subproblems time: 774108 microseconds (0.317075 average)
+    Combine subproblems time:   7889606 microseconds (3.231583 average)
+Total multiply time: 34875755 microseconds (34875756.000000 average)
+
+3 by 2 multiply for multiply size:    16000000x16000000 (BYTEs): 130439756 microseconds
+1 calls to multiply
+  129140163 calls to Basic multiply:
+    Basic multiply time:        98528100 microseconds (0.762955 average)
+  64570081 calls to 3 by 2 multiply:
+    Construct subproblems time: 7587687 microseconds (0.117511 average)
+    Combine subproblems time:   24323969 microseconds (0.376706 average)
+Total multiply time: 130439756 microseconds (130439760.000000 average)
+
+3 by 2 multiply for square size:      16000000x16000000 (BYTEs): 129572694 microseconds
+1 calls to multiply
+  129140163 calls to Basic multiply:
+    Basic multiply time:        98030370 microseconds (0.759101 average)
+  64570081 calls to 3 by 2 multiply:
+    Construct subproblems time: 7473058 microseconds (0.115736 average)
+    Combine subproblems time:   24069265 microseconds (0.372762 average)
+Total multiply time: 129572693 microseconds (129572696.000000 average)
+
+FFT multiply for multiply size:    32000000x32000000 (BYTEs): 7007455 microseconds
+1 calls to multiply
+  7962327 calls to Basic multiply:
+    Basic multiply time:        3045479 microseconds (0.382486 average)
+  2654046 calls to 3 by 2 multiply:
+    Construct subproblems time: 171836 microseconds (0.064745 average)
+    Combine subproblems time:   376123 microseconds (0.141717 average)
+  27 calls to 7 by 4 multiply:
+    Construct subproblems time: 10 microseconds (0.370370 average)
+    Combine subproblems time:   24 microseconds (0.888889 average)
+  327663 calls to 9 by 5 multiply:
+    Construct subproblems time: 386288 microseconds (1.178919 average)
+    Combine subproblems time:   1288519 microseconds (3.932452 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 1138033 microseconds (1138033.000000 average)
+    Combine subproblems time:   601141 microseconds (601141.000000 average)
+Total multiply time: 7007453 microseconds (7007453.000000 average)
+
+FFT multiply for square size:      32000000x32000000 (BYTEs): 5718897 microseconds
+1 calls to multiply
+  7962444 calls to Basic multiply:
+    Basic multiply time:        2922896 microseconds (0.367085 average)
+  2654127 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   174866 microseconds (0.065885 average)
+  9 calls to 7 by 4 multiply:
+    Construct subproblems time: 13 microseconds (1.444444 average)
+    Combine subproblems time:   8 microseconds (0.888889 average)
+  327671 calls to 9 by 5 multiply:
+    Construct subproblems time: 218636 microseconds (0.667242 average)
+    Combine subproblems time:   1304161 microseconds (3.980093 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 541493 microseconds (541493.000000 average)
+    Combine subproblems time:   556823 microseconds (556823.000000 average)
+Total multiply time: 5718897 microseconds (5718897.000000 average)
+
+2n by n multiply for multiply size:    32000000x32000000 (BYTEs): 34294226 microseconds
+1 calls to multiply
+  30292748 calls to Basic multiply:
+    Basic multiply time:        18849443 microseconds (0.622243 average)
+  10097379 calls to 3 by 2 multiply:
+    Construct subproblems time: 747089 microseconds (0.073988 average)
+    Combine subproblems time:   1782356 microseconds (0.176517 average)
+  1262170 calls to 9 by 5 multiply:
+    Construct subproblems time: 2299797 microseconds (1.822098 average)
+    Combine subproblems time:   8831985 microseconds (6.997461 average)
+  1 calls to 2n by n multiply:
+    Construct subproblems time: 405418 microseconds (405418.000000 average)
+    Combine subproblems time:   2948495 microseconds (2948495.000000 average)
+Total multiply time: 34294226 microseconds (34294224.000000 average)
+
+2n by n multiply for square size:      32000000x32000000 (BYTEs): 31663001 microseconds
+1 calls to multiply
+  30292604 calls to Basic multiply:
+    Basic multiply time:        18715326 microseconds (0.617818 average)
+  10097379 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   809371 microseconds (0.080157 average)
+  1262170 calls to 9 by 5 multiply:
+    Construct subproblems time: 1194330 microseconds (0.946251 average)
+    Combine subproblems time:   9047160 microseconds (7.167941 average)
+  1 calls to 2n by n multiply:
+    Construct subproblems time: 193093 microseconds (193093.000000 average)
+    Combine subproblems time:   3094523 microseconds (3094523.000000 average)
+Total multiply time: 31663001 microseconds (31663000.000000 average)
+
+9 by 5 multiply for multiply size:    32000000x32000000 (BYTEs): 37564063 microseconds
+1 calls to multiply
+  33480783 calls to Basic multiply:
+    Basic multiply time:        20110642 microseconds (0.600662 average)
+  4782969 calls to 7 by 4 multiply:
+    Construct subproblems time: 1404596 microseconds (0.293666 average)
+    Combine subproblems time:   5111639 microseconds (1.068717 average)
+  597871 calls to 9 by 5 multiply:
+    Construct subproblems time: 2247756 microseconds (3.759600 average)
+    Combine subproblems time:   8540442 microseconds (14.284757 average)
+Total multiply time: 37564062 microseconds (37564064.000000 average)
+
+9 by 5 multiply for square size:      32000000x32000000 (BYTEs): 34695344 microseconds
+1 calls to multiply
+  33480783 calls to Basic multiply:
+    Basic multiply time:        19365099 microseconds (0.578394 average)
+  4782969 calls to 7 by 4 multiply:
+    Construct subproblems time: 768032 microseconds (0.160576 average)
+    Combine subproblems time:   4951584 microseconds (1.035253 average)
+  597871 calls to 9 by 5 multiply:
+    Construct subproblems time: 1116778 microseconds (1.867925 average)
+    Combine subproblems time:   8343386 microseconds (13.955161 average)
+Total multiply time: 34695343 microseconds (34695344.000000 average)
+
+7 by 4 multiply for multiply size:    32000000x32000000 (BYTEs): 54082029 microseconds
+1 calls to multiply
+  40353607 calls to Basic multiply:
+    Basic multiply time:        32778972 microseconds (0.812293 average)
+  6725601 calls to 7 by 4 multiply:
+    Construct subproblems time: 4237898 microseconds (0.630114 average)
+    Combine subproblems time:   16849860 microseconds (2.505332 average)
+Total multiply time: 54082028 microseconds (54082028.000000 average)
+
+7 by 4 multiply for square size:      32000000x32000000 (BYTEs): 50147324 microseconds
+1 calls to multiply
+  40353607 calls to Basic multiply:
+    Basic multiply time:        31379860 microseconds (0.777622 average)
+  6725601 calls to 7 by 4 multiply:
+    Construct subproblems time: 2181188 microseconds (0.324311 average)
+    Combine subproblems time:   16370111 microseconds (2.434000 average)
+Total multiply time: 50147323 microseconds (50147324.000000 average)
+
+5 by 3 multiply for multiply size:    32000000x32000000 (BYTEs): 117102185 microseconds
+1 calls to multiply
+  146484375 calls to Basic multiply:
+    Basic multiply time:        71168975 microseconds (0.485847 average)
+  48828125 calls to 3 by 2 multiply:
+    Construct subproblems time: 3451106 microseconds (0.070679 average)
+    Combine subproblems time:   7992518 microseconds (0.163687 average)
+  12207031 calls to 5 by 3 multiply:
+    Construct subproblems time: 5394332 microseconds (0.441904 average)
+    Combine subproblems time:   29095254 microseconds (2.383483 average)
+Total multiply time: 117102185 microseconds (117102184.000000 average)
+
+5 by 3 multiply for square size:      32000000x32000000 (BYTEs): 102603628 microseconds
+1 calls to multiply
+  146484375 calls to Basic multiply:
+    Basic multiply time:        68012122 microseconds (0.464296 average)
+  48828125 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   3574586 microseconds (0.073208 average)
+  12207031 calls to 5 by 3 multiply:
+    Construct subproblems time: 2861047 microseconds (0.234377 average)
+    Combine subproblems time:   27778015 microseconds (2.275575 average)
+Total multiply time: 102603627 microseconds (102603624.000000 average)
+
+3 by 2 multiply for multiply size:    32000000x32000000 (BYTEs): 370622241 microseconds
+1 calls to multiply
+  387420489 calls to Basic multiply:
+    Basic multiply time:        279462529 microseconds (0.721342 average)
+  193710244 calls to 3 by 2 multiply:
+    Construct subproblems time: 21469596 microseconds (0.110834 average)
+    Combine subproblems time:   69690116 microseconds (0.359765 average)
+Total multiply time: 370622241 microseconds (370622240.000000 average)
+
+3 by 2 multiply for square size:      32000000x32000000 (BYTEs): 396960238 microseconds
+1 calls to multiply
+  387420489 calls to Basic multiply:
+    Basic multiply time:        299786830 microseconds (0.773802 average)
+  193710244 calls to 3 by 2 multiply:
+    Construct subproblems time: 23299364 microseconds (0.120279 average)
+    Combine subproblems time:   73874042 microseconds (0.381364 average)
+Total multiply time: 396960236 microseconds (396960224.000000 average)
+
+FFT multiply for multiply size:    64000000x64000000 (BYTEs): 15083027 microseconds
+1 calls to multiply
+  15924951 calls to Basic multiply:
+    Basic multiply time:        6445825 microseconds (0.404763 average)
+  5308254 calls to 3 by 2 multiply:
+    Construct subproblems time: 366360 microseconds (0.069017 average)
+    Combine subproblems time:   790102 microseconds (0.148844 average)
+  27 calls to 7 by 4 multiply:
+    Construct subproblems time: 13 microseconds (0.481481 average)
+    Combine subproblems time:   32 microseconds (1.185185 average)
+  655343 calls to 9 by 5 multiply:
+    Construct subproblems time: 817544 microseconds (1.247506 average)
+    Combine subproblems time:   2721663 microseconds (4.153036 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 2621030 microseconds (2621030.000000 average)
+    Combine subproblems time:   1320457 microseconds (1320457.000000 average)
+Total multiply time: 15083026 microseconds (15083026.000000 average)
+
+FFT multiply for square size:      64000000x64000000 (BYTEs): 12197212 microseconds
+1 calls to multiply
+  15924888 calls to Basic multiply:
+    Basic multiply time:        6059849 microseconds (0.380527 average)
+  5308254 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   366060 microseconds (0.068961 average)
+  18 calls to 7 by 4 multiply:
+    Construct subproblems time: 4 microseconds (0.222222 average)
+    Combine subproblems time:   25 microseconds (1.388889 average)
+  655342 calls to 9 by 5 multiply:
+    Construct subproblems time: 453977 microseconds (0.692733 average)
+    Combine subproblems time:   2698238 microseconds (4.117298 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 1231281 microseconds (1231281.000000 average)
+    Combine subproblems time:   1387778 microseconds (1387778.000000 average)
+Total multiply time: 12197212 microseconds (12197212.000000 average)
+
+2n by n multiply for multiply size:    64000000x64000000 (BYTEs): 86903291 microseconds
+1 calls to multiply
+  63962287 calls to Basic multiply:
+    Basic multiply time:        46900954 microseconds (0.733259 average)
+  21316689 calls to 3 by 2 multiply:
+    Construct subproblems time: 1615733 microseconds (0.075797 average)
+    Combine subproblems time:   3857373 microseconds (0.180956 average)
+  2664541 calls to 9 by 5 multiply:
+    Construct subproblems time: 4903413 microseconds (1.840247 average)
+    Combine subproblems time:   18695018 microseconds (7.016224 average)
+  20 calls to 2n by n multiply:
+    Construct subproblems time: 2518210 microseconds (125910.500000 average)
+    Combine subproblems time:   17900485 microseconds (895024.187500 average)
+Total multiply time: 86903290 microseconds (86903288.000000 average)
+
+2n by n multiply for square size:      64000000x64000000 (BYTEs): 79453649 microseconds
+1 calls to multiply
+  63959407 calls to Basic multiply:
+    Basic multiply time:        45352318 microseconds (0.709080 average)
+  21316689 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   1737811 microseconds (0.081524 average)
+  2664541 calls to 9 by 5 multiply:
+    Construct subproblems time: 2559647 microseconds (0.960633 average)
+    Combine subproblems time:   19049751 microseconds (7.149356 average)
+  20 calls to 2n by n multiply:
+    Construct subproblems time: 1235974 microseconds (61798.699219 average)
+    Combine subproblems time:   17838875 microseconds (891943.812500 average)
+Total multiply time: 79453648 microseconds (79453648.000000 average)
+
+9 by 5 multiply for multiply size:    64000000x64000000 (BYTEs): 104393252 microseconds
+1 calls to multiply
+  129114277 calls to Basic multiply:
+    Basic multiply time:        53766867 microseconds (0.416429 average)
+  43033778 calls to 3 by 2 multiply:
+    Construct subproblems time: 3049977 microseconds (0.070874 average)
+    Combine subproblems time:   6550587 microseconds (0.152220 average)
+  5380840 calls to 9 by 5 multiply:
+    Construct subproblems time: 8903433 microseconds (1.654655 average)
+    Combine subproblems time:   32122387 microseconds (5.969772 average)
+Total multiply time: 104393251 microseconds (104393248.000000 average)
+
+9 by 5 multiply for square size:      64000000x64000000 (BYTEs): 93368116 microseconds
+1 calls to multiply
+  129114277 calls to Basic multiply:
+    Basic multiply time:        52318909 microseconds (0.405214 average)
+  43033778 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   3134317 microseconds (0.072834 average)
+  5380840 calls to 9 by 5 multiply:
+    Construct subproblems time: 4718290 microseconds (0.876869 average)
+    Combine subproblems time:   33196599 microseconds (6.169408 average)
+Total multiply time: 93368115 microseconds (93368112.000000 average)
+
+7 by 4 multiply for multiply size:    64000000x64000000 (BYTEs): 151612802 microseconds
+1 calls to multiply
+  121060821 calls to Basic multiply:
+    Basic multiply time:        97336279 microseconds (0.804028 average)
+  40353607 calls to 3 by 2 multiply:
+    Construct subproblems time: 3386403 microseconds (0.083918 average)
+    Combine subproblems time:   8640039 microseconds (0.214108 average)
+  6725601 calls to 7 by 4 multiply:
+    Construct subproblems time: 8291453 microseconds (1.232820 average)
+    Combine subproblems time:   33733350 microseconds (5.015664 average)
+Total multiply time: 151612801 microseconds (151612800.000000 average)
+
+7 by 4 multiply for square size:      64000000x64000000 (BYTEs): 137466833 microseconds
+1 calls to multiply
+  121060821 calls to Basic multiply:
+    Basic multiply time:        95292792 microseconds (0.787148 average)
+  40353607 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   3698824 microseconds (0.091660 average)
+  6725601 calls to 7 by 4 multiply:
+    Construct subproblems time: 4318374 microseconds (0.642080 average)
+    Combine subproblems time:   33937602 microseconds (5.046032 average)
+Total multiply time: 137466832 microseconds (137466832.000000 average)
+
+5 by 3 multiply for multiply size:    64000000x64000000 (BYTEs): 310080593 microseconds
+1 calls to multiply
+  244140625 calls to Basic multiply:
+    Basic multiply time:        191855406 microseconds (0.785840 average)
+  61035156 calls to 5 by 3 multiply:
+    Construct subproblems time: 19470243 microseconds (0.319000 average)
+    Combine subproblems time:   98754943 microseconds (1.618001 average)
+Total multiply time: 310080592 microseconds (310080576.000000 average)
+
+5 by 3 multiply for square size:      64000000x64000000 (BYTEs): 284856395 microseconds
+1 calls to multiply
+  244140625 calls to Basic multiply:
+    Basic multiply time:        181242514 microseconds (0.742369 average)
+  61035156 calls to 5 by 3 multiply:
+    Construct subproblems time: 10203676 microseconds (0.167177 average)
+    Combine subproblems time:   91488222 microseconds (1.498943 average)
+Total multiply time: 284856395 microseconds (284856384.000000 average)
+
+3 by 2 multiply for multiply size:    64000000x64000000 (BYTEs): 1141229748 microseconds
+1 calls to multiply
+  1162261467 calls to Basic multiply:
+    Basic multiply time:        859494644 microseconds (0.739502 average)
+  581130733 calls to 3 by 2 multiply:
+    Construct subproblems time: 66702834 microseconds (0.114781 average)
+    Combine subproblems time:   215032270 microseconds (0.370024 average)
+Total multiply time: 1141229748 microseconds (1141229696.000000 average)
+
+3 by 2 multiply for square size:      64000000x64000000 (BYTEs): 1203885039 microseconds
+1 calls to multiply
+  1162261467 calls to Basic multiply:
+    Basic multiply time:        909467729 microseconds (0.782498 average)
+  581130733 calls to 3 by 2 multiply:
+    Construct subproblems time: 70727667 microseconds (0.121707 average)
+    Combine subproblems time:   223689642 microseconds (0.384921 average)
+Total multiply time: 1203885038 microseconds (1203885056.000000 average)
+
+FFT multiply for multiply size:    128000000x128000000 (BYTEs): 34829174 microseconds
+1 calls to multiply
+  35847827 calls to Basic multiply:
+    Basic multiply time:        14988794 microseconds (0.418123 average)
+  2883739 calls to 3 by 2 multiply:
+    Construct subproblems time: 204410 microseconds (0.070884 average)
+    Combine subproblems time:   479155 microseconds (0.166158 average)
+  1376214 calls to 5 by 3 multiply:
+    Construct subproblems time: 232333 microseconds (0.168820 average)
+    Combine subproblems time:   993372 microseconds (0.721815 average)
+  3211166 calls to 7 by 4 multiply:
+    Construct subproblems time: 749418 microseconds (0.233379 average)
+    Combine subproblems time:   2649777 microseconds (0.825176 average)
+  655370 calls to 9 by 5 multiply:
+    Construct subproblems time: 1497632 microseconds (2.285170 average)
+    Combine subproblems time:   5086264 microseconds (7.760904 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 5044528 microseconds (5044528.000000 average)
+    Combine subproblems time:   2807151 microseconds (2807151.000000 average)
+Total multiply time: 34829174 microseconds (34829176.000000 average)
+
+FFT multiply for square size:      128000000x128000000 (BYTEs): 29915278 microseconds
+1 calls to multiply
+  35847888 calls to Basic multiply:
+    Basic multiply time:        14718830 microseconds (0.410591 average)
+  2883621 calls to 3 by 2 multiply:
+    Construct subproblems time: 55638 microseconds (0.019294 average)
+    Combine subproblems time:   268260 microseconds (0.093029 average)
+  1376235 calls to 5 by 3 multiply:
+    Construct subproblems time: 135680 microseconds (0.098588 average)
+    Combine subproblems time:   966932 microseconds (0.702592 average)
+  3211215 calls to 7 by 4 multiply:
+    Construct subproblems time: 426960 microseconds (0.132959 average)
+    Combine subproblems time:   2631118 microseconds (0.819353 average)
+  655360 calls to 9 by 5 multiply:
+    Construct subproblems time: 809241 microseconds (1.234804 average)
+    Combine subproblems time:   5043053 microseconds (7.695088 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 2333045 microseconds (2333045.000000 average)
+    Combine subproblems time:   2386158 microseconds (2386158.000000 average)
+Total multiply time: 29915277 microseconds (29915276.000000 average)
+
+2n by n multiply for multiply size:    128000000x128000000 (BYTEs): 207308106 microseconds
+1 calls to multiply
+  149229043 calls to Basic multiply:
+    Basic multiply time:        108710401 microseconds (0.728480 average)
+  21316689 calls to 7 by 4 multiply:
+    Construct subproblems time: 6454416 microseconds (0.302787 average)
+    Combine subproblems time:   23179033 microseconds (1.087366 average)
+  2664541 calls to 9 by 5 multiply:
+    Construct subproblems time: 9650590 microseconds (3.621858 average)
+    Combine subproblems time:   36974225 microseconds (13.876395 average)
+  20 calls to 2n by n multiply:
+    Construct subproblems time: 4787966 microseconds (239398.296875 average)
+    Combine subproblems time:   35624859 microseconds (1781243.000000 average)
+Total multiply time: 207308105 microseconds (207308112.000000 average)
+
+2n by n multiply for square size:      128000000x128000000 (BYTEs): 209293238 microseconds
+1 calls to multiply
+  149226163 calls to Basic multiply:
+    Basic multiply time:        112920413 microseconds (0.756707 average)
+  21316689 calls to 7 by 4 multiply:
+    Construct subproblems time: 3886025 microseconds (0.182300 average)
+    Combine subproblems time:   24729684 microseconds (1.160109 average)
+  2664541 calls to 9 by 5 multiply:
+    Construct subproblems time: 5286002 microseconds (1.983832 average)
+    Combine subproblems time:   39677872 microseconds (14.891072 average)
+  20 calls to 2n by n multiply:
+    Construct subproblems time: 2444563 microseconds (122228.148438 average)
+    Combine subproblems time:   36445784 microseconds (1822289.250000 average)
+Total multiply time: 209293237 microseconds (209293232.000000 average)
+
+9 by 5 multiply for multiply size:    128000000x128000000 (BYTEs): 264113937 microseconds
+1 calls to multiply
+  289792217 calls to Basic multiply:
+    Basic multiply time:        133728304 microseconds (0.461463 average)
+  23745808 calls to 3 by 2 multiply:
+    Construct subproblems time: 1888456 microseconds (0.079528 average)
+    Combine subproblems time:   4294440 microseconds (0.180850 average)
+  11703867 calls to 5 by 3 multiply:
+    Construct subproblems time: 2196341 microseconds (0.187659 average)
+    Combine subproblems time:   9241498 microseconds (0.789611 average)
+  25406402 calls to 7 by 4 multiply:
+    Construct subproblems time: 6524488 microseconds (0.256805 average)
+    Combine subproblems time:   22998814 microseconds (0.905237 average)
+  5380840 calls to 9 by 5 multiply:
+    Construct subproblems time: 17606086 microseconds (3.271996 average)
+    Combine subproblems time:   64811356 microseconds (12.044840 average)
+Total multiply time: 264113935 microseconds (264113936.000000 average)
+
+9 by 5 multiply for square size:      128000000x128000000 (BYTEs): 242390181 microseconds
+1 calls to multiply
+  289792217 calls to Basic multiply:
+    Basic multiply time:        129805694 microseconds (0.447927 average)
+  23745808 calls to 3 by 2 multiply:
+    Construct subproblems time: 528290 microseconds (0.022248 average)
+    Combine subproblems time:   2388410 microseconds (0.100582 average)
+  11703867 calls to 5 by 3 multiply:
+    Construct subproblems time: 1270106 microseconds (0.108520 average)
+    Combine subproblems time:   8879375 microseconds (0.758670 average)
+  25406402 calls to 7 by 4 multiply:
+    Construct subproblems time: 3675597 microseconds (0.144672 average)
+    Combine subproblems time:   22579795 microseconds (0.888744 average)
+  5380840 calls to 9 by 5 multiply:
+    Construct subproblems time: 8716967 microseconds (1.620001 average)
+    Combine subproblems time:   63328509 microseconds (11.769260 average)
+Total multiply time: 242390180 microseconds (242390176.000000 average)
+
+7 by 4 multiply for multiply size:    128000000x128000000 (BYTEs): 347559867 microseconds
+1 calls to multiply
+  282475249 calls to Basic multiply:
+    Basic multiply time:        209871347 microseconds (0.742972 average)
+  47079208 calls to 7 by 4 multiply:
+    Construct subproblems time: 27509470 microseconds (0.584323 average)
+    Combine subproblems time:   108757449 microseconds (2.310095 average)
+Total multiply time: 347559865 microseconds (347559872.000000 average)
+
+7 by 4 multiply for square size:      128000000x128000000 (BYTEs): 344372212 microseconds
+1 calls to multiply
+  282475249 calls to Basic multiply:
+    Basic multiply time:        215227851 microseconds (0.761935 average)
+  47079208 calls to 7 by 4 multiply:
+    Construct subproblems time: 15057662 microseconds (0.319837 average)
+    Combine subproblems time:   112590549 microseconds (2.391513 average)
+Total multiply time: 344372211 microseconds (344372224.000000 average)
+
+5 by 3 multiply for multiply size:    128000000x128000000 (BYTEs): 813927098 microseconds
+1 calls to multiply
+  732421875 calls to Basic multiply:
+    Basic multiply time:        533618887 microseconds (0.728568 average)
+  244140625 calls to 3 by 2 multiply:
+    Construct subproblems time: 18360616 microseconds (0.075205 average)
+    Combine subproblems time:   47862274 microseconds (0.196044 average)
+  61035156 calls to 5 by 3 multiply:
+    Construct subproblems time: 32886021 microseconds (0.538805 average)
+    Combine subproblems time:   181199300 microseconds (2.968769 average)
+Total multiply time: 813927098 microseconds (813927104.000000 average)
+
+5 by 3 multiply for square size:      128000000x128000000 (BYTEs): 769305372 microseconds
+1 calls to multiply
+  732421875 calls to Basic multiply:
+    Basic multiply time:        543704461 microseconds (0.742338 average)
+  244140625 calls to 3 by 2 multiply:
+    Construct subproblems time: 0 microseconds (0.000000 average)
+    Combine subproblems time:   21285569 microseconds (0.087186 average)
+  61035156 calls to 5 by 3 multiply:
+    Construct subproblems time: 18664607 microseconds (0.305801 average)
+    Combine subproblems time:   183747365 microseconds (3.010517 average)
+Total multiply time: 769305370 microseconds (769305344.000000 average)
+
+3 by 2 multiply for multiply size:    128000000x128000000 (BYTEs): 3432157147 microseconds
+1 calls to multiply
+  -808182895 calls to Basic multiply:
+    Basic multiply time:        2587441721 microseconds (0.742071 average)
+  1743392200 calls to 3 by 2 multiply:
+    Construct subproblems time: 200500285 microseconds (0.115006 average)
+    Combine subproblems time:   644215141 microseconds (0.369518 average)
+Total multiply time: 3432157147 microseconds (3432157184.000000 average)
+
+3 by 2 multiply for square size:      128000000x128000000 (BYTEs): 3505264442 microseconds
+1 calls to multiply
+  -808182895 calls to Basic multiply:
+    Basic multiply time:        2645600824 microseconds (0.758751 average)
+  1743392200 calls to 3 by 2 multiply:
+    Construct subproblems time: 204931759 microseconds (0.117548 average)
+    Combine subproblems time:   654731857 microseconds (0.375551 average)
+Total multiply time: 3505264440 microseconds (3505264384.000000 average)
 */
 void CArithmeticPerformanceTester::CompareMultiplicationAlgorithms()
 {
@@ -1173,68 +2145,44 @@ void CArithmeticPerformanceTester::CompareMultiplicationAlgorithms()
                 return;
             }
             cWork.GetSpace()[nMemoryNeeds] = TEST_BUFFERGUARD; // validate not using more memory than expected
-#if(_CollectDetailedTimingData)
             ResetTimingData();
             dwStartTime = s_Timer.GetMicroseconds();
-            dwTimestamp = dwStartTime;
-            MultUBackend(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel);
+            Multiply(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct.GetValue(), cWork.GetSpace());
             dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
+            printf("%s for multiply size:    %I64ux%I64u (BYTEs): %I64u microseconds\n", GetMultiplicationAlgorithmName((EMultiplyAlgorithm) eAlgorithm), nX.GetSize()*sizeof(DIGIT), nY.GetSize()*sizeof(DIGIT), dwStartTime);
             if (TEST_BUFFERGUARD != cWork.GetSpace()[nMemoryNeeds])
             {
                 printf("Overran workspace memory bounds for algorithm %i multiply.  Oops.\n", eAlgorithm);
                 return;
             }
-            ReportTimingData();
-            printf("%I64u microseconds for algorithm %i for multiply size: %I64ux%I64u (BYTEs)\n", dwStartTime, eAlgorithm, nX.GetSize() * sizeof(DIGIT), nY.GetSize() * sizeof(DIGIT));
+            ReportMeasuredComponentTimingData(eMultiplicationMeasured);
             ResetTimingData();
             dwStartTime = s_Timer.GetMicroseconds();
-            dwTimestamp = dwStartTime;
-            SquareUBackend(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel);
+            Square(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace());
             dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
+            printf("%s for square size:      %I64ux%I64u (BYTEs): %I64u microseconds\n", GetMultiplicationAlgorithmName((EMultiplyAlgorithm)eAlgorithm), nX.GetSize()*sizeof(DIGIT), nX.GetSize()*sizeof(DIGIT), dwStartTime);
             if (TEST_BUFFERGUARD != cWork.GetSpace()[nMemoryNeeds])
             {
                 printf("Overran workspace memory bounds for algorithm %i square.  Oops.\n", eAlgorithm);
                 return;
             }
-            ReportTimingData();
-            printf("%I64u microseconds for algorithm %i for square size:   %I64u (BYTEs)\n", dwStartTime, eAlgorithm, nX.GetSize() * sizeof(DIGIT));
-#else
-            dwStartTime = s_Timer.GetMicroseconds();
-            MultUBackend(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct.GetValue(), cWork.GetSpace());
-            dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
-            printf("Algorithm %i for multiply size:    %I64ux%I64u (BYTEs): %I64u microseconds\n", eAlgorithm, nX.GetSize() * sizeof(DIGIT), nY.GetSize() * sizeof(DIGIT), dwStartTime);
-            dwStartTime = s_Timer.GetMicroseconds();
-            SquareUBackend(nX.GetSize(), nX.GetValue(), nProduct.GetValue(), cWork.GetSpace());
-            dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
-            printf("Algorithm %i for square size:      %I64ux%I64u (BYTEs): %I64u microseconds\n", eAlgorithm, nX.GetSize() * sizeof(DIGIT), nX.GetSize() * sizeof(DIGIT), dwStartTime);
-#endif
+            ReportMeasuredComponentTimingData(eMultiplicationMeasured);
         }
         if(nProblemSize<=4000000)
         {
             // only do basic multiply comparison for relatively small problem sizes -- too slow!
             c_pnMultiplicationThresholds[eBasicMultiply] = 10000000000; // to force use of algorithm for any large problem
-#if(_CollectDetailedTimingData)
             ResetTimingData();
             dwStartTime = s_Timer.GetMicroseconds();
-            dwTimestamp = dwStartTime;
-            MultUBackend(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel);
-            dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
-            ReportTimingData();
-            printf("%I64u microseconds for basic multiply for multiply size: %I64ux%I64u (BYTEs)\n", dwStartTime, sizeof(DIGIT)*nProblemSize, sizeof(DIGIT)*nProblemSize);
-            dwStartTime = s_Timer.GetMicroseconds();
-            MultOracle(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct.GetValue());
-            dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
-            printf("%I64u microseconds for mult oracle for multiply size: %I64ux%I64u (BYTEs)\n", dwStartTime, sizeof(DIGIT)*nProblemSize, sizeof(DIGIT)*nProblemSize);
-#else
-            dwStartTime = s_Timer.GetMicroseconds();
-            MultUBackend(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct.GetValue(), cWork.GetSpace());
+            Multiply(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct.GetValue(), cWork.GetSpace());
             dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
             printf("Basic multiply for multiply size: %I64ux%I64u (BYTEs): %I64u microseconds\n", nX.GetSize()*sizeof(DIGIT), nY.GetSize()*sizeof(DIGIT), dwStartTime);
+            ReportMeasuredComponentTimingData(eMultiplicationMeasured);
             dwStartTime = s_Timer.GetMicroseconds();
             MultOracle(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct.GetValue());
             dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
             printf("Mult oracle for multiply size:    %I64ux%I64u (BYTEs): %I64u microseconds\n", nX.GetSize()*sizeof(DIGIT), nY.GetSize()*sizeof(DIGIT), dwStartTime);
-#endif
+            printf("\n");
         }
     }
 }
@@ -1387,6 +2335,340 @@ Time for 1 divisions of 200000000 BYTE number by 100000000 BYTE number: 72597883
 Time for 1 100000000x200000000 BYTE multiplications: 232934948 microseconds
 Time for 1 divisions of 300000000 BYTE number by 100000000 BYTE number: 1387310472 microseconds (divide:multiply ratio: 5.955785)
 Time for 1 divisions of 300000000 BYTE number by 200000000 BYTE number: 939119649 microseconds (divide:multiply ratio: 4.031682)
+
+full breakdown
+32-bit DIGITs
+Time for 65536 1000x1000 BYTE multiplications: 1411682 microseconds
+65536 calls to multiply
+  1769472 calls to Basic multiply:
+    Basic multiply time:        963081 microseconds (0.544276 average)
+  589824 calls to 3 by 2 multiply:
+    Construct subproblems time: 44130 microseconds (0.074819 average)
+    Combine subproblems time:   102524 microseconds (0.173821 average)
+  65536 calls to 9 by 5 multiply:
+    Construct subproblems time: 62373 microseconds (0.951736 average)
+    Combine subproblems time:   237272 microseconds (3.620483 average)
+Total multiply time: 1409380 microseconds (21.505432 average)
+
+Time for 65536 divisions of 2000 BYTE number by 1000 BYTE number: 10256586 microseconds (divide:multiply ratio: 7.265507) -- basic
+Total calls to divide: 65536
+  Time in recursive divide: 0 microseconds (0.000000 average)
+  Time in multiplication:   0 microseconds (0.000000 average)
+  Time in basic divide:     10229565 microseconds (156.090775 average)
+  Total divide time:        10246375 microseconds (156.347275 average)
+
+Time for 65536 divisions of 2000 BYTE number by 1000 BYTE number: 4291627 microseconds (divide:multiply ratio: 3.040081)Total calls to divide: 65536
+  Time in recursive divide: 767757 microseconds (11.715042 average)
+  Time in multiplication:   2313629 microseconds (35.303177 average)
+  Time in basic divide:     932964 microseconds (14.235901 average)
+  Total divide time:        4283607 microseconds (65.362656 average)
+
+Time for 65536 1000x2000 BYTE multiplications: 2917315 microseconds
+65536 calls to multiply
+  3538944 calls to Basic multiply:
+    Basic multiply time:        1967096 microseconds (0.555843 average)
+  1179648 calls to 3 by 2 multiply:
+    Construct subproblems time: 90252 microseconds (0.076508 average)
+    Combine subproblems time:   209447 microseconds (0.177550 average)
+  131072 calls to 9 by 5 multiply:
+    Construct subproblems time: 133636 microseconds (1.019562 average)
+    Combine subproblems time:   514070 microseconds (3.922043 average)
+Total multiply time: 2914501 microseconds (44.471756 average)
+
+Time for 65536 divisions of 3000 BYTE number by 1000 BYTE number: 10122145 microseconds (divide:multiply ratio: 3.469678)
+Total calls to divide: 65536
+  Time in recursive divide: 1808351 microseconds (27.593246 average)
+  Time in multiplication:   5529082 microseconds (84.367096 average)
+  Time in basic divide:     2174885 microseconds (33.186111 average)
+  Total divide time:        10109892 microseconds (154.264709 average)
+
+Time for 65536 divisions of 3000 BYTE number by 2000 BYTE number: 6717171 microseconds (divide:multiply ratio: 2.302518)Total calls to divide: 65536
+  Time in recursive divide: 924273 microseconds (14.103287 average)
+  Time in multiplication:   4165840 microseconds (63.565674 average)
+  Time in basic divide:     1303343 microseconds (19.887436 average)
+  Total divide time:        6705835 microseconds (102.322922 average)
+
+Time for 2048 10000x10000 BYTE multiplications: 1262784 microseconds
+2048 calls to multiply
+  1161216 calls to Basic multiply:
+    Basic multiply time:        742418 microseconds (0.639345 average)
+  165888 calls to 7 by 4 multiply:
+    Construct subproblems time: 54399 microseconds (0.327926 average)
+    Combine subproblems time:   188048 microseconds (1.133584 average)
+  20480 calls to 9 by 5 multiply:
+    Construct subproblems time: 56207 microseconds (2.744483 average)
+    Combine subproblems time:   215816 microseconds (10.537890 average)
+Total multiply time: 1262590 microseconds (616.499023 average)
+
+Time for 2048 divisions of 20000 BYTE number by 10000 BYTE number: 29104910 microseconds (divide:multiply ratio: 23.048210) -- basic
+Total calls to divide: 2048
+  Time in recursive divide: 0 microseconds (0.000000 average)
+  Time in multiplication:   0 microseconds (0.000000 average)
+  Time in basic divide:     29096351 microseconds (14207.203125 average)
+  Total divide time:        29100964 microseconds (14209.455078 average)
+
+Time for 2048 divisions of 20000 BYTE number by 10000 BYTE number: 3644981 microseconds (divide:multiply ratio: 2.886464)
+Total calls to divide: 2048
+  Time in recursive divide: 268254 microseconds (130.983398 average)
+  Time in multiplication:   2985988 microseconds (1458.001953 average)
+  Time in basic divide:     317471 microseconds (155.015137 average)
+  Total divide time:        3643031 microseconds (1778.823730 average)
+
+Time for 2048 10000x20000 BYTE multiplications: 2236282 microseconds
+2048 calls to multiply
+  2322432 calls to Basic multiply:
+    Basic multiply time:        1293583 microseconds (0.556995 average)
+  331776 calls to 7 by 4 multiply:
+    Construct subproblems time: 99836 microseconds (0.300914 average)
+    Combine subproblems time:   334376 microseconds (1.007837 average)
+  40960 calls to 9 by 5 multiply:
+    Construct subproblems time: 101275 microseconds (2.472534 average)
+    Combine subproblems time:   397046 microseconds (9.693506 average)
+Total multiply time: 2236160 microseconds (1091.875000 average)
+
+Time for 2048 divisions of 30000 BYTE number by 10000 BYTE number: 6977273 microseconds (divide:multiply ratio: 3.120033)
+Total calls to divide: 2048
+  Time in recursive divide: 514899 microseconds (251.415527 average)
+  Time in multiplication:   5710673 microseconds (2788.414551 average)
+  Time in basic divide:     613527 microseconds (299.573730 average)
+  Total divide time:        6974247 microseconds (3405.394043 average)
+
+Time for 2048 divisions of 30000 BYTE number by 20000 BYTE number: 4700753 microseconds (divide:multiply ratio: 2.102040)
+Total calls to divide: 2048
+  Time in recursive divide: 280988 microseconds (137.201172 average)
+  Time in multiplication:   4080818 microseconds (1992.586914 average)
+  Time in basic divide:     262142 microseconds (127.999023 average)
+  Total divide time:        4697943 microseconds (2293.917480 average)
+
+Time for 128 100000x100000 BYTE multiplications: 1425198 microseconds
+128 calls to multiply
+  785920 calls to Basic multiply:
+    Basic multiply time:        589489 microseconds (0.750062 average)
+  261888 calls to 3 by 2 multiply:
+    Construct subproblems time: 37145 microseconds (0.141835 average)
+    Combine subproblems time:   52514 microseconds (0.200521 average)
+  128 calls to FFT multiply:
+    Construct subproblems time: 474833 microseconds (3709.632812 average)
+    Combine subproblems time:   271170 microseconds (2118.515625 average)
+Total multiply time: 1425151 microseconds (11133.992188 average)
+
+Time for 128 divisions of 200000 BYTE number by 100000 BYTE number: 189467523 microseconds (divide:multiply ratio: 132.941193) -- basic
+Total calls to divide: 128
+  Time in recursive divide: 0 microseconds (0.000000 average)
+  Time in multiplication:   0 microseconds (0.000000 average)
+  Time in basic divide:     189463361 microseconds (1480182.500000 average)
+  Total divide time:        189465367 microseconds (1480198.125000 average)
+
+Time for 128 divisions of 200000 BYTE number by 100000 BYTE number: 5503719 microseconds (divide:multiply ratio: 3.861722)
+Total calls to divide: 128
+  Time in recursive divide: 246958 microseconds (1929.359375 average)
+  Time in multiplication:   4973664 microseconds (38856.750000 average)
+  Time in basic divide:     214136 microseconds (1672.937500 average)
+  Total divide time:        5501781 microseconds (42982.664062 average)
+
+Time for 128 100000x200000 BYTE multiplications: 2764530 microseconds
+128 calls to multiply
+  1571840 calls to Basic multiply:
+    Basic multiply time:        1137653 microseconds (0.723772 average)
+  523776 calls to 3 by 2 multiply:
+    Construct subproblems time: 71585 microseconds (0.136671 average)
+    Combine subproblems time:   101325 microseconds (0.193451 average)
+  256 calls to FFT multiply:
+    Construct subproblems time: 924765 microseconds (3612.363281 average)
+    Combine subproblems time:   529160 microseconds (2067.031250 average)
+Total multiply time: 2764488 microseconds (21597.562500 average)
+
+Time for 128 divisions of 300000 BYTE number by 100000 BYTE number: 11007551 microseconds (divide:multiply ratio: 3.981708)
+Total calls to divide: 128
+  Time in recursive divide: 493921 microseconds (3858.757812 average)
+  Time in multiplication:   9957345 microseconds (77791.757812 average)
+  Time in basic divide:     421006 microseconds (3289.109375 average)
+  Total divide time:        11004423 microseconds (85972.054688 average)
+
+Time for 128 divisions of 300000 BYTE number by 200000 BYTE number: 7102879 microseconds (divide:multiply ratio: 2.569290)
+Total calls to divide: 128
+  Time in recursive divide: 265914 microseconds (2077.453125 average)
+  Time in multiplication:   6584456 microseconds (51441.062500 average)
+  Time in basic divide:     179353 microseconds (1401.195312 average)
+  Total divide time:        7100016 microseconds (55468.875000 average)
+
+Time for 16 1000000x1000000 BYTE multiplications: 1970561 microseconds
+16 calls to multiply
+  1179504 calls to Basic multiply:
+    Basic multiply time:        720654 microseconds (0.610981 average)
+  48 calls to 3 by 2 multiply:
+    Construct subproblems time: 31 microseconds (0.645833 average)
+    Combine subproblems time:   18 microseconds (0.375000 average)
+  131040 calls to 9 by 5 multiply:
+    Construct subproblems time: 91403 microseconds (0.697520 average)
+    Combine subproblems time:   253067 microseconds (1.931219 average)
+  16 calls to FFT multiply:
+    Construct subproblems time: 576337 microseconds (36021.062500 average)
+    Combine subproblems time:   329040 microseconds (20565.000000 average)
+Total multiply time: 1970550 microseconds (123159.375000 average)
+
+Time for 16 divisions of 2000000 BYTE number by 1000000 BYTE number: 2627611540 microseconds (divide:multiply ratio: 1333.433350) -- basic
+Total calls to divide: 16
+  Time in recursive divide: 0 microseconds (0.000000 average)
+  Time in multiplication:   0 microseconds (0.000000 average)
+  Time in basic divide:     2627603890 microseconds (164225248.000000 average)
+  Total divide time:        2627606401 microseconds (164225408.000000 average)
+
+Time for 16 divisions of 2000000 BYTE number by 1000000 BYTE number: 12138194 microseconds (divide:multiply ratio: 6.159766)
+Total calls to divide: 16
+  Time in recursive divide: 322782 microseconds (20173.875000 average)
+  Time in multiplication:   11450692 microseconds (715668.250000 average)
+  Time in basic divide:     290704 microseconds (18169.000000 average)
+  Total divide time:        12134929 microseconds (758433.062500 average)
+
+Time for 16 1000000x2000000 BYTE multiplications: 3641018 microseconds
+16 calls to multiply
+  2359008 calls to Basic multiply:
+    Basic multiply time:        1344909 microseconds (0.570116 average)
+  96 calls to 3 by 2 multiply:
+    Construct subproblems time: 74 microseconds (0.770833 average)
+    Combine subproblems time:   24 microseconds (0.250000 average)
+  262080 calls to 9 by 5 multiply:
+    Construct subproblems time: 169722 microseconds (0.647596 average)
+    Combine subproblems time:   471289 microseconds (1.798264 average)
+  32 calls to FFT multiply:
+    Construct subproblems time: 1063628 microseconds (33238.375000 average)
+    Combine subproblems time:   591362 microseconds (18480.062500 average)
+Total multiply time: 3641008 microseconds (227563.000000 average)
+
+Time for 16 divisions of 3000000 BYTE number by 1000000 BYTE number: 23208137 microseconds (divide:multiply ratio: 6.374079)
+Total calls to divide: 16
+  Time in recursive divide: 616853 microseconds (38553.312500 average)
+  Time in multiplication:   21903681 microseconds (1368980.000000 average)
+  Time in basic divide:     548713 microseconds (34294.562500 average)
+  Total divide time:        23203366 microseconds (1450210.375000 average)
+
+Time for 16 divisions of 3000000 BYTE number by 2000000 BYTE number: 13399904 microseconds (divide:multiply ratio: 3.680263)
+Total calls to divide: 16
+  Time in recursive divide: 323587 microseconds (20224.187500 average)
+  Time in multiplication:   12756578 microseconds (797286.125000 average)
+  Time in basic divide:     244775 microseconds (15298.437500 average)
+  Total divide time:        13395456 microseconds (837216.000000 average)
+
+Time for 1 10000000x10000000 BYTE multiplications: 2724279 microseconds
+1 calls to multiply
+  2064339 calls to Basic multiply:
+    Basic multiply time:        1157070 microseconds (0.560504 average)
+  27 calls to 3 by 2 multiply:
+    Construct subproblems time: 4 microseconds (0.148148 average)
+    Combine subproblems time:   8 microseconds (0.296296 average)
+  294894 calls to 7 by 4 multiply:
+    Construct subproblems time: 80656 microseconds (0.273508 average)
+    Combine subproblems time:   296346 microseconds (1.004924 average)
+  32769 calls to 9 by 5 multiply:
+    Construct subproblems time: 84714 microseconds (2.585187 average)
+    Combine subproblems time:   227056 microseconds (6.928988 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 572942 microseconds (572942.000000 average)
+    Combine subproblems time:   296486 microseconds (296486.000000 average)
+Total multiply time: 2724279 microseconds (2724279.000000 average)
+
+Time for 1 divisions of 20000000 BYTE number by 10000000 BYTE number: 17778551 microseconds (divide:multiply ratio: 6.525966)
+Total calls to divide: 1
+  Time in recursive divide: 195688 microseconds (195688.000000 average)
+  Time in multiplication:   17344074 microseconds (17344074.000000 average)
+  Time in basic divide:     199896 microseconds (199896.000000 average)
+  Total divide time:        17774322 microseconds (17774322.000000 average)
+
+Time for 1 10000000x20000000 BYTE multiplications: 5590083 microseconds
+1 calls to multiply
+  4128687 calls to Basic multiply:
+    Basic multiply time:        2362965 microseconds (0.572328 average)
+  36 calls to 3 by 2 multiply:
+    Construct subproblems time: 2 microseconds (0.055556 average)
+    Combine subproblems time:   8 microseconds (0.222222 average)
+  589797 calls to 7 by 4 multiply:
+    Construct subproblems time: 165412 microseconds (0.280456 average)
+    Combine subproblems time:   606451 microseconds (1.028237 average)
+  65537 calls to 9 by 5 multiply:
+    Construct subproblems time: 172972 microseconds (2.639303 average)
+    Combine subproblems time:   465014 microseconds (7.095442 average)
+  2 calls to FFT multiply:
+    Construct subproblems time: 1195764 microseconds (597882.000000 average)
+    Combine subproblems time:   602818 microseconds (301409.000000 average)
+Total multiply time: 5590082 microseconds (5590082.000000 average)
+
+Time for 1 divisions of 30000000 BYTE number by 10000000 BYTE number: 34568017 microseconds (divide:multiply ratio: 6.183811)
+Total calls to divide: 1
+  Time in recursive divide: 394033 microseconds (394033.000000 average)
+  Time in multiplication:   33716188 microseconds (33716188.000000 average)
+  Time in basic divide:     387049 microseconds (387049.000000 average)
+  Total divide time:        34564013 microseconds (34564012.000000 average)
+
+Time for 1 divisions of 30000000 BYTE number by 20000000 BYTE number: 20531721 microseconds (divide:multiply ratio: 3.672883)
+Total calls to divide: 1
+  Time in recursive divide: 208947 microseconds (208947.000000 average)
+  Time in multiplication:   20086450 microseconds (20086450.000000 average)
+  Time in basic divide:     195956 microseconds (195956.000000 average)
+  Total divide time:        20528155 microseconds (20528156.000000 average)
+
+Time for 1 100000000x100000000 BYTE multiplications: 34545840 microseconds
+1 calls to multiply
+  35847584 calls to Basic multiply:
+    Basic multiply time:        15116238 microseconds (0.421681 average)
+  2883658 calls to 3 by 2 multiply:
+    Construct subproblems time: 207782 microseconds (0.072055 average)
+    Combine subproblems time:   483918 microseconds (0.167814 average)
+  1376214 calls to 5 by 3 multiply:
+    Construct subproblems time: 234095 microseconds (0.170101 average)
+    Combine subproblems time:   1000752 microseconds (0.727178 average)
+  3211166 calls to 7 by 4 multiply:
+    Construct subproblems time: 752929 microseconds (0.234472 average)
+    Combine subproblems time:   2669543 microseconds (0.831331 average)
+  655360 calls to 9 by 5 multiply:
+    Construct subproblems time: 1491522 microseconds (2.275882 average)
+    Combine subproblems time:   5131817 microseconds (7.830531 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 4958231 microseconds (4958231.000000 average)
+    Combine subproblems time:   2401523 microseconds (2401523.000000 average)
+Total multiply time: 34545840 microseconds (34545840.000000 average)
+
+Time for 1 divisions of 200000000 BYTE number by 100000000 BYTE number: 230345757 microseconds (divide:multiply ratio: 6.667829)
+Total calls to divide: 1
+  Time in recursive divide: 2734711 microseconds (2734711.000000 average)
+  Time in multiplication:   225707340 microseconds (225707344.000000 average)
+  Time in basic divide:     1319403 microseconds (1319403.000000 average)
+  Total divide time:        230304064 microseconds (230304064.000000 average)
+
+Time for 1 100000000x200000000 BYTE multiplications: 67926605 microseconds
+1 calls to multiply
+  71695411 calls to Basic multiply:
+    Basic multiply time:        30151856 microseconds (0.420555 average)
+  5767397 calls to 3 by 2 multiply:
+    Construct subproblems time: 412076 microseconds (0.071449 average)
+    Combine subproblems time:   962306 microseconds (0.166853 average)
+  2752428 calls to 5 by 3 multiply:
+    Construct subproblems time: 462899 microseconds (0.168178 average)
+    Combine subproblems time:   1987993 microseconds (0.722269 average)
+  6422332 calls to 7 by 4 multiply:
+    Construct subproblems time: 1492735 microseconds (0.232429 average)
+    Combine subproblems time:   5296223 microseconds (0.824657 average)
+  1310730 calls to 9 by 5 multiply:
+    Construct subproblems time: 2978651 microseconds (2.272513 average)
+    Combine subproblems time:   10184740 microseconds (7.770281 average)
+  2 calls to FFT multiply:
+    Construct subproblems time: 9058524 microseconds (4529262.000000 average)
+    Combine subproblems time:   4744967 microseconds (2372483.500000 average)
+Total multiply time: 67926604 microseconds (67926608.000000 average)
+
+Time for 1 divisions of 300000000 BYTE number by 100000000 BYTE number: 466669713 microseconds (divide:multiply ratio: 6.870205)
+Total calls to divide: 1
+  Time in recursive divide: 5482848 microseconds (5482848.000000 average)
+  Time in multiplication:   457504537 microseconds (457504544.000000 average)
+  Time in basic divide:     2542556 microseconds (2542556.000000 average)
+  Total divide time:        466614508 microseconds (466614496.000000 average)
+
+Time for 1 divisions of 300000000 BYTE number by 200000000 BYTE number: 263333944 microseconds (divide:multiply ratio: 3.876742)
+Total calls to divide: 1
+  Time in recursive divide: 2901667 microseconds (2901667.000000 average)
+  Time in multiplication:   258201095 microseconds (258201088.000000 average)
+  Time in basic divide:     1600951 microseconds (1600951.000000 average)
+  Total divide time:        263283822 microseconds (263283824.000000 average)
 */
 void CArithmeticPerformanceTester::CompareDivideTimes()
 {
@@ -1394,14 +2676,9 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
     const unsigned int c_nMinSize = 1000, c_nMaxSize = 100000000; // my system can allocate enough memory for 100,000,000 -- but not 1,000,000,000
     CBigIntegerForTest nX, nXCopy, nY, nProduct1, nProduct2, nDiv;
     DWORD64            dwStartTime, dwMultTime;
-#if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp;
-    s_Timer.Start();
-#endif
     unsigned int       nIterations;
     CWorkspace         cWork;
     size_t             nDivSize, nRemainderSize;
-    ResetThresholdsForOptimization();
     printf("If you're not doing this with a retail build, you're not getting good numbers.  All sizes in BYTES, not DIGITs!\n");
     for (int nSize = c_nMinSize; nSize <= c_nMaxSize; nSize *= 10)
     {
@@ -1413,22 +2690,16 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         cWork.Reserve(MultiplyMemoryNeeds(nX.GetSize(), nY.GetSize()));
         cWork.Reserve(DivisionMemoryNeeds(nX.GetSize() + nY.GetSize(), nX.GetSize()));
         cWork.Reserve(DivisionMemoryNeeds(nX.GetSize() + nY.GetSize(), nY.GetSize()));
+        ResetThresholdsForOptimization();
         // find out how many iterations needed to take 10+ seconds for the given multiply size
         nIterations = 1;
         do
         {
-#if(_CollectDetailedTimingData)
             ResetTimingData();
-#endif
             dwStartTime = s_Timer.GetMicroseconds();
             for (int i=0; i<nIterations; i++)
             {
-#if(_CollectDetailedTimingData)
-                dwTimestamp = s_Timer.GetMicroseconds();
-                MultUBackend(nX.GetSize(), nX.GetSize(), nX.GetValue(), nY.GetValue(), nProduct1.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel);
-#else
-                MultUBackend(nX.GetSize(), nX.GetSize(), nX.GetValue(), nY.GetValue(), nProduct1.GetValue(), cWork.GetSpace());
-#endif
+                Multiply(nX.GetSize(), nX.GetSize(), nX.GetValue(), nY.GetValue(), nProduct1.GetValue(), cWork.GetSpace());
             }
             dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
             if(1000000<dwStartTime) break; // 10 seconds better?  Or 1 second?
@@ -1436,29 +2707,26 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         }
         while (true);
         printf("Time for %i %ix%i BYTE multiplications: %I64u microseconds\n", nIterations, nX.GetSize()*sizeof(DIGIT), nX.GetSize()*sizeof(DIGIT), dwStartTime);
-#if(_CollectDetailedTimingData)
-        ReportTimingData();
-        printf("\n");
+        ReportMeasuredComponentTimingData(eMultiplicationMeasured);
         ResetTimingData();
-#endif
+        ResetThresholdsForOptimization();
         dwMultTime = dwStartTime;
         if(nX.GetSize()<=1000000)
         {
+            c_nDivideThresholdSmall = 1000000000; // force the system to use basic division
             // bigger numbers just too slow!  Works fine.  You have been warned.
             dwStartTime = s_Timer.GetMicroseconds();
             for (int i=0; i<nIterations; i++)
             {
                 memcpy(nProduct2.m_pnValue, nProduct1.m_pnValue, (nX.GetSize() + nX.GetSize())*sizeof(DIGIT));
-                DivideBasic(nX.GetSize() + nX.GetSize(), nX.GetSize(), nProduct2.GetValue(), nX.GetValue(), nDiv.GetValue());
+                Divide(nX.GetSize() + nX.GetSize(), nX.GetSize(), nDivSize, nRemainderSize, nProduct2.GetValue(), nX.GetValue(), nDiv.GetValue(), cWork.GetSpace());
             }
             dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
             printf("Time for %i divisions of %i BYTE number by %i BYTE number: %I64u microseconds (divide:multiply ratio: %f) -- basic\n", nIterations, 2*nX.GetSize()*sizeof(DIGIT), nX.GetSize()*sizeof(DIGIT), dwStartTime, (float) dwStartTime/dwMultTime);
+            ReportMeasuredComponentTimingData(eDivideMeasured);
+            ResetTimingData();
         }
-#if(_CollectDetailedTimingData)
-        ReportTimingData();
-        printf("\n");
-        ResetTimingData();
-#endif
+        ResetThresholdsForOptimization();
         dwStartTime = s_Timer.GetMicroseconds();
         for (int i=0; i<nIterations; i++)
         {
@@ -1467,29 +2735,20 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         }
         dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
         printf("Time for %i divisions of %i BYTE number by %i BYTE number: %I64u microseconds (divide:multiply ratio: %f)\n", nIterations, 2*nX.GetSize()*sizeof(DIGIT), nX.GetSize()*sizeof(DIGIT), dwStartTime, (float) dwStartTime/dwMultTime);
-#if(_CollectDetailedTimingData)
-        ReportTimingData();
-        printf("\n");
+        ReportMeasuredComponentTimingData(eDivideMeasured);
         ResetTimingData();
-#endif
+        ResetThresholdsForOptimization();
         dwStartTime = s_Timer.GetMicroseconds();
         for (int i=0; i<nIterations; i++)
         {
-#if(_CollectDetailedTimingData)
-            dwTimestamp = s_Timer.GetMicroseconds();
-            MultUBackend(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct1.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel);
-#else
-            MultUBackend(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct1.GetValue(), cWork.GetSpace());
-#endif
+            Multiply(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nProduct1.GetValue(), cWork.GetSpace());
         }
         dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
         dwMultTime  = dwStartTime;
         printf("Time for %i %ix%i BYTE multiplications: %I64u microseconds\n", nIterations, nX.GetSize()*sizeof(DIGIT), nY.GetSize()*sizeof(DIGIT), dwStartTime);
-#if(_CollectDetailedTimingData)
-        ReportTimingData();
-        printf("\n");
+        ReportMeasuredComponentTimingData(eMultiplicationMeasured);
         ResetTimingData();
-#endif
+        ResetThresholdsForOptimization();
         dwStartTime = s_Timer.GetMicroseconds();
         for(int i=0; i<nIterations; i++)
         {
@@ -1498,11 +2757,9 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         }
         dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
         printf("Time for %i divisions of %i BYTE number by %i BYTE number: %I64u microseconds (divide:multiply ratio: %f)\n", nIterations, (nX.GetSize() + nY.GetSize())*sizeof(DIGIT), nX.GetSize()*sizeof(DIGIT), dwStartTime, (float) dwStartTime/dwMultTime);
-#if(_CollectDetailedTimingData)
-        ReportTimingData();
-        printf("\n");
+        ReportMeasuredComponentTimingData(eDivideMeasured);
         ResetTimingData();
-#endif
+        ResetThresholdsForOptimization();
         dwStartTime = s_Timer.GetMicroseconds();
         for(int i=0; i<nIterations; i++)
         {
@@ -1511,10 +2768,7 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         }
         dwStartTime = s_Timer.GetMicroseconds() - dwStartTime;
         printf("Time for %i divisions of %i BYTE number by %i BYTE number: %I64u microseconds (divide:multiply ratio: %f)\n", nIterations, (nX.GetSize() + nY.GetSize())*sizeof(DIGIT), nY.GetSize()*sizeof(DIGIT), dwStartTime, (float) dwStartTime/dwMultTime);
-#if(_CollectDetailedTimingData)
-        ReportTimingData();
-        printf("\n");
-#endif
+        ReportMeasuredComponentTimingData(eDivideMeasured);
     }
     /*for(int nSize=100000; nSize<=c_nMaxSize; nSize *= 10)
     {
@@ -1528,7 +2782,7 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         dwStartTime = s_Timer.GetMicroseconds();
         Divide(nX.GetSize(), nY.GetSize(), nDivSize, nRemainderSize, nXCopy.GetValue(), nY.GetValue(), nDiv.GetValue(), cWork.GetSpace());
         printf("Dividing a %i-BYTE number by a %i-BYTE one took %I64u microseconds\n", nX.GetSize()*sizeof(DIGIT), nY.GetSize()*sizeof(DIGIT), s_Timer.GetMicroseconds() - dwStartTime);
-        ReportTimingData();
+        ReportMeasuredComponentTimingData(eDivideMeasured);
     }*/
 }
 
@@ -1643,24 +2897,208 @@ Time to get the GCD of 8192 pairs of 2048-DIGIT numbers:              1171313 mi
 Time to get the GCD of 8192 pairs of 2048-DIGIT numbers, x-coef only: 1157625 milliseconds
 Time to get the GCD of 4096 pairs of 4096-DIGIT numbers:              2314609 milliseconds
 Time to get the GCD of 4096 pairs of 4096-DIGIT numbers, x-coef only: 2292703 milliseconds
+
+full breakdown:
+32-bit DIGITs
+Time to get the GCD of 16777216 pairs of 4-byte numbers:            40250 milliseconds
+Total calls to GCD: 16777216
+  Time spent in GCD overhead:     586740 microseconds (0.034972 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     32768087 microseconds (1.953130 average)
+  Total time spent computing GCD: 33354827 microseconds (1.988103 average)
+
+Time to get the GCD of 16777216 pairs of 4-byte numbers (extended): 63344 milliseconds
+Total calls to GCD: 16777216
+  Time spent in GCD overhead:     11352240 microseconds (0.676646 average)
+  Time spent in GCD multiplying:  10933657 microseconds (0.651697 average)
+  Time spent in GCD dividing:     33567644 microseconds (2.000787 average)
+  Total time spent computing GCD: 55853541 microseconds (3.329130 average)
+
+Time to get the GCD of 8388608 pairs of 8-byte numbers:            39765 milliseconds
+Total calls to GCD: 8388608
+  Time spent in GCD overhead:     295724 microseconds (0.035253 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     34599159 microseconds (4.124541 average)
+  Total time spent computing GCD: 34894883 microseconds (4.159794 average)
+
+Time to get the GCD of 8388608 pairs of 8-byte numbers (extended): 63953 milliseconds
+Total calls to GCD: 8388608
+  Time spent in GCD overhead:     11335266 microseconds (1.351269 average)
+  Time spent in GCD multiplying:  11597651 microseconds (1.382548 average)
+  Time spent in GCD dividing:     35830936 microseconds (4.271380 average)
+  Total time spent computing GCD: 58763853 microseconds (7.005197 average)
+
+Time to get the GCD of 4194304 pairs of 16-byte numbers:            39641 milliseconds
+Total calls to GCD: 4194304
+  Time spent in GCD overhead:     148791 microseconds (0.035475 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     35628893 microseconds (8.494590 average)
+  Total time spent computing GCD: 35777684 microseconds (8.530065 average)
+
+Time to get the GCD of 4194304 pairs of 16-byte numbers (extended): 64656 milliseconds
+Total calls to GCD: 4194304
+  Time spent in GCD overhead:     11414429 microseconds (2.721412 average)
+  Time spent in GCD multiplying:  11971731 microseconds (2.854283 average)
+  Time spent in GCD dividing:     37191775 microseconds (8.867210 average)
+  Total time spent computing GCD: 60577935 microseconds (14.442905 average)
+
+Time to get the GCD of 2097152 pairs of 32-byte numbers:            40390 milliseconds
+Total calls to GCD: 2097152
+  Time spent in GCD overhead:     76298 microseconds (0.036382 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     36981420 microseconds (17.634115 average)
+  Total time spent computing GCD: 37057718 microseconds (17.670498 average)
+
+Time to get the GCD of 2097152 pairs of 32-byte numbers (extended): 66906 milliseconds
+Total calls to GCD: 2097152
+  Time spent in GCD overhead:     11879099 microseconds (5.664396 average)
+  Time spent in GCD multiplying:  12594500 microseconds (6.005526 average)
+  Time spent in GCD dividing:     38874382 microseconds (18.536751 average)
+  Total time spent computing GCD: 63347981 microseconds (30.206671 average)
+
+Time to get the GCD of 1048576 pairs of 64-byte numbers:            43438 milliseconds
+Total calls to GCD: 1048576
+  Time spent in GCD overhead:     109554 microseconds (0.104479 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     40109867 microseconds (38.251751 average)
+  Total time spent computing GCD: 40219421 microseconds (38.356228 average)
+
+Time to get the GCD of 1048576 pairs of 64-byte numbers (extended): 70500 milliseconds
+Total calls to GCD: 1048576
+  Time spent in GCD overhead:     12735488 microseconds (12.145508 average)
+  Time spent in GCD multiplying:  13533008 microseconds (12.906082 average)
+  Time spent in GCD dividing:     41039379 microseconds (39.138203 average)
+  Total time spent computing GCD: 67307875 microseconds (64.189789 average)
+
+Time to get the GCD of 524288 pairs of 128-byte numbers:            46515 milliseconds
+Total calls to GCD: 524288
+  Time spent in GCD overhead:     58547 microseconds (0.111670 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     43458807 microseconds (82.891098 average)
+  Total time spent computing GCD: 43517354 microseconds (83.002762 average)
+
+Time to get the GCD of 524288 pairs of 128-byte numbers (extended): 79672 milliseconds
+Total calls to GCD: 524288
+  Time spent in GCD overhead:     14674189 microseconds (27.988794 average)
+  Time spent in GCD multiplying:  16064063 microseconds (30.639769 average)
+  Time spent in GCD dividing:     45805895 microseconds (87.367813 average)
+  Total time spent computing GCD: 76544147 microseconds (145.996368 average)
+
+Time to get the GCD of 262144 pairs of 256-byte numbers:            55578 milliseconds
+Total calls to GCD: 262144
+  Time spent in GCD overhead:     33538 microseconds (0.127937 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     52525697 microseconds (200.369629 average)
+  Total time spent computing GCD: 52559235 microseconds (200.497574 average)
+
+Time to get the GCD of 262144 pairs of 256-byte numbers (extended): 100718 milliseconds
+Total calls to GCD: 262144
+  Time spent in GCD overhead:     19408607 microseconds (74.037964 average)
+  Time spent in GCD multiplying:  22640548 microseconds (86.366837 average)
+  Time spent in GCD dividing:     55490298 microseconds (211.678680 average)
+  Total time spent computing GCD: 97539453 microseconds (372.083496 average)
+
+Time to get the GCD of 131072 pairs of 512-byte numbers:            71813 milliseconds
+Total calls to GCD: 131072
+  Time spent in GCD overhead:     19169 microseconds (0.146248 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     68895667 microseconds (525.632202 average)
+  Total time spent computing GCD: 68914836 microseconds (525.778442 average)
+
+Time to get the GCD of 131072 pairs of 512-byte numbers (extended): 144921 milliseconds
+Total calls to GCD: 131072
+  Time spent in GCD overhead:     28121295 microseconds (214.548462 average)
+  Time spent in GCD multiplying:  43828196 microseconds (334.382599 average)
+  Time spent in GCD dividing:     70165168 microseconds (535.317749 average)
+  Total time spent computing GCD: 142114659 microseconds (1084.248779 average)
+
+Time to get the GCD of 65536 pairs of 1024-byte numbers:            101453 milliseconds
+Total calls to GCD: 65536
+  Time spent in GCD overhead:     14482 microseconds (0.220978 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     98589136 microseconds (1504.350830 average)
+  Total time spent computing GCD: 98603618 microseconds (1504.571777 average)
+
+Time to get the GCD of 65536 pairs of 1024-byte numbers (extended): 218844 milliseconds
+Total calls to GCD: 65536
+  Time spent in GCD overhead:     45336571 microseconds (691.781189 average)
+  Time spent in GCD multiplying:  67628499 microseconds (1031.928955 average)
+  Time spent in GCD dividing:     103018601 microseconds (1571.939087 average)
+  Total time spent computing GCD: 215983671 microseconds (3295.649170 average)
+
+Time to get the GCD of 32768 pairs of 2048-byte numbers:            161578 milliseconds
+Total calls to GCD: 32768
+  Time spent in GCD overhead:     10611 microseconds (0.323822 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     158823357 microseconds (4846.904297 average)
+  Total time spent computing GCD: 158833968 microseconds (4847.228027 average)
+
+Time to get the GCD of 32768 pairs of 2048-byte numbers (extended): 359781 milliseconds
+Total calls to GCD: 32768
+  Time spent in GCD overhead:     78566667 microseconds (2397.664307 average)
+  Time spent in GCD multiplying:  112917975 microseconds (3445.983154 average)
+  Time spent in GCD dividing:     165546526 microseconds (5052.079102 average)
+  Total time spent computing GCD: 357031168 microseconds (10895.726562 average)
+
+Time to get the GCD of 16384 pairs of 4096-byte numbers:            285422 milliseconds
+Total calls to GCD: 16384
+  Time spent in GCD overhead:     10384 microseconds (0.633789 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     282681896 microseconds (17253.533203 average)
+  Total time spent computing GCD: 282692280 microseconds (17254.167969 average)
+
+Time to get the GCD of 16384 pairs of 4096-byte numbers (extended): 643266 milliseconds
+Total calls to GCD: 16384
+  Time spent in GCD overhead:     145986573 microseconds (8910.313477 average)
+  Time spent in GCD multiplying:  203870024 microseconds (12443.238281 average)
+  Time spent in GCD dividing:     290705421 microseconds (17743.250000 average)
+  Total time spent computing GCD: 640562018 microseconds (39096.804688 average)
+
+Time to get the GCD of 8192 pairs of 8192-byte numbers:            531844 milliseconds
+Total calls to GCD: 8192
+  Time spent in GCD overhead:     9160 microseconds (1.118164 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     529175797 microseconds (64596.656250 average)
+  Total time spent computing GCD: 529184957 microseconds (64597.773438 average)
+
+Time to get the GCD of 8192 pairs of 8192-byte numbers (extended): 1277781 milliseconds
+Total calls to GCD: 8192
+  Time spent in GCD overhead:     296115011 microseconds (36146.851562 average)
+  Time spent in GCD multiplying:  408217378 microseconds (49831.222656 average)
+  Time spent in GCD dividing:     570548993 microseconds (69647.093750 average)
+  Total time spent computing GCD: 1274881382 microseconds (155625.171875 average)
+
+Time to get the GCD of 4096 pairs of 16384-byte numbers:            1064328 milliseconds
+Total calls to GCD: 4096
+  Time spent in GCD overhead:     9516 microseconds (2.323242 average)
+  Time spent in GCD multiplying:  0 microseconds (0.000000 average)
+  Time spent in GCD dividing:     1061520049 microseconds (259160.171875 average)
+  Total time spent computing GCD: 1061529565 microseconds (259162.484375 average)
+
+Time to get the GCD of 4096 pairs of 16384-byte numbers (extended): 2499171 milliseconds
+Total calls to GCD: 4096
+  Time spent in GCD overhead:     580035457 microseconds (141610.218750 average)
+  Time spent in GCD multiplying:  790131752 microseconds (192903.265625 average)
+  Time spent in GCD dividing:     1126125468 microseconds (274932.968750 average)
+  Total time spent computing GCD: 2496292677 microseconds (609446.437500 average)
 */
 void CArithmeticPerformanceTester::GCDTimes()
 {
+    CArithmeticBox     cBox;
     CRandomGenerator   cRandom;
-    CBigInteger        x, y;
+    CBigInteger        x, y, nGCD, nXCoef, nYCoef;
     bool               bXCoefNeg;
     size_t             nGCDSize, nXCoefSize, nYCoefSize;
     const unsigned int c_nMaxDigits          = 0x1000;
     const unsigned int c_nStartingIterations = 0x1000000;
     unsigned int       nIterations           = c_nStartingIterations;
-    DIGIT              *pGCD                 = (DIGIT *) malloc(sizeof(DIGIT)*200000000); // more than enough
-    DIGIT              *pXCoef               = pGCD   + c_nMaxDigits;
-    DIGIT              *pYCoef               = pXCoef + c_nMaxDigits + 1; // need 1 extra DIGIT for overflow during internal calculations
-    DIGIT              *pWorkspace           = pYCoef + c_nMaxDigits + 1; // need 1 extra DIGIT for overflow during internal calculations
+
+    printf("If you're not doing this with a retail build, you're not getting good numbers.  All sizes in BYTES, not DIGITs!\n");
     x.Reserve(c_nMaxDigits);
     y.Reserve(c_nMaxDigits);
     for(int nDigits=1; nDigits<=c_nMaxDigits; nDigits=(nDigits<<1))
     {
+        ResetTimingData();
         unsigned int nTime = ::GetTickCount();
         for (int i=0; i<nIterations; i++)
         {
@@ -1674,18 +3112,12 @@ void CArithmeticPerformanceTester::GCDTimes()
                 cRandom.RandomBits(nDigits, 0, true, y);
             }
             while(0==y.GetSize());
-            if (x<y)
-            {
-                GCDCoef(y.GetSize(), x.GetSize(), nGCDSize, nYCoefSize, nXCoefSize, y.GetValue(), x.GetValue(), pGCD, pYCoef, pXCoef, bXCoefNeg, pWorkspace);
-                bXCoefNeg = !bXCoefNeg; // since x, y swapped order
-            }
-            else
-            {
-                GCDCoef(x.GetSize(), y.GetSize(), nGCDSize, nXCoefSize, nYCoefSize, x.GetValue(), y.GetValue(), pGCD, pXCoef, pYCoef, bXCoefNeg, pWorkspace);
-            }
+            cBox.GCD(x, y, nGCD);
         }
         nTime = ::GetTickCount() - nTime;
-        printf("Time to get the GCD of %i pairs of %i-byte numbers:              %i milliseconds\n", nIterations, nDigits*sizeof(DIGIT), nTime);
+        printf("Time to get the GCD of %i pairs of %i-byte numbers:            %i milliseconds\n", nIterations, nDigits*sizeof(DIGIT), nTime);
+        ReportMeasuredComponentTimingData(eGCDMeasured);
+        ResetTimingData();
         nTime = ::GetTickCount();
         for (int i=0; i<nIterations; i++)
         {
@@ -1699,21 +3131,13 @@ void CArithmeticPerformanceTester::GCDTimes()
                 cRandom.RandomBits(nDigits, 0, true, y);
             }
             while(0==y.GetSize());
-            if (x<y)
-            {
-                GCDCoef(y.GetSize(), x.GetSize(), nGCDSize, nYCoefSize, nXCoefSize, y.GetValue(), x.GetValue(), pGCD, NULL, pXCoef, bXCoefNeg, pWorkspace);
-                bXCoefNeg = !bXCoefNeg; // since x, y swapped order
-            }
-            else
-            {
-                GCDCoef(x.GetSize(), y.GetSize(), nGCDSize, nXCoefSize, nYCoefSize, x.GetValue(), y.GetValue(), pGCD, pXCoef, NULL, bXCoefNeg, pWorkspace);
-            }
+            cBox.GCDExtended(x, y, nGCD, nXCoef, nYCoef);
         }
         nTime = ::GetTickCount() - nTime;
-        printf("Time to get the GCD of %i pairs of %i-byte numbers, x-coef only: %i milliseconds\n", nIterations, nDigits*sizeof(DIGIT), nTime);
+        printf("Time to get the GCD of %i pairs of %i-byte numbers (extended): %i milliseconds\n", nIterations, nDigits*sizeof(DIGIT), nTime);
+        ReportMeasuredComponentTimingData(eGCDMeasured);
         nIterations /= 2;
     }
-    free(pGCD);
 }
 
 /*
@@ -1744,6 +3168,190 @@ Time to do 4  standard  power-modulus operations of size 32768 bits: 199469 mill
 Time to do 4 Montgomery power-modulus operations of size 32768 bits: 95593 milliseconds
 Time to do 1  standard  power-modulus operations of size 65536 bits: 283000 milliseconds
 Time to do 1 Montgomery power-modulus operations of size 65536 bits: 129125 milliseconds
+
+Full breakdown:
+32-bit DIGITs
+Time to do 16777216  standard  power-modulus operations of size 16 bits: 61672 milliseconds
+Total calls to power modulus:  16777216
+  Time spent in Power Modulus overhead:     9633696 microseconds (0.574213 average)
+  Time spent in Power Modulus multiplying:  13537726 microseconds (0.806911 average)
+  Time spent in Power Modulus dividing:     37907652 microseconds (2.259472 average)
+  Total time spent computing Power Modulus: 61079074 microseconds (3.640596 average)
+
+Time to do 16777216 Montgomery power-modulus operations of size 16 bits: 60594 milliseconds
+Total calls to power modulus:  16777216
+  Time spent in Power Modulus overhead:     12794795 microseconds (0.762629 average)
+  Time spent in Power Modulus multiplying:  44354765 microseconds (2.643750 average)
+  Time spent in Power Modulus dividing:     1847680 microseconds (0.110130 average)
+  Total time spent computing Power Modulus: 59786060 microseconds (3.563527 average)
+
+Time to do 4194304  standard  power-modulus operations of size 32 bits: 76203 milliseconds
+Total calls to power modulus:  4194304
+  Time spent in Power Modulus overhead:     9658012 microseconds (2.302649 average)
+  Time spent in Power Modulus multiplying:  13661523 microseconds (3.257161 average)
+  Time spent in Power Modulus dividing:     52734182 microseconds (12.572809 average)
+  Total time spent computing Power Modulus: 76053717 microseconds (18.132620 average)
+
+Time to do 4194304 Montgomery power-modulus operations of size 32 bits: 56125 milliseconds
+Total calls to power modulus:  4194304
+  Time spent in Power Modulus overhead:     13040359 microseconds (3.109064 average)
+  Time spent in Power Modulus multiplying:  42090140 microseconds (10.035071 average)
+  Time spent in Power Modulus dividing:     596811 microseconds (0.142291 average)
+  Total time spent computing Power Modulus: 55932908 microseconds (13.335444 average)
+
+Time to do 1048576  standard  power-modulus operations of size 64 bits: 33453 milliseconds
+Total calls to power modulus:  1048576
+  Time spent in Power Modulus overhead:     3565212 microseconds (3.400051 average)
+  Time spent in Power Modulus multiplying:  5690575 microseconds (5.426955 average)
+  Time spent in Power Modulus dividing:     24164889 microseconds (23.045433 average)
+  Total time spent computing Power Modulus: 33420676 microseconds (31.872440 average)
+
+Time to do 1048576 Montgomery power-modulus operations of size 64 bits: 22735 milliseconds
+Total calls to power modulus:  1048576
+  Time spent in Power Modulus overhead:     5029507 microseconds (4.796512 average)
+  Time spent in Power Modulus multiplying:  17393806 microseconds (16.588026 average)
+  Time spent in Power Modulus dividing:     203461 microseconds (0.194036 average)
+  Total time spent computing Power Modulus: 22682769 microseconds (21.631973 average)
+
+Time to do 262144  standard  power-modulus operations of size 128 bits: 16593 milliseconds
+Total calls to power modulus:  262144
+  Time spent in Power Modulus overhead:     1486352 microseconds (5.669983 average)
+  Time spent in Power Modulus multiplying:  3154816 microseconds (12.034668 average)
+  Time spent in Power Modulus dividing:     11941179 microseconds (45.551983 average)
+  Total time spent computing Power Modulus: 16582347 microseconds (63.256634 average)
+
+Time to do 262144 Montgomery power-modulus operations of size 128 bits: 11953 milliseconds
+Total calls to power modulus:  262144
+  Time spent in Power Modulus overhead:     2401483 microseconds (9.160931 average)
+  Time spent in Power Modulus multiplying:  9471907 microseconds (36.132458 average)
+  Time spent in Power Modulus dividing:     50246 microseconds (0.191673 average)
+  Total time spent computing Power Modulus: 11941415 microseconds (45.552883 average)
+
+Time to do 65536  standard  power-modulus operations of size 256 bits: 17578 milliseconds
+Total calls to power modulus:  65536
+  Time spent in Power Modulus overhead:     747028 microseconds (11.398743 average)
+  Time spent in Power Modulus multiplying:  3105797 microseconds (47.390701 average)
+  Time spent in Power Modulus dividing:     13723222 microseconds (209.399750 average)
+  Total time spent computing Power Modulus: 17576047 microseconds (268.189209 average)
+
+Time to do 65536 Montgomery power-modulus operations of size 256 bits: 10860 milliseconds
+Total calls to power modulus:  65536
+  Time spent in Power Modulus overhead:     1337045 microseconds (20.401688 average)
+  Time spent in Power Modulus multiplying:  9474777 microseconds (144.573624 average)
+  Time spent in Power Modulus dividing:     34440 microseconds (0.525513 average)
+  Total time spent computing Power Modulus: 10855374 microseconds (165.639862 average)
+
+Time to do 16384  standard  power-modulus operations of size 512 bits: 23031 milliseconds
+Total calls to power modulus:  16384
+  Time spent in Power Modulus overhead:     395852 microseconds (24.160889 average)
+  Time spent in Power Modulus multiplying:  3833705 microseconds (233.990784 average)
+  Time spent in Power Modulus dividing:     18791697 microseconds (1146.954102 average)
+  Total time spent computing Power Modulus: 23021254 microseconds (1405.105835 average)
+
+Time to do 16384 Montgomery power-modulus operations of size 512 bits: 11203 milliseconds
+Total calls to power modulus:  16384
+  Time spent in Power Modulus overhead:     814690 microseconds (49.724731 average)
+  Time spent in Power Modulus multiplying:  10356785 microseconds (632.127991 average)
+  Time spent in Power Modulus dividing:     22670 microseconds (1.383667 average)
+  Total time spent computing Power Modulus: 11199371 microseconds (683.555359 average)
+
+Time to do 4096  standard  power-modulus operations of size 1024 bits: 31375 milliseconds
+Total calls to power modulus:  4096
+  Time spent in Power Modulus overhead:     168010 microseconds (41.018066 average)
+  Time spent in Power Modulus multiplying:  4724990 microseconds (1153.562012 average)
+  Time spent in Power Modulus dividing:     26482000 microseconds (6465.332031 average)
+  Total time spent computing Power Modulus: 31375000 microseconds (7659.912109 average)
+
+Time to do 4096 Montgomery power-modulus operations of size 1024 bits: 14672 milliseconds
+Total calls to power modulus:  4096
+  Time spent in Power Modulus overhead:     530666 microseconds (129.557129 average)
+  Time spent in Power Modulus multiplying:  14117008 microseconds (3446.535156 average)
+  Time spent in Power Modulus dividing:     18010 microseconds (4.396973 average)
+  Total time spent computing Power Modulus: 14669088 microseconds (3581.320312 average)
+
+Time to do 1024  standard  power-modulus operations of size 2048 bits: 41765 milliseconds
+Total calls to power modulus:  1024
+  Time spent in Power Modulus overhead:     99735 microseconds (97.397461 average)
+  Time spent in Power Modulus multiplying:  7907033 microseconds (7721.711914 average)
+  Time spent in Power Modulus dividing:     33748474 microseconds (32957.492188 average)
+  Total time spent computing Power Modulus: 41755242 microseconds (40776.601562 average)
+
+Time to do 1024 Montgomery power-modulus operations of size 2048 bits: 25938 milliseconds
+Total calls to power modulus:  1024
+  Time spent in Power Modulus overhead:     447650 microseconds (437.158203 average)
+  Time spent in Power Modulus multiplying:  25467410 microseconds (24870.517578 average)
+  Time spent in Power Modulus dividing:     12565 microseconds (12.270508 average)
+  Total time spent computing Power Modulus: 25930588 microseconds (25322.839844 average)
+
+Time to do 256  standard  power-modulus operations of size 4096 bits: 61766 milliseconds
+Total calls to power modulus:  256
+  Time spent in Power Modulus overhead:     89936 microseconds (351.312500 average)
+  Time spent in Power Modulus multiplying:  13271375 microseconds (51841.308594 average)
+  Time spent in Power Modulus dividing:     48409699 microseconds (189100.390625 average)
+  Total time spent computing Power Modulus: 61771010 microseconds (241293.000000 average)
+
+Time to do 256 Montgomery power-modulus operations of size 4096 bits: 39578 milliseconds
+Total calls to power modulus:  256
+  Time spent in Power Modulus overhead:     447325 microseconds (1747.363281 average)
+  Time spent in Power Modulus multiplying:  39121535 microseconds (152818.500000 average)
+  Time spent in Power Modulus dividing:     8274 microseconds (32.320312 average)
+  Total time spent computing Power Modulus: 39579285 microseconds (154606.578125 average)
+
+Time to do 64  standard  power-modulus operations of size 8192 bits: 77125 milliseconds
+Total calls to power modulus:  64
+  Time spent in Power Modulus overhead:     68129 microseconds (1064.515625 average)
+  Time spent in Power Modulus multiplying:  17786810 microseconds (277918.906250 average)
+  Time spent in Power Modulus dividing:     59267649 microseconds (926057.000000 average)
+  Total time spent computing Power Modulus: 77122588 microseconds (1205040.500000 average)
+
+Time to do 64 Montgomery power-modulus operations of size 8192 bits: 55766 milliseconds
+Total calls to power modulus:  64
+  Time spent in Power Modulus overhead:     411532 microseconds (6430.187500 average)
+  Time spent in Power Modulus multiplying:  55351492 microseconds (864867.062500 average)
+  Time spent in Power Modulus dividing:     4798 microseconds (74.968750 average)
+  Total time spent computing Power Modulus: 55769395 microseconds (871396.812500 average)
+
+Time to do 16  standard  power-modulus operations of size 16384 bits: 111234 milliseconds
+Total calls to power modulus:  16
+  Time spent in Power Modulus overhead:     50608 microseconds (3163.000000 average)
+  Time spent in Power Modulus multiplying:  25693727 microseconds (1605858.000000 average)
+  Time spent in Power Modulus dividing:     85497190 microseconds (5343574.500000 average)
+  Total time spent computing Power Modulus: 111241525 microseconds (6952595.500000 average)
+
+Time to do 16 Montgomery power-modulus operations of size 16384 bits: 74218 milliseconds
+Total calls to power modulus:  16
+  Time spent in Power Modulus overhead:     393161 microseconds (24572.562500 average)
+  Time spent in Power Modulus multiplying:  73826097 microseconds (4614131.000000 average)
+  Time spent in Power Modulus dividing:     3285 microseconds (205.312500 average)
+  Total time spent computing Power Modulus: 74223615 microseconds (4638976.000000 average)
+
+Time to do 4  standard  power-modulus operations of size 32768 bits: 143641 milliseconds
+Total calls to power modulus:  4
+  Time spent in Power Modulus overhead:     37797 microseconds (9449.250000 average)
+  Time spent in Power Modulus multiplying:  34061304 microseconds (8515326.000000 average)
+  Time spent in Power Modulus dividing:     109539731 microseconds (27384932.000000 average)
+  Total time spent computing Power Modulus: 143638832 microseconds (35909708.000000 average)
+
+Time to do 4 Montgomery power-modulus operations of size 32768 bits: 104188 milliseconds
+Total calls to power modulus:  4
+  Time spent in Power Modulus overhead:     377773 microseconds (94443.250000 average)
+  Time spent in Power Modulus multiplying:  103803119 microseconds (25950780.000000 average)
+  Time spent in Power Modulus dividing:     2390 microseconds (597.500000 average)
+  Total time spent computing Power Modulus: 104184160 microseconds (26046040.000000 average)
+
+Time to do 1  standard  power-modulus operations of size 65536 bits: 181656 milliseconds
+Total calls to power modulus:  1
+  Time spent in Power Modulus overhead:     22416 microseconds (22416.000000 average)
+  Time spent in Power Modulus multiplying:  42071862 microseconds (42071864.000000 average)
+  Time spent in Power Modulus dividing:     139557699 microseconds (139557696.000000 average)
+  Total time spent computing Power Modulus: 181651977 microseconds (181651984.000000 average)
+
+Time to do 1 Montgomery power-modulus operations of size 65536 bits: 120469 milliseconds
+Total calls to power modulus:  1
+  Time spent in Power Modulus overhead:     344035 microseconds (344035.000000 average)
+  Time spent in Power Modulus multiplying:  120116895 microseconds (120116896.000000 average)
+  Time spent in Power Modulus dividing:     2213 microseconds (2213.000000 average)
+  Total time spent computing Power Modulus: 120463520 microseconds (120463520.000000 average)
 */
 void CArithmeticPerformanceTester::PowerModulusMontgomeryVsStandard()
 {
@@ -1764,6 +3372,7 @@ void CArithmeticPerformanceTester::PowerModulusMontgomeryVsStandard()
         nResult.Reserve(2*nModulus.GetSize()+1);
         nModulus.GetValue()[0] |= 1; // force the modulus to be odd, so it is suitable for Montgomery
         // first, standard power modulus
+        ResetTimingData();
         nTime = ::GetTickCount();
         for(int i=0;i<nIterations; i++)
         {
@@ -1771,12 +3380,14 @@ void CArithmeticPerformanceTester::PowerModulusMontgomeryVsStandard()
         }
         nTime = ::GetTickCount() - nTime;
         printf("Time to do %i  standard  power-modulus operations of size %i bits: %i milliseconds\n", nIterations, nBits, nTime);
+        ReportMeasuredComponentTimingData(ePowerModulusMeasured);
         // Then, Montgomery power-modulus
         nNPrime.Reserve(nModulus.GetSize());
         nRPrime.Reserve(nModulus.GetSize());
         GetMontgomeryParameters(nModulus.GetSize(), nNPrimeSize, nRPrimeSize, nModulus.GetValue(), nNPrime.GetValue(), nRPrime.GetValue(), pnWorkspace);
         GetLeadBit(nModulus.GetSize(), nModulus.GetValue(), nLeadDigit, nLeadBit);
         nPowerModulus.Reserve(2*nModulus.GetSize() + 1);
+        ResetTimingData();
         nTime = ::GetTickCount();
         for(int i=0;i<nIterations; i++)
         {
@@ -1796,6 +3407,7 @@ void CArithmeticPerformanceTester::PowerModulusMontgomeryVsStandard()
         }
         nTime = ::GetTickCount() - nTime;
         printf("Time to do %i Montgomery power-modulus operations of size %i bits: %i milliseconds\n", nIterations, nBits, nTime);
+        ReportMeasuredComponentTimingData(ePowerModulusMeasured);
         nIterations /= 4;
     }
 }
@@ -2135,6 +3747,9 @@ And to divide that large number by its square root:                            2
 */
 void CArithmeticPerformanceTester::SquareRootTimes()
 {
+#if _CollectDetailedTimingData
+    DWORD64            dwTimestamp = s_Timer.GetMicroseconds();
+#endif
     CArithmeticBox     cBox;
     size_t             nRootSize;
     CBigIntegerForTest nX1, nX1Copy, nX2, nX2Copy, nSqrtX, nExtra;
@@ -2153,21 +3768,33 @@ void CArithmeticPerformanceTester::SquareRootTimes()
         nTime = ::GetTickCount();
         for(int i=0; i<nTests; i++)
         {
+#if _CollectDetailedTimingData
+            SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
             SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
         }
         nTime = ::GetTickCount() - nTime;
         printf("Time to do %i square roots of a %i bit number (Newton):                  %i milliseconds (%f average)\n",nTests,nSize,nTime,((float) nTime)/nTests);
         nTime = ::GetTickCount();
         for(int i=0; i<nTests; i++)
         {
+#if _CollectDetailedTimingData
+            GeneralSquareRootNewton(nX2.GetSize(), nX1.GetSize(), nRootSize, nX2.GetValue(), nX1.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
             GeneralSquareRootNewton(nX2.GetSize(), nX1.GetSize(), nRootSize, nX2.GetValue(), nX1.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
         }
         nTime = ::GetTickCount() - nTime;
         printf("Time to do %i square roots of a %i bit number using general Newton:      %i milliseconds (%f average)\n",nTests,nSize,nTime,((float) nTime)/nTests);
         nTime = ::GetTickCount();
         for(int i=0; i<nTests; i++)
         {
+#if _CollectDetailedTimingData
+            SquareRootRecursive(nX1.GetSize(), nRootSize, nX1.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
             SquareRootRecursive(nX1.GetSize(), nRootSize, nX1.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
         }
         nTime = ::GetTickCount() - nTime;
         nSqrtX.SetSize(nRootSize);
@@ -2185,7 +3812,11 @@ void CArithmeticPerformanceTester::SquareRootTimes()
         nTime = ::GetTickCount();
         for(int i=0; i<nTests; i++)
         {
+#if _CollectDetailedTimingData
+            GeneralSquareRootNewton(nX2.GetSize(), nX1.GetSize(), nRootSize, nX2.GetValue(), nX1.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
             GeneralSquareRootNewton(nX2.GetSize(), nX1.GetSize(), nRootSize, nX2.GetValue(), nX1.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
         }
         nTime = ::GetTickCount() - nTime;
         printf("Time to do %i general roots of a %i, %i bit numbers: Newton:             %i milliseconds (%f average)\n",nTests,2*nSize/3,nSize,nTime,((float) nTime)/nTests);
@@ -2196,7 +3827,11 @@ void CArithmeticPerformanceTester::SquareRootTimes()
             // GeneralSquareRootRecursive destructive -- copy data
             nX1Copy = nX1;
             nX2Copy = nX2;
+#if _CollectDetailedTimingData
+            GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
             GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
         }
         nTime = ::GetTickCount() - nTime;
         printf("Time to do %i general roots of a %i, %i bit numbers: Recursive:          %i milliseconds (%f average)\n",nTests,2*nSize/3,nSize,nTime,((float) nTime)/nTests);
@@ -2205,43 +3840,64 @@ void CArithmeticPerformanceTester::SquareRootTimes()
     nX1.SetRandom(c_nMaxBitSize*64);
     nSqrtX.Reserve(nX1.GetSize());
     nX2Copy.Reserve(nX1.GetSize()+1); // needs more working space
+    ResetTimingData();
     nTime   = ::GetTickCount();
-    SquareRootRecursive(nX1.GetSize(), nRootSize, nX1.GetValue(), nSqrtX.GetValue(), pWorkspace);
-    nSqrtX.SetSize(nRootSize);
+    cBox.SQRT(nX1, nSqrtX);
     printf("And the time to do a single %i bit square root using the full algorithm: %i milliseconds\n",c_nMaxBitSize*64,::GetTickCount()-nTime);
+    ReportMeasuredComponentTimingData(eSQRTMeasured);
     nTime   = ::GetTickCount();
+#if _CollectDetailedTimingData
+    SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
     SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
     printf("Simple Newton:                                                                 %i milliseconds\n",::GetTickCount()-nTime);
     nX2.SetRandom(nX1.GetSize()*c_nDigitSize/2);
     nX1Copy = nX1;
     nX2Copy = nX2;
     nTime   = ::GetTickCount();
+#if _CollectDetailedTimingData
+    GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
     GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
     printf("General recursive (half-size x1):                                              %i milliseconds\n", ::GetTickCount() - nTime);
     nX2.SetRandom(nX1.GetSize()*c_nDigitSize*2/3);
     nX1Copy = nX1;
     nX2Copy = nX2;
     nTime   = ::GetTickCount();
+#if _CollectDetailedTimingData
+    GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
     GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
     printf("General recursive (two thirds-size x1):                                        %i milliseconds\n", ::GetTickCount() - nTime);
     nX2.SetRandom(nX1.GetSize()*c_nDigitSize/3);
     nX1Copy = nX1;
     nX2Copy = nX2;
     nTime   = ::GetTickCount();
+#if _CollectDetailedTimingData
+    GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), dwTimestamp, pWorkspace);
+#else
     GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), pWorkspace);
+#endif
     printf("General recursive (one third-size x1):                                         %i milliseconds\n", ::GetTickCount() - nTime);
+    ResetTimingData();
     nTime = ::GetTickCount();
     if (eOperationSucceeded != cBox.Square(nSqrtX, nX2))
     {
         printf("Square failed\n");
     }
     printf("And, for comparison, squaring that square root again:                          %i milliseconds\n",::GetTickCount()-nTime);
+    ReportMeasuredComponentTimingData(eMultiplicationMeasured);
+    ResetTimingData();
     nTime   = ::GetTickCount();
     if (eOperationSucceeded != cBox.Divide(nX1, nSqrtX, nX2, nExtra))
     {
         printf("Divide failed\n");
     }
     printf("And to divide that large number by its square root:                            %i milliseconds\n",::GetTickCount()-nTime);
+    ReportMeasuredComponentTimingData(eDivideMeasured);
     free(pWorkspace);
 }
 

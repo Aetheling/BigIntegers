@@ -10,25 +10,12 @@
 #include "ArithmeticBox.h"
 #include "CArithmeticTestHelper.h"
 
-#if(_CollectDetailedTimingData)
 void CArithmeticTestHelper::BasicMultiplyReg5(size_t       nXSize,
                                               size_t       nYSize,
                                               const DIGIT  *pX,
                                               const DIGIT  *pY,
                                               DIGIT        *pZ,
-                                              bool         bAddInitialZValueToProduct,
-                                              DWORD64      &dwTimestamp)
-{
-	BasicUnsignedMultiplyForTest5(nXSize,nYSize,pX,pY,pZ,bAddInitialZValueToProduct,dwTimestamp);
-}
-#else
-void CArithmeticTestHelper::BasicMultiplyReg5(size_t       nXSize,
-                                                      size_t       nYSize,
-                                                      const DIGIT  *pX,
-                                                      const DIGIT  *pY,
-                                                      DIGIT        *pZ,
-                                                      bool         bAddInitialZValueToProduct)
+                                              bool         bAddInitialZValueToProduct)
 {
 	BasicUnsignedMultiplyForTest5(nXSize,nYSize,pX,pY,pZ,bAddInitialZValueToProduct);
 }
-#endif

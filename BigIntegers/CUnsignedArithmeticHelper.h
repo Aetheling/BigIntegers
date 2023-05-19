@@ -15,10 +15,39 @@ enum EMultiplyAlgorithm { eBasicMultiply = 0,
 #endif
                           e2NByN,
                           eFFTMult,
-                          eTopLevel, // not actually an algorithm -- caller of an algorithm!  Used for computing time taken in each function
                           eNumMultiplyAlgorithms };
 
 enum EDivideComponents { eTotalDivideCalls, eDivideProcessTime, eDivideMultCallsTime, eBasicDivideTime, eTotalDivideTime, eNumDivideComponents };
+
+enum ESquareRootComponents { eTotalSquareRootCalls,
+                             eSquareRootProcessTime,
+                             eSquareRootMultiplyTime,
+                             eSquareRootNewtonProcessTime,
+                             eSquareRootNewtonMultiplyTime,
+                             eSquareRootNewtonDivideTime,
+                             eSquareRootPartAProcessTime, // general square root
+                             eSquareRootPartAMultiplyTime, // general square root
+                             eSquareRootPartBProcessTime, // general square root
+                             eSquareRootPartBMultiplyTime, // general square root
+                             eSquareRootPartBDivideTime, // general square root
+                             eTotalSquareRootTime,
+                             eNumSquareRootComponents };
+
+enum EPowerModulusComponents { eTotalPowerModulusCalls,
+                               ePowerModulusProcessTime,
+                               ePowerModulusMultiplyTime,
+                               ePowerModulusDivideTime,
+                               ePowerModulusTotalTime,
+                               eNumPowerModulusComponents };
+
+enum EGCDComponents { eTotalGCDCalls,
+                      eGCDProcessTime,
+                      eGCDMultiplyTime,
+                      eGCDDivideTime,
+                      eGCDTotalTime,
+                      eNumGCDComponents };
+
+enum ETimeMeasuredComponents { eMultiplicationMeasured, eDivideMeasured, eSQRTMeasured, ePowerModulusMeasured, eGCDMeasured, eNumMeasuredComponents };
 
 class CUnsignedArithmeticHelper
 {
@@ -34,8 +63,13 @@ class CUnsignedArithmeticHelper
     // build time: time to construct the arguments for the multiplies
     // process time: time to use the multiplies to get the results
 public:  // functions
-    static void GetMultiplyTimes(EMultiplyAlgorithm eType, unsigned long long &nBuildTime, unsigned long long &nProcessTime);
-    static void ReportTimingData();
+    static void ReportAllTimingData();
+    static void ReportMeasuredComponentTimingData(ETimeMeasuredComponents eComponent);
+    /*static void ReportMultiplicationTimingData();
+    static void ReportDivisionTimingData();
+    static void ReportSquareRootTimingData();
+    static void ReportGCDTimingData();
+    static void ReportPowerModulusTimingData();*/
     static unsigned long long GetChunkProcessTime(bool bPre);
     static void ResetTimingData();
     // and one further operation on signed values...  *sigh*
@@ -68,59 +102,23 @@ public:  // functions
     // for now.
     static size_t FFTMultiplyMemoryNeeds(size_t nXSize, size_t nYSize, bool bMultAdd);
     static size_t SquareRootMemoryNeeds(size_t nXSize);
-    // Wrapper for multiplication.  Makes sure the
-    // operands are in the right order -- smaller first -- and
-    // decides which multiplication routine to use, based on
-    // the size of the smaller operand.  Z is assumed to have enough
-    // space for the operation (not checked).  It does not handle
-    // multiply by 0-DIGIT operands.  Likewise the workspace is assumed to be
-    // sufficient.
-	// It is up to the user to trim the leading 0 of the product (if any)
-	// if desired when pnZSize is not passed.  If pnZSize is passed,
-	// it checks for leading 0s in the operands, and zeros out Z accordingly.
-	// Useful when leading 0s might exist, and the cost of checking is
-	// worth it (either because it is computationally efficient to do
-	// so -- smaller mults are cheaper -- or the system might generate
-	// errors if they are NOT eliminated.  In particular, it is needed
-	// wherever either operand might have leading 0s, and MultU2NByN
-	// might be the multiply used!!!
-    static void MultUBackend(size_t             nXSize,
-                             size_t             nYSize,
-                             const DIGIT        *pXValue,
-                             const DIGIT        *pYValue,
-                             DIGIT              *pZValue,
-                             DIGIT              *pnWorkspace,
-#if(_CollectDetailedTimingData)
-                             DWORD64            &dwTimestamp,
-                             EMultiplyAlgorithm eCaller,
-#endif
-							 size_t             *pnZSize=NULL);
-    static void SquareUBackend(size_t             nXSize,
-                               const DIGIT        *pXValue,
-                               DIGIT              *pZValue,
-                               DIGIT              *pnWorkspace,
-#if(_CollectDetailedTimingData)
-                               DWORD64            &dwTimestamp,
-                               EMultiplyAlgorithm eCaller,
-#endif
-                               size_t             *pnZSize=NULL);
-    // If the multiply can be done using the basic algorithms (not divide-and-conquer),
-    // there is no need to copy the z data.  If not, a copy must be done.  The memory is
-    // assumed to be adequate either way.  Note the pZValue needs to be padded with zeroes
-    // from nZSize to nZSize+1 or nXSize+nYSize+1, whichever is greater.
-    // nZSize is set to the new size on completion.
-	// NEEDS TWIDDLING  (Keep in sync with MultUBackend)
-    static void MultAddUBackend(size_t             nXSize,
-                                size_t             nYSize,
-                                size_t             &nZSize,
-                                const DIGIT        *pXValue,
-                                const DIGIT        *pYValue,
-                                DIGIT              *pZValue,
-#if(_CollectDetailedTimingData)
-                                DWORD64            &dwTimestamp,
-                                EMultiplyAlgorithm eCaller,
-#endif
-                                DIGIT              *pnWorkspace);
+    static void Multiply(size_t nXSize,
+                         size_t nYSize,
+                         DIGIT  *pnXValue,
+                         DIGIT  *pnYValue,
+                         DIGIT  *pnXTimesYValue,
+                         DIGIT  *pnWorkspace);
+    static void MultiplyAdd(size_t nXSize,
+                            size_t nYSize,
+                            size_t &nRunningSumSize,
+                            DIGIT  *pnXValue,
+                            DIGIT  *pnYValue,
+                            DIGIT  *pnRunningSum,
+                            DIGIT  *pnWorkspace);
+    static void Square(size_t nXSize,
+                       DIGIT  *pnXValue,
+                       DIGIT  *pnXSquaredValue,
+                       DIGIT  *pnWorkspace);
     // computes X/Y (stored in XDivYValue) and the remainder (stored in X) -- yes; this
     // *is* destructive!
     // Y is NOT destroyed, despite not being labeled as const; it is transiently adjusted
@@ -152,14 +150,14 @@ public:  // functions
     //				let k = min(d,n).  The problem reduces to dividing
     //				a 2k-DIGIT number by a k-DIGIT number and a (2d+n-k)-DIGIT
     //				number by an n-DIGIT number
-    static void Divide(size_t nXSize,
-                       size_t nYSize,
-                       size_t &nXDivYSize,
-                       size_t &nRemainderSize,
-                       DIGIT  *pXValue,
-                       DIGIT  *pYValue,
-                       DIGIT  *pXDivYValue,
-                       DIGIT  *pWorkspace);
+    static void Divide(size_t  nXSize,
+                       size_t  nYSize,
+                       size_t  &nXDivYSize,
+                       size_t  &nRemainderSize,
+                       DIGIT   *pXValue,
+                       DIGIT   *pYValue,
+                       DIGIT   *pXDivYValue,
+                       DIGIT   *pWorkspace);
     // GCD: compute the greatest common divisor of X and Y.
     // Coefs: values a, b such that ax+by = GCD(x,y) (assumes
     // x, y are positive).
@@ -224,48 +222,6 @@ public:  // functions
                                         DIGIT  *pNPrimeValue,
                                         DIGIT  *pRPrimeValue,
                                         DIGIT  *pWorkspace);
-    // for efficiency, it is assumed that pXMontgomeryValue has space for nXSize + nNSize DIGITs, even though it is guaranteed to have a value
-    // needing at most nNSize: xR mod N
-    static void ToMontgomeryForm(size_t      nXSize,
-                                 size_t      nNSize,
-                                 size_t      &nXMontgomerySize,
-                                 const DIGIT *pXValue,
-                                 DIGIT       *pNValue,
-                                 DIGIT       *pXMontgomeryValue,
-                                 DIGIT       *pWorkspace);
-    // xR' mod N.  X should have room for 2*nSize DIGITs, though its value will only have at most nNSize in the end
-    static void FromMontgomeryForm(size_t      nMontgomerySize,
-                                   size_t      nNSize,
-                                   size_t      nRPrimeSize,
-                                   size_t      &nXSize,
-                                   const DIGIT *pXMontgomeryValue,
-                                   DIGIT       *pNValue,
-                                   const DIGIT *pRPrimeValue,
-                                   DIGIT       *pXValue,
-                                   DIGIT       *pWorkspace);
-    // It is assumed that x, y are already in Montgomery form.  Note this implies each has at most 2*nSize DIGITs.  Performs x*y = z
-    // z should have space for at least 2*nNSize+1 DIGITs
-    static void MontgomeryMultiply(size_t       nXSize,
-                                   size_t       nYSize,
-                                   size_t       nNSize,
-                                   size_t       nNPrimeSize,
-                                   size_t       &nZSize,
-                                   const DIGIT  *pXValue,
-                                   const DIGIT  *pYValue,
-                                   const DIGIT  *pNValue,
-                                   const DIGIT  *pNPrimeValue,
-                                   DIGIT        *pZValue,
-                                   DIGIT        *pWorkspace);
-    // Same; just does x*x instead of x*y
-    static void MontgomerySquare(size_t       nXSize,
-                                 size_t       nNSize,
-                                 size_t       nNPrimeSize,
-                                 size_t       &nZSize,
-                                 const DIGIT  *pXValue,
-                                 const DIGIT  *pNValue,
-                                 const DIGIT  *pNPrimeValue,
-                                 DIGIT        *pZValue,
-                                 DIGIT        *pWorkspace);
     // Performs  (x^y) mod modulus, putting the result in pnPowerModulus.  It is assumed that pnPowerModulus has enough space for 2*nModulusSize DIGITs.
     // Note modulus takes the place of N in MontgomeryMultiply.  Assumes the power is greater than 0!
     static void MontgomeryPowerModulus(size_t      nXSize,
@@ -299,28 +255,12 @@ public:  // functions
                                        DIGIT       *pnPowerModulus,
 							           DIGIT       *pnWorkspace,
 							           bool        bProtectAgainstTimingAttacks = false);
-    // same, but assumes X is already in Montgomery form, and puts the power modulus -- still in Montgomery form --
-    // in pnPowerModulus.  nPowerDigit and nPowerBit from GetLeadBit on the modulus.  pnPowerModulus should have
-    // space for at least 2*nModulusSize + 1 DIGITs (those beyond the modulus size as workspace).
-    static void MontgomeryPowerModulus(size_t      nXSize,
-		                               size_t      nYSize,
-					    		       size_t      nModulusSize,
-                                       size_t      nModulusPrimeSize,
-                                       size_t      nPowerDigit,
-                                       size_t      nPowerBit,
-                                       size_t      &nPowerModulusSize,
-				    			       const DIGIT *pnXValue,
-							           const DIGIT *pnYValue,
-							           const DIGIT *pnModulusValue,
-                                       const DIGIT *pnModulusPrimeValue,
-                                       DIGIT       *pnPowerModulus,
-							           DIGIT       *pnWorkspace,
-							           bool        bProtectAgainstTimingAttacks = false);
     // computes the largest value SquareRoot such that SquareRoot*SquareRoot <= X
     static void SQRT(size_t nXSize, size_t &nRootSize, DIGIT *pnX, DIGIT *pnSquareRoot, DIGIT *pWorkspace);
 
 
 protected: // functions
+    static const char *GetMultiplicationAlgorithmName(EMultiplyAlgorithm eMultAlg);
     // Sets the XPlusY array to contain the sum X+Y -- it assumes that array is big enough;
     // it does NOT check.  Returns the #of digits in XPlusY.
     // XPlusY may be either X or Y; this will not affect correctness (though it will of course
@@ -346,6 +286,68 @@ protected: // functions
                            const DIGIT *pX,
                            const DIGIT *pY,
                            DIGIT       *pXMinusY);
+    // Wrapper for multiplication.  Makes sure the
+    // operands are in the right order -- smaller first -- and
+    // decides which multiplication routine to use, based on
+    // the size of the smaller operand.  Z is assumed to have enough
+    // space for the operation (not checked).  It does not handle
+    // multiply by 0-DIGIT operands.  Likewise the workspace is assumed to be
+    // sufficient.
+	// It is up to the user to trim the leading 0 of the product (if any)
+	// if desired when pnZSize is not passed.  If pnZSize is passed,
+	// it checks for leading 0s in the operands, and zeros out Z accordingly.
+	// Useful when leading 0s might exist, and the cost of checking is
+	// worth it (either because it is computationally efficient to do
+	// so -- smaller mults are cheaper -- or the system might generate
+	// errors if they are NOT eliminated.  In particular, it is needed
+	// wherever either operand might have leading 0s, and MultU2NByN
+	// might be the multiply used!!!
+    // returns the multiplication algorithm used
+    static EMultiplyAlgorithm MultUBackend(size_t             nXSize,
+                                           size_t             nYSize,
+                                           const DIGIT        *pXValue,
+                                           const DIGIT        *pYValue,
+                                           DIGIT              *pZValue,
+                                           DIGIT              *pnWorkspace,
+#if(_CollectDetailedTimingData)
+                                           DWORD64            &dwTimestamp,
+#endif
+							               size_t             *pnZSize=NULL);
+    static EMultiplyAlgorithm SquareUBackend(size_t           nXSize,
+                                             const DIGIT      *pXValue,
+                                             DIGIT            *pZValue,
+                                             DIGIT            *pnWorkspace,
+#if(_CollectDetailedTimingData)
+                                             DWORD64          &dwTimestamp,
+#endif
+                                             size_t           *pnZSize=NULL);
+    // If the multiply can be done using the basic algorithms (not divide-and-conquer),
+    // there is no need to copy the z data.  If not, a copy must be done.  The memory is
+    // assumed to be adequate either way.  Note the pZValue needs to be padded with zeroes
+    // from nZSize to nZSize+1 or nXSize+nYSize+1, whichever is greater.
+    // nZSize is set to the new size on completion.
+	// (Keep in sync with MultUBackend)
+    static EMultiplyAlgorithm MultAddUBackend(size_t             nXSize,
+                                              size_t             nYSize,
+                                              size_t             &nZSize,
+                                              const DIGIT        *pXValue,
+                                              const DIGIT        *pYValue,
+                                              DIGIT              *pZValue,
+#if(_CollectDetailedTimingData)
+                                              DWORD64            &dwTimestamp,
+#endif
+                                              DIGIT              *pnWorkspace);
+    static void DivideBackend(size_t  nXSize,
+                              size_t  nYSize,
+                              size_t  &nXDivYSize,
+                              size_t  &nRemainderSize,
+                              DIGIT   *pXValue,
+                              DIGIT   *pYValue,
+                              DIGIT   *pXDivYValue,
+#if(_CollectDetailedTimingData)
+                              DWORD64 &dwTimestamp,
+#endif
+                              DIGIT   *pWorkspace);
     // Assumes X is at most as large as Y.
     // Needs to be kept in sync with the multiplication algorithms!
     static size_t MultiplyMemoryNeedsBackend(size_t nXSize, size_t nYSize);
@@ -377,7 +379,6 @@ protected: // functions
 									 DIGIT              *pnZValue,
 #if(_CollectDetailedTimingData)
                                      DWORD64            &dwTimestamp,
-									 EMultiplyAlgorithm eCaller,
 #endif
 									 DIGIT              *pnWorkspace,
 									 size_t             *pnZSize=NULL);
@@ -392,7 +393,6 @@ protected: // functions
                                      DIGIT              *pZ,
 #if(_CollectDetailedTimingData)
                                      DWORD64            &dwTimestamp,
-									 EMultiplyAlgorithm eCaller,
 #endif
 									 DIGIT              *pnWorkspace,
 									 size_t             *pnZSize=NULL);
@@ -411,12 +411,7 @@ protected: // functions
                            const DIGIT  *pX,
                            const DIGIT  *pY,
                            DIGIT        *pZ,
-#if(_CollectDetailedTimingData)
-                           bool         bAddInitialZValueToProduct,
-                           DWORD64      &dwTimestamp);
-#else
                            bool         bAddInitialZValueToProduct);
-#endif
     // Note that it is assumed that nXSize <= nYSize (unverified).  Also
     // doesn't handle 0-sized numbers!.
     static void MultUShortLong(size_t       nXSize,
@@ -440,8 +435,7 @@ protected: // functions
                           DIGIT               *pZValue,
 #if(_CollectDetailedTimingData)
                           DIGIT               *pnWorkspace,
-                          DWORD64             &dwTimestamp, // on entry, time called.  On exit, time completed
-                          EMultiplyAlgorithm  eCaller);
+                          DWORD64             &dwTimestamp); // on entry, time called.  On exit, time completed
 #else
                           DIGIT               *pnWorkspace);
 #endif
@@ -450,7 +444,6 @@ protected: // functions
                             DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                             DWORD64            &dwTimestamp,
-							EMultiplyAlgorithm eCaller,
 #endif
                             DIGIT              *pnWorkspace);
     static void MultU5by3(size_t              nXSize,
@@ -460,8 +453,7 @@ protected: // functions
                           DIGIT               *pZValue,
 #if(_CollectDetailedTimingData)
                           DIGIT               *pnWorkspace,
-                          DWORD64             &dwTimestamp, // on entry, time called.  On exit, time completed
-                          EMultiplyAlgorithm  eCaller);
+                          DWORD64             &dwTimestamp); // on entry, time called.  On exit, time completed
 #else
                           DIGIT               *pnWorkspace);
 #endif
@@ -470,7 +462,6 @@ protected: // functions
                             DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                             DWORD64            &dwTimestamp,
-							EMultiplyAlgorithm eCaller,
 #endif
                             DIGIT              *pnWorkspace);
     static void MultU7by4(size_t              nXSize,
@@ -480,8 +471,7 @@ protected: // functions
                           DIGIT               *pZValue,
 #if(_CollectDetailedTimingData)
                           DIGIT               *pnWorkspace,
-                          DWORD64             &dwTimestamp, // on entry, time called.  On exit, time completed
-                          EMultiplyAlgorithm  eCaller);
+                          DWORD64             &dwTimestamp); // on entry, time called.  On exit, time completed
 #else
                           DIGIT               *pnWorkspace);
 #endif
@@ -490,7 +480,6 @@ protected: // functions
                             DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                             DWORD64            &dwTimestamp,
-							EMultiplyAlgorithm eCaller,
 #endif
                             DIGIT              *pnWorkspace);
 #ifndef _USESMALLDIGITS
@@ -501,8 +490,7 @@ protected: // functions
                           DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                           DIGIT              *pnWorkspace,
-                          DWORD64            &dwTimestamp, // on entry, time called.  On exit, time completed
-                          EMultiplyAlgorithm eCaller);
+                          DWORD64            &dwTimestamp); // on entry, time called.  On exit, time completed
 #else
                           DIGIT              *pnWorkspace);
 #endif
@@ -511,7 +499,6 @@ protected: // functions
                             DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                             DWORD64            &dwTimestamp,
-							EMultiplyAlgorithm eCaller,
 #endif
                             DIGIT              *pnWorkspace);
 #endif
@@ -521,6 +508,9 @@ protected: // functions
                             size_t      nYSize,
                             DIGIT       *pXValue,
                             const DIGIT *pYValue,
+#if(_CollectDetailedTimingData)
+                            DWORD64     &dwTimestamp,
+#endif
                             DIGIT       *pXDivYValue);
     // Uses a more complex algorithm to do the division: takes time proportional
     // to multiplication.  Assumptions (and results) as per DivideBasic.
@@ -529,12 +519,15 @@ protected: // functions
     // it cannot be a constant variable
     // by assumption: y<=x, and 2*size<y> <= size<x>
     // by assumption: y<=x, and 2*size<y> <= size<x>
-    static void DivideRecursive(size_t nXSize,
-                                size_t nYSize,
-                                DIGIT  *pXValue,
-                                DIGIT  *pYValue,
-                                DIGIT  *pXDivYValue,
-                                DIGIT  *pWorkspace);
+    static void DivideRecursive(size_t  nXSize,
+                                size_t  nYSize,
+                                DIGIT   *pXValue,
+                                DIGIT   *pYValue,
+                                DIGIT   *pXDivYValue,
+#if(_CollectDetailedTimingData)
+                                DWORD64 &dwTimestamp,
+#endif
+                                DIGIT   *pWorkspace);
     // For breaking a multiplication down into very
     // large numbers of subproblems. If called with pieces (n) < 5,
     // delete the return value when done; otherwise, we keep
@@ -559,7 +552,6 @@ protected: // functions
 													  DIGIT               *pnOverflowDigits,
 													  SSystemData         *pSystemToUse,
 #if(_CollectDetailedTimingData)
-												      EMultiplyAlgorithm  eCaller,
 													  DWORD64             &dwTimestamp, // on entry, time called.  On exit, time completed
 #endif
 													  DIGIT               *pnWorkspace);
@@ -573,7 +565,6 @@ protected: // functions
 													  const DIGIT         *pnX,
 													  SSystemData         *pSystemToUse,
 #if(_CollectDetailedTimingData)
-													  EMultiplyAlgorithm  eCaller,
 													  DWORD64             &dwTimestamp, // on entry, time called.  On exit, time completed
 #endif
 													  DIGIT               *pnWorkspace);
@@ -587,7 +578,6 @@ protected: // functions
 														 DIGIT               *pnZValue,
 														 SSystemData         *pSystemToUse,
 #if(_CollectDetailedTimingData)
-														 EMultiplyAlgorithm  eCaller,
 														 DWORD64             &dwTimestamp, // on entry, time called.  On exit, time completed
 #endif
 											             DIGIT               *pnWorkspace);
@@ -600,8 +590,7 @@ protected: // functions
                            SSystemData        *pSystemToUse,
 #if(_CollectDetailedTimingData)
                            DIGIT               *pWorkspace,
-                           DWORD64             &dwTimestamp, // on entry, time called.  On exit, time completed
-                           EMultiplyAlgorithm  eCaller);
+                           DWORD64             &dwTimestamp); // on entry, time called.  On exit, time completed
 #else
                            DIGIT               *pWorkspace);
 #endif
@@ -611,7 +600,6 @@ protected: // functions
                              SSystemData        *pSystemToUse,
 #if(_CollectDetailedTimingData)
                              DWORD64            &dwTimestamp,
-							 EMultiplyAlgorithm eCaller,
 #endif
                              DIGIT              *pWorkspace);
     // returns the size (in DIGITs) of the GCD
@@ -629,12 +617,15 @@ protected: // functions
     // This function destroys X and Y in the process!
     // Note that computing the coefficients requires significantly more memory!
     // Assumes X is at least as large as Y
-    static size_t GCDBase(size_t nXSize,
-                          size_t nYSize,
-                          DIGIT  *pXValue,
-                          DIGIT  *pYValue,
-                          DIGIT  *pGCDValue,
-                          DIGIT  *pWorkspace);
+    static size_t GCDBase(size_t  nXSize,
+                          size_t  nYSize,
+                          DIGIT   *pXValue,
+                          DIGIT   *pYValue,
+                          DIGIT   *pGCDValue,
+#if(_CollectDetailedTimingData)
+                          DWORD64 &dwTimestamp,
+#endif
+                          DIGIT   *pWorkspace);
     // As GCD (except for the return value), but also computes the A and B values.
     // The coef value arrays are assumed to have enough space!  (Bound on needs:
     // the x coef can't be larger than y; the y coef can't be larger than x.)
@@ -645,33 +636,39 @@ protected: // functions
     // NULL for the one not desired will work -- and reduce
     // computation time somewhat (especially for large X, Y
     // values)
-    static void GCDCoef(size_t nXSize,
-                        size_t nYSize,
-                        size_t &nGCDSize,
-                        size_t &nXCoefSize,
-                        size_t &nYCoefSize,
-                        DIGIT  *pXValue,
-                        DIGIT  *pYValue,
-                        DIGIT  *pGCDValue,
-                        DIGIT  *pXCoefValue,
-                        DIGIT  *pYCoefValue,
-                        bool   &bXCoefNegative,
-                        DIGIT  *pWorkspace);
+    static void GCDCoef(size_t  nXSize,
+                        size_t  nYSize,
+                        size_t  &nGCDSize,
+                        size_t  &nXCoefSize,
+                        size_t  &nYCoefSize,
+                        DIGIT   *pXValue,
+                        DIGIT   *pYValue,
+                        DIGIT   *pGCDValue,
+                        DIGIT   *pXCoefValue,
+                        DIGIT   *pYCoefValue,
+                        bool    &bXCoefNegative,
+#if(_CollectDetailedTimingData)
+                        DWORD64 &dwTimestamp,
+#endif
+                        DIGIT   *pWorkspace);
 
     // same, except uses recursion instead of a loop.  Perhaps simpler to
     // code...  but blows out the stack in the low 100s of digits
-    static void GCDCoef_recursive(size_t nXSize,
-                                  size_t nYSize,
-                                  size_t &nGCDSize,
-                                  size_t &nXCoefSize,
-                                  size_t &nYCoefSize,
-                                  DIGIT  *pXValue,
-                                  DIGIT  *pYValue,
-                                  DIGIT  *pGCDValue,
-                                  DIGIT  *pXCoefValue,
-                                  DIGIT  *pYCoefValue,
-                                  bool   &bXCoefNegative,
-                                  DIGIT  *pWorkspace);
+    static void GCDCoef_recursive(size_t  nXSize,
+                                  size_t  nYSize,
+                                  size_t  &nGCDSize,
+                                  size_t  &nXCoefSize,
+                                  size_t  &nYCoefSize,
+                                  DIGIT   *pXValue,
+                                  DIGIT   *pYValue,
+                                  DIGIT   *pGCDValue,
+                                  DIGIT   *pXCoefValue,
+                                  DIGIT   *pYCoefValue,
+                                  bool    &bXCoefNegative,
+#if(_CollectDetailedTimingData)
+                                  DWORD64 &dwTimestamp,
+#endif
+                                  DIGIT   *pWorkspace);
     // the bit shift represents a positive (left) bit shift as bits and digits; used in the FFT multiplication.
     // e.g. a shift of 73 with a 16-bit DIGIT would be [4,9]
     struct SBitShift
@@ -784,7 +781,7 @@ protected: // functions
                     SBitShift   nRootUnity,
                     DIGIT       *pnWorkspace);
 
-    static void FFT3(const DIGIT *pBase,    // the number whose FFT is to be computed
+   /* static void FFT3(const DIGIT *pBase,    // the number whose FFT is to be computed
                      DIGIT       *pFFT,
                      size_t      nBaseSize, // the size of the number whose FFT is to be computed
                      size_t      nChunkSize,
@@ -792,7 +789,7 @@ protected: // functions
                      size_t      nLength,
                      size_t      nFieldSize,
                      SBitShift   nRootUnity,
-                     DIGIT       *pnWorkspace);
+                     DIGIT       *pnWorkspace);*/
     // core FFT_opt assumes the length is a power of 4, and not just a power
     // of 2; wrapper to deal with that.  We still assume that the length of
     // the FFT is at least 2....
@@ -876,8 +873,7 @@ protected: // functions
                         DIGIT              *pnZValue,
 #if(_CollectDetailedTimingData)
                         DIGIT              *pnWorkspace,
-                        DWORD64            &dwTimestamp, // on entry, time called.  On exit, time completed
-                        EMultiplyAlgorithm eCaller);
+                        DWORD64            &dwTimestamp); // on entry, time called.  On exit, time completed
 #else
                         DIGIT              *pnWorkspace);
 #endif
@@ -889,11 +885,84 @@ protected: // functions
                           DIGIT              *pnZValue,
 #if(_CollectDetailedTimingData)
                           DIGIT              *pnWorkspace,
-                          DWORD64            &dwTimestamp, // on entry, time called.  On exit, time completed
-                          EMultiplyAlgorithm eCaller);
+                          DWORD64            &dwTimestamp); // on entry, time called.  On exit, time completed
 #else 
                           DIGIT              *pnWorkspace);
 #endif
+    // for efficiency, it is assumed that pXMontgomeryValue has space for nXSize + nNSize DIGITs, even though it is guaranteed to have a value
+    // needing at most nNSize: xR mod N
+    static void ToMontgomeryForm(size_t      nXSize,
+                                 size_t      nNSize,
+                                 size_t      &nXMontgomerySize,
+                                 const DIGIT *pXValue,
+                                 DIGIT       *pNValue,
+                                 DIGIT       *pXMontgomeryValue,
+#if(_CollectDetailedTimingData)
+                                 DWORD64     &dwTimestamp,
+#endif
+                                 DIGIT       *pWorkspace);
+    // xR' mod N.  X should have room for 2*nSize DIGITs, though its value will only have at most nNSize in the end
+    static void FromMontgomeryForm(size_t      nMontgomerySize,
+                                   size_t      nNSize,
+                                   size_t      nRPrimeSize,
+                                   size_t      &nXSize,
+                                   const DIGIT *pXMontgomeryValue,
+                                   DIGIT       *pNValue,
+                                   const DIGIT *pRPrimeValue,
+                                   DIGIT       *pXValue,
+#if(_CollectDetailedTimingData)
+                                   DWORD64     &dwTimestamp,
+#endif
+                                   DIGIT       *pWorkspace);
+    // It is assumed that x, y are already in Montgomery form.  Note this implies each has at most 2*nSize DIGITs.  Performs x*y = z
+    // z should have space for at least 2*nNSize+1 DIGITs
+    static void MontgomeryMultiply(size_t       nXSize,
+                                   size_t       nYSize,
+                                   size_t       nNSize,
+                                   size_t       nNPrimeSize,
+                                   size_t       &nZSize,
+                                   const DIGIT  *pXValue,
+                                   const DIGIT  *pYValue,
+                                   const DIGIT  *pNValue,
+                                   const DIGIT  *pNPrimeValue,
+                                   DIGIT        *pZValue,
+#if(_CollectDetailedTimingData)
+                                   DWORD64      &dwTimestamp,
+#endif
+                                   DIGIT        *pWorkspace);
+    // Same; just does x*x instead of x*y
+    static void MontgomerySquare(size_t       nXSize,
+                                 size_t       nNSize,
+                                 size_t       nNPrimeSize,
+                                 size_t       &nZSize,
+                                 const DIGIT  *pXValue,
+                                 const DIGIT  *pNValue,
+                                 const DIGIT  *pNPrimeValue,
+                                 DIGIT        *pZValue,
+#if(_CollectDetailedTimingData)
+                                 DWORD64     &dwTimestamp,
+#endif
+                                 DIGIT        *pWorkspace);
+    // same, but assumes X is already in Montgomery form, and puts the power modulus -- still in Montgomery form --
+    // in pnPowerModulus.  nPowerDigit and nPowerBit from GetLeadBit on the modulus.  pnPowerModulus should have
+    // space for at least 2*nModulusSize + 1 DIGITs (those beyond the modulus size as workspace).
+    static void MontgomeryPowerModulus(size_t      nXSize,
+		                               size_t      nYSize,
+					    		       size_t      nModulusSize,
+                                       size_t      nModulusPrimeSize,
+                                       size_t      nPowerDigit,
+                                       size_t      nPowerBit,
+                                       size_t      &nPowerModulusSize,
+				    			       const DIGIT *pnXValue,
+							           const DIGIT *pnYValue,
+							           const DIGIT *pnModulusValue,
+                                       const DIGIT *pnModulusPrimeValue,
+                                       DIGIT       *pnPowerModulus,
+#if(_CollectDetailedTimingData)
+                                       DWORD64     &dwTimestamp,
+#endif
+							           DIGIT       *pnWorkspace,
+							           bool        bProtectAgainstTimingAttacks = false);
     // REDC does multiplication in Montgomery form cleanup
     // In this implementation of REDC, T is replaced with S on return
     // input: Integers R and N with gcd(R, N) = 1,
@@ -908,41 +977,55 @@ protected: // functions
                      const DIGIT  *pNPrimeValue,
                      const DIGIT  *pTValue,
                      DIGIT        *pSValue,
+#if(_CollectDetailedTimingData)
+                     DWORD64      &dwTimestamp,
+#endif
                      DIGIT        *pWorkspace);
     // Find: largest y s.t. (x1 + y)y <= x2.  Note that with x1 positive, it is clear that y < sqrt(x2).  As the name suggests,
     // uses Newton's method.  Assumes x1 < x2
-    static void GeneralSquareRootNewton(size_t nX1Size,
-                                        size_t nX2Size,
-                                        size_t &nRootSize,
-                                        DIGIT  *pnX1,
-                                        DIGIT  *pnX2,
-                                        DIGIT  *pnRoot,
-                                        DIGIT  *pnWorkspace);
-    static void GeneralSquareRootRecursive(size_t nX1Size,
-                                           size_t nX2Size,
-                                           size_t &nRootSize,
-                                           DIGIT  *pnX1,
-                                           DIGIT  *pnX2,
-                                           DIGIT  *pnRoot,
-                                           DIGIT  *pnWorkspace);
+    static void GeneralSquareRootNewton(size_t  nX1Size,
+                                        size_t  nX2Size,
+                                        size_t  &nRootSize,
+                                        DIGIT   *pnX1,
+                                        DIGIT   *pnX2,
+                                        DIGIT   *pnRoot,
+#if(_CollectDetailedTimingData)
+                                        DWORD64 &dwTimestamp,
+#endif
+                                        DIGIT   *pnWorkspace);
+    static void GeneralSquareRootRecursive(size_t  nX1Size,
+                                           size_t  nX2Size,
+                                           size_t  &nRootSize,
+                                           DIGIT   *pnX1,
+                                           DIGIT   *pnX2,
+                                           DIGIT   *pnRoot,
+#if(_CollectDetailedTimingData)
+                                           DWORD64 &dwTimestamp,
+#endif
+                                           DIGIT   *pnWorkspace);
     // Finds the largest y s.t. y^2 <= x using Newton's method.  Assumes 0<x (if 0 == x, get a divide-by-zero)
-    static void SquareRootNewton(size_t nXSize,
-                                 size_t &nRootSize,
-                                 DIGIT  *pnX,
-                                 DIGIT  *pnRoot,
-                                 DIGIT  *pnWorkspace);
+    static void SquareRootNewton(size_t  nXSize,
+                                 size_t  &nRootSize,
+                                 DIGIT   *pnX,
+                                 DIGIT   *pnRoot,
+#if(_CollectDetailedTimingData)
+                                 DWORD64 &dwTimestamp,
+#endif
+                                 DIGIT   *pnWorkspace);
     // Finds the largest y s.t. y^2 <= x
-    static void SquareRootRecursive(size_t nXSize,
-                                    size_t &nRootSize,
-                                    DIGIT  *pnX,
-                                    DIGIT  *pnRoot,
-                                    DIGIT  *pnWorkspace);
+    static void SquareRootRecursive(size_t  nXSize,
+                                    size_t  &nRootSize,
+                                    DIGIT   *pnX,
+                                    DIGIT   *pnRoot,
+#if(_CollectDetailedTimingData)
+                                    DWORD64 &dwTimestamp,
+#endif
+                                    DIGIT   *pnWorkspace);
 
     // returns the subproblem size used in dividing an nXSize-DIGIT number by an nYSize-DIGIT one
     static size_t DivideSubproblemSize(size_t nXSize, size_t nYSize, size_t &nDivOffset);
 
 public:    // variables
-    static bool s_bPrint; // debug remove todo
 protected: // variables
 	static const unsigned int c_n2NBynSizeBreakpoints = 7;
 #ifdef _UsingVariableThresholdsForTest
@@ -953,7 +1036,6 @@ protected: // variables
 	                                                                         // don't care -- FFT mult is faster, anyway
     static unsigned int       c_nDivideThresholdSmall;       // at least 4 for correctness
     static unsigned int       c_nDivideThresholdDiff;        // at least 4 for correctness
-  //  static unsigned int       s_nGCDThreshold;
     static unsigned int       c_nSquareRootThreshold;
 #else
     static const unsigned int c_nBuildBlockSizePre;          // or whatever is found to be best in testing thresholds -- this is good
@@ -964,16 +1046,20 @@ protected: // variables
     // used by the function deciding how many pieces to use for REALLY BIG multiplications
     static const unsigned int c_nDivideThresholdSmall;       // at least 4 for correctness
     static const unsigned int c_nDivideThresholdDiff;        // at least 4 for correctness
- //   static const unsigned int s_nGCDThreshold;
     static const unsigned int c_nSquareRootThreshold;
 #endif
     // note that these values are not used unless the compile flag _CollectDetailedTimingData is set
-    static unsigned long long s_nBuildTimes[eNumMultiplyAlgorithms];
-    static unsigned long long s_nProcessTimes[eNumMultiplyAlgorithms];
-    static unsigned long long s_nRecursiveTimes[eNumMultiplyAlgorithms];
+    /*static unsigned long long s_nBuildTimes[eNumMultiplyAlgorithms];
+    static unsigned long long s_nProcessTimes[eNumMultiplyAlgorithms+1];
     static unsigned long      s_nMultiplyCalls[eNumMultiplyAlgorithms];
 
     static unsigned long long s_nDivideTime[eNumDivideComponents];
+
+    static unsigned long long s_nSquareRootTime[eNumSquareRootComponents];
+
+    static unsigned long long s_nPowerModulusTime[eNumPowerModulusComponents];
+
+    static unsigned long long s_nGCDTime[eNumGCDComponents];*/
 
     // might want to tune this value -- different machines might have different stack space
     static const unsigned int c_nMaxBYTESizeForRecursiveGCD = 400;

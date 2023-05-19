@@ -380,6 +380,7 @@ int main()
     {
         printf("RSA without timing protection test succeeded\n");
     }
+    /*
 	////////////////////////////////////////////////////////////////////////////////////////
 	//                                                                                    //
 	//                              Tune parameters                                       //
@@ -409,6 +410,7 @@ int main()
     cPerfTester.CompareBaseMultiplicationToFFT();
     cPerfTester.CompareMultiplicationAlgorithms();
     cPerfTester.CompareDivideTimes();
+    cPerfTester.SquareRootTimes();
     cPerfTester.GCDTimes();
     cPerfTester.PowerModulusMontgomeryVsStandard();
     cRSATester.PerfTestDivisibleBySmallPrime();
@@ -438,6 +440,6 @@ int main()
     if (!cRSATester.PerfTestRSA())
     {
         printf("Perf test revealed encrypt-decrypt error\n");
-    }
+    }*/
     return 0;
 }

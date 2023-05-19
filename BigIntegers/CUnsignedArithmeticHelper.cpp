@@ -6,7 +6,6 @@
 #pragma warning(disable:4018)    // signed/unsigned mismatch
 #pragma warning(disable:4146)    // unary operator applied to signed type
 CHighPerfTimer CUnsignedArithmeticHelper::s_Timer;
-bool CUnsignedArithmeticHelper::s_bPrint = false; // debug remove todo
 // global declarations
 SSystemDataNode *g_pInversionStructures = NULL;
 // class variable definitions/initializations
@@ -20,7 +19,6 @@ const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumM
 const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 123, 487, 896, 1048, 1122, 1468, 10829 };     // or whatever values the test deems Worthy
 const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 16;       // at least 4 to insure correctness; 22 is heuristically good
 const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               =  4;       // at least 4 to insure correctness; 22 is heuristically good
-//const unsigned int CUnsignedArithmeticHelper::s_nGCDThreshold                                      = 35;     // doesn't make any difference; uses more memory if triggered
 const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               =  3;       // 3 is the minimum for correctness -- and also seems to be the best
 #else
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 8192;         // or whatever is found to be best in testing thresholds -- this is good
@@ -31,7 +29,6 @@ const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumM
 const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 14481, 34001, 135915, 543863, 779232, 1765454, 1917176 };     // or whatever values the test deems Worthy
 const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 12;       // at least 4 to insure correctness; 22 is heuristically good
 const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               =  4;       // at least 4 to insure correctness; 22 is heuristically good
-//const unsigned int CUnsignedArithmeticHelper::s_nGCDThreshold                                      = 35;     // doesn't make any difference; uses more memory if triggered
 const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               =  3;       // 3 is the minimum for correctness -- and also seems to be the best
 #endif
 #else
@@ -44,7 +41,6 @@ unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultipl
 unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 91, 2639, 4366, 6920, 18377, 26457, 239783 };     // or whatever values the test deems Worthy
 unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 16;       // at least 4 to insure correctness; 6 or 7 is heuristically good
 unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               = 4;        // at least 4 to insure correctness; 4 is heuristically good
-//unsigned int CUnsignedArithmeticHelper::s_nGCDThreshold                                      = 35;     // doesn't make any difference; uses more memory if triggered
 unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               = 3;        // 3 is the minimum for correctness -- and also seems to be the best
 #else
 unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 8192;
@@ -53,23 +49,23 @@ unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultipl
 unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 14481, 34001, 135915, 543863, 779232, 1765454, 1917176 };
 unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 12;       // at least 4 to insure correctness; 6 is heuristically good
 unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               = 4;        // at least 4 to insure correctness; 4 is heuristically good
-//unsigned int CUnsignedArithmeticHelper::s_nGCDThreshold                                      = 35;     // doesn't make any difference; uses more memory if triggered
 unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               = 3;        // 3 is the minimum for correctness -- and also seems to be the best
 #endif
 #endif
 
 // note that these values are not used unless the compile flag _CollectDetailedTimingData is set
-unsigned long long CUnsignedArithmeticHelper::s_nDivideTime[eNumDivideComponents]       = {0, 0, 0, 0, 0};
+unsigned long long g_nDivideTime[eNumDivideComponents]             = {0, 0, 0, 0, 0};
+unsigned long long g_nSquareRootTime[eNumSquareRootComponents]     = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+unsigned long long g_nPowerModulusTime[eNumPowerModulusComponents] = {0, 0, 0, 0, 0};
+unsigned long long g_nGCDTime[eNumGCDComponents]                   = {0, 0, 0, 0, 0};
 #ifndef _USESMALLDIGITS
-unsigned long long CUnsignedArithmeticHelper::s_nBuildTimes[eNumMultiplyAlgorithms]     = {0, 0, 0, 0, 0, 0, 0, 0};
-unsigned long long CUnsignedArithmeticHelper::s_nProcessTimes[eNumMultiplyAlgorithms]   = {0, 0, 0, 0, 0, 0, 0, 0};
-unsigned long long CUnsignedArithmeticHelper::s_nRecursiveTimes[eNumMultiplyAlgorithms] = {0, 0, 0, 0, 0, 0, 0, 0};
-unsigned long      CUnsignedArithmeticHelper::s_nMultiplyCalls[eNumMultiplyAlgorithms]  = {0, 0, 0, 0, 0, 0, 0, 0};
+unsigned long long g_nBuildTimes[eNumMultiplyAlgorithms]           = {0, 0, 0, 0, 0, 0, 0};
+unsigned long long g_nProcessTimes[eNumMultiplyAlgorithms+1]       = {0, 0, 0, 0, 0, 0, 0, 0};
+unsigned long      g_nMultiplyCalls[eNumMultiplyAlgorithms+1]      = {0, 0, 0, 0, 0, 0, 0, 0};
 #else
-unsigned long long CUnsignedArithmeticHelper::s_nBuildTimes[eNumMultiplyAlgorithms]     = {0, 0, 0, 0, 0, 0, 0};
-unsigned long long CUnsignedArithmeticHelper::s_nProcessTimes[eNumMultiplyAlgorithms]   = {0, 0, 0, 0, 0, 0, 0};
-unsigned long long CUnsignedArithmeticHelper::s_nRecursiveTimes[eNumMultiplyAlgorithms] = {0, 0, 0, 0, 0, 0, 0};
-unsigned long      CUnsignedArithmeticHelper::s_nMultiplyCalls[eNumMultiplyAlgorithms]  = {0, 0, 0, 0, 0, 0, 0};
+unsigned long long g_nBuildTimes[eNumMultiplyAlgorithms]           = {0, 0, 0, 0, 0, 0};
+unsigned long long g_nProcessTimes[eNumMultiplyAlgorithms+1]       = {0, 0, 0, 0, 0, 0, 0};
+unsigned long      g_nMultiplyCalls[eNumMultiplyAlgorithms+1]      = {0, 0, 0, 0, 0, 0, 0};
 #endif
 
 const char *c_szMultiplyFunctionNames[eNumMultiplyAlgorithms] = { "Basic multiply",
@@ -80,54 +76,120 @@ const char *c_szMultiplyFunctionNames[eNumMultiplyAlgorithms] = { "Basic multipl
                                                                   "9 by 5 multiply",
 #endif
                                                                   "2n by n multiply",
-                                                                  "FFT multiply",
-                                                                  "Top level" };
+                                                                  "FFT multiply" };
 
-// timing functions: used for testing
-void CUnsignedArithmeticHelper::ReportTimingData()
+//enum EDivideComponents { eTotalDivideCalls, eDivideProcessTime, eDivideMultCallsTime, eBasicDivideTime, eTotalDivideTime, eNumDivideComponents };
+const char *c_szDivideComponentNames[eNumDivideComponents] = {"Total calls to divide:",
+                                                              "Time in recursive divide:",
+                                                              "Time in multiplication:  ",
+                                                              "Time in basic divide:    ",
+                                                              "Total divide time:       " };
+
+const char *c_szSquareRootComponentNames[eNumSquareRootComponents] = {"Total calls to square root:",
+                                                                      "Time spent in master function overhead:              ",
+                                                                      "Time spent in master function multiplying:           ",
+                                                                      "Time spent in Newton function overhead:              ",
+                                                                      "Time spent in Newton function multiplying:           ",
+                                                                      "Time spent in Newton function dividing:              ",
+                                                                      "Time spent in general square root part A overhead:   ",
+                                                                      "Time spent in general square root part A multiplying:",
+                                                                      "Time spent in general square root part B overhead:   ",
+                                                                      "Time spent in general square root part B multiplying:",
+                                                                      "Time spent in general square root part B dividing:   ",
+                                                                      "Total time spent computing square roots:             "};
+
+const char *c_szPowerModulusComponentNames[eNumPowerModulusComponents] = { "Total calls to power modulus: ",
+                                                                           "Time spent in Power Modulus overhead:    ",
+                                                                           "Time spent in Power Modulus multiplying: ",
+                                                                           "Time spent in Power Modulus dividing:    ",
+                                                                           "Total time spent computing Power Modulus:" };
+
+const char *c_szGCDCompoinentNames[eNumGCDComponents] = {"Total calls to GCD:",
+                                                         "Time spent in GCD overhead:    ",
+                                                         "Time spent in GCD multiplying: ",
+                                                         "Time spent in GCD dividing:    ",
+                                                         "Total time spent computing GCD:" };
+
+const unsigned int c_nNumMeasuredValuesByComponent[eNumMeasuredComponents] = { 0, eNumDivideComponents, eNumSquareRootComponents, eNumPowerModulusComponents, eNumGCDComponents };
+
+const char **c_szMeasuredComponentNames[eNumMeasuredComponents] = { NULL, c_szDivideComponentNames, c_szSquareRootComponentNames, c_szPowerModulusComponentNames, c_szGCDCompoinentNames };
+
+unsigned long long *c_nMeasuredValues[eNumMeasuredComponents] = { NULL, g_nDivideTime, g_nSquareRootTime, g_nPowerModulusTime, g_nGCDTime };
+const char *CUnsignedArithmeticHelper::GetMultiplicationAlgorithmName(EMultiplyAlgorithm eMultAlg)
 {
-#if _CollectDetailedTimingData
-    for(int i=eBasicMultiply;i<eTopLevel;i++)
-    {
-        printf("%i calls to %s:\n",s_nMultiplyCalls[i],c_szMultiplyFunctionNames[i]);
-        printf("\tBuild time:         %I64u\n",s_nBuildTimes[i]);
-        printf("\tRecursive time:     %I64u\n",s_nRecursiveTimes[i]);
-        printf("\tProcess time:       %I64u\n",s_nProcessTimes[i]);
-    }
-    printf("Total calls to divide: %i\n", s_nDivideTime[eTotalDivideCalls]);
-    printf("\tProcess time:           %I64u\n",s_nDivideTime[eDivideProcessTime]);
-    printf("\tBasic divide time:      %I64u\n",s_nDivideTime[eBasicDivideTime]);
-    printf("\tTime in multiplication: %I64u\n",s_nDivideTime[eDivideMultCallsTime]);
-    printf("\tTotal divide time:      %I64u\n",s_nDivideTime[eTotalDivideTime]);
-#else
-  //  printf("Timing data not collected: compile option off.  Set _CollectDetailedTimingData\n");
-#endif
+    return c_szMultiplyFunctionNames[eMultAlg];
 }
 
-unsigned long long CUnsignedArithmeticHelper::GetChunkProcessTime(bool bPre)
+void CUnsignedArithmeticHelper::ReportMeasuredComponentTimingData(ETimeMeasuredComponents eComponent)
 {
-    if(bPre)
+#if _CollectDetailedTimingData
+    if (eMultiplicationMeasured == eComponent)
     {
-        return s_nBuildTimes[e2NByN];
+        printf("%i calls to multiply\n", g_nMultiplyCalls[eNumMultiplyAlgorithms]);
+        printf("  %I64u calls to %s:\n", g_nMultiplyCalls[0], c_szMultiplyFunctionNames[0]);
+        printf("    Basic multiply time:        %I64u microseconds (%f average)\n", g_nProcessTimes[0], g_nProcessTimes[0]/((float) g_nMultiplyCalls[0]));
+        for (int i=1; i<eNumMultiplyAlgorithms; i++)
+        {
+            if (0 != g_nMultiplyCalls[i])
+            {
+                printf("  %I64u calls to %s:\n", g_nMultiplyCalls[i], c_szMultiplyFunctionNames[i]);
+                printf("    Construct subproblems time: %I64u microseconds (%f average)\n", g_nBuildTimes[i], g_nBuildTimes[i]/((float) g_nMultiplyCalls[i]));
+                printf("    Combine subproblems time:   %I64u microseconds (%f average)\n", g_nProcessTimes[i], g_nProcessTimes[i]/((float) g_nMultiplyCalls[i]));
+            }
+        }
+        printf("Total multiply time: %I64u microseconds (%f average)\n", g_nProcessTimes[eNumMultiplyAlgorithms], g_nProcessTimes[eNumMultiplyAlgorithms]/((float) g_nMultiplyCalls[eNumMultiplyAlgorithms]));
     }
     else
     {
-        return s_nProcessTimes[e2NByN];
+        printf("%s %i\n", c_szMeasuredComponentNames[eComponent][0], c_nMeasuredValues[eComponent][0]);
+        for (int i=1; i<c_nNumMeasuredValuesByComponent[eComponent]; i++)
+        {
+            printf("  %s %I64u microseconds (%f average)\n", c_szMeasuredComponentNames[eComponent][i], c_nMeasuredValues[eComponent][i], c_nMeasuredValues[eComponent][i] / ((float)c_nMeasuredValues[eComponent][0]));
+        }
+    }
+    printf("\n");
+#endif
+}
+// timing functions: used for testing
+void CUnsignedArithmeticHelper::ReportAllTimingData()
+{
+    for(int i=0; i<eNumMeasuredComponents; i++)
+    {
+        ReportMeasuredComponentTimingData((ETimeMeasuredComponents) i);
     }
 }
 
 void CUnsignedArithmeticHelper::ResetTimingData()
 {
-    for(int i=0;i<eNumMultiplyAlgorithms;i++)
+    for(int i=0; i<eNumMultiplyAlgorithms; i++)
     {
-        s_nBuildTimes[i]     = 0;
-        s_nProcessTimes[i]   = 0;
-        s_nRecursiveTimes[i] = 0;
-        s_nMultiplyCalls[i]  = 0;
+        g_nBuildTimes[i]    = 0;
+        g_nProcessTimes[i]  = 0;
+        g_nMultiplyCalls[i] = 0;
     }
-    for(int i=0; i< eNumDivideComponents; i++)
+    g_nProcessTimes[eNumMultiplyAlgorithms]  = 0;
+    g_nMultiplyCalls[eNumMultiplyAlgorithms] = 0;
+    for(int i=0; i<eNumMeasuredComponents; i++)
     {
-        s_nDivideTime[i] = 0;
+        if(eMultiplicationMeasured != i)
+        {
+            for(int j=0; j<c_nNumMeasuredValuesByComponent[i]; j++)
+            {
+                c_nMeasuredValues[i][j] = 0;
+            }
+        }
+    }
+}
+
+unsigned long long CUnsignedArithmeticHelper::GetChunkProcessTime(bool bPre)
+{
+    if (bPre)
+    {
+        return g_nBuildTimes[e2NByN];
+    }
+    else
+    {
+        return g_nProcessTimes[e2NByN];
     }
 }
 
@@ -475,20 +537,73 @@ size_t CUnsignedArithmeticHelper::SquareRootMemoryNeeds(size_t nXSize)
     return 2*nXSize + 2 + max(MultiplyMemoryNeeds((nXSize+1)>>1,(nXSize+1)>>1), GeneralSquareRootRecursiveMemoryNeeds((3*nXSize)>>2, nXSize));
 }
 
-void CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
-                                             size_t             nYSize,
-                                             const DIGIT        *pXValue,
-                                             const DIGIT        *pYValue,
-                                             DIGIT              *pZValue,
-                                             DIGIT              *pnWorkspace,
-#if(_CollectDetailedTimingData)
-                                             DWORD64            &dwTimestamp,
-                                             EMultiplyAlgorithm eCaller,
-#endif
-                                             size_t             *pnZSize)
+void CUnsignedArithmeticHelper::Multiply(size_t nXSize,
+                                         size_t nYSize,
+                                         DIGIT  *pnXValue,
+                                         DIGIT  *pnYValue,
+                                         DIGIT  *pnXTimesYValue,
+                                         DIGIT  *pnWorkspace)
 {
-    size_t       nSmallSize, nLargeSize;
-    const DIGIT  *pnSmallValue, *pnLargeValue;
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwStart     = dwTimestamp;
+    MultUBackend(nXSize, nYSize, pnXValue, pnYValue, pnXTimesYValue, pnWorkspace, dwTimestamp);
+    g_nProcessTimes[eNumMultiplyAlgorithms] += (dwTimestamp-dwStart);
+    g_nMultiplyCalls[eNumMultiplyAlgorithms]++;
+#else
+    MultUBackend(nXSize, nYSize, pnXValue, pnYValue, pnXTimesYValue, pnWorkspace);
+#endif
+}
+
+void CUnsignedArithmeticHelper::MultiplyAdd(size_t nXSize,
+                                            size_t nYSize,
+                                            size_t &nRunningSumSize,
+                                            DIGIT  *pnXValue,
+                                            DIGIT  *pnYValue,
+                                            DIGIT  *pnRunningSum,
+                                            DIGIT  *pnWorkspace)
+{
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwStart     = dwTimestamp;
+    MultAddUBackend(nXSize, nYSize, nRunningSumSize, pnXValue, pnYValue, pnRunningSum, dwTimestamp, pnWorkspace);
+    g_nProcessTimes[eNumMultiplyAlgorithms] += (dwTimestamp - dwStart);
+    g_nMultiplyCalls[eNumMultiplyAlgorithms]++;
+#else
+    MultAddUBackend(nXSize, nYSize, nRunningSumSize, pnXValue, pnYValue, pnRunningSum, pnWorkspace);
+#endif
+}
+
+void CUnsignedArithmeticHelper::Square(size_t nXSize,
+                                       DIGIT  *pnXValue,
+                                       DIGIT  *pnXSquaredValue,
+                                       DIGIT  *pnWorkspace)
+{
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwStart     = dwTimestamp;
+    SquareUBackend(nXSize, pnXValue, pnXSquaredValue, pnWorkspace, dwTimestamp);
+    g_nProcessTimes[eNumMultiplyAlgorithms] += (dwTimestamp - dwStart);
+    g_nMultiplyCalls[eNumMultiplyAlgorithms]++;
+#else
+    SquareUBackend(nXSize, pnXValue, pnXSquaredValue, pnWorkspace);
+#endif
+}
+
+EMultiplyAlgorithm CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
+                                                           size_t             nYSize,
+                                                           const DIGIT        *pXValue,
+                                                           const DIGIT        *pYValue,
+                                                           DIGIT              *pZValue,
+                                                           DIGIT              *pnWorkspace,
+#if(_CollectDetailedTimingData)
+                                                           DWORD64            &dwTimestamp,
+#endif
+                                                           size_t             *pnZSize)
+{
+    size_t             nSmallSize, nLargeSize;
+    const DIGIT        *pnSmallValue, *pnLargeValue;
+    EMultiplyAlgorithm eAlg = eBasicMultiply;
     if(NULL!=pnZSize)
     {
         if(0==pXValue[nXSize-1])
@@ -502,7 +617,7 @@ void CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
             {
                 *pnZSize=0;
                 memset(pZValue,0,nYSize*sizeof(DIGIT));
-                return;
+                return eBasicMultiply;
             }
         }
         if(0==pYValue[nYSize-1])
@@ -516,7 +631,7 @@ void CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
             {
                 *pnZSize=0;
                 memset(pZValue,0,nXSize*sizeof(DIGIT));
-                return;
+                return eBasicMultiply;
             }
         }
     }
@@ -536,14 +651,26 @@ void CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
     }
     if(nSmallSize <= 2*_REGISTER_BLOCK_SIZE)
     {
-        MultUShortLong(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue);
+#if(_CollectDetailedTimingData)
+        DWORD64 dwStart = dwTimestamp;
+        MultUShortLong(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue);
+        dwTimestamp = s_Timer.GetMicroseconds();
+        g_nMultiplyCalls[eBasicMultiply]++;
+        g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
+#else
+        MultUShortLong(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue);
+#endif
     }
     else if(nSmallSize < c_pnMultiplicationThresholds[eBasicMultiply])
     {
 #if(_CollectDetailedTimingData)
-        MultUBasic(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,false,dwTimestamp);
+        DWORD64 dwStart = dwTimestamp;
+        MultUBasic(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, false);
+        dwTimestamp = s_Timer.GetMicroseconds();
+        g_nMultiplyCalls[eBasicMultiply]++;
+        g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
 #else
-        MultUBasic(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,false);
+        MultUBasic(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, false);
 #endif
     }
     else if(nSmallSize<<1 <= nLargeSize)
@@ -557,7 +684,6 @@ void CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
                              pZValue,
 #if(_CollectDetailedTimingData)
                              dwTimestamp,
-                             eCaller,
 #endif
                              pnWorkspace,
                              pnZSize);
@@ -577,45 +703,50 @@ void CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
         else*/
         {
 #if(_CollectDetailedTimingData)
-            MultU3by2(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace,dwTimestamp,eCaller);
+            MultU3by2(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace,dwTimestamp);
 #else
             MultU3by2(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace);
 #endif
         }
+        eAlg = e3By2;
     }
     else if(nSmallSize < c_pnMultiplicationThresholds[e5By3])
     {
 #if(_CollectDetailedTimingData)
-        MultU5by3(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace,dwTimestamp,eCaller);
+        MultU5by3(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace,dwTimestamp);
 #else
         MultU5by3(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace);
 #endif
+        eAlg = e5By3;
     }
 #ifndef _USESMALLDIGITS
     else if (nSmallSize < c_pnMultiplicationThresholds[e7By4])
     {
 #if(_CollectDetailedTimingData)
-        MultU7by4(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp, eCaller);
+        MultU7by4(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp);
 #else
         MultU7by4(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace);
 #endif
+        eAlg = e7By4;
     }
     else if (nSmallSize < c_pnMultiplicationThresholds[e9By5] && nSmallSize < c_pnMultiplicationThresholds[e2NByN])
     {
 #if(_CollectDetailedTimingData)
-        MultU9by5(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp, eCaller);
+        MultU9by5(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp);
 #else
         MultU9by5(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace);
 #endif
+        eAlg = e9By5;
     }
 #else
     else if(nSmallSize < c_pnMultiplicationThresholds[e7By4] && nSmallSize < c_pnMultiplicationThresholds[e2NByN])
     {
 #if(_CollectDetailedTimingData)
-        MultU7by4(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp, eCaller);
+        MultU7by4(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp);
 #else
         MultU7by4(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace);
 #endif
+        eAlg = e7By4;
     }
 
 #endif
@@ -631,20 +762,21 @@ void CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
                    pSystemToUse,
 #if(_CollectDetailedTimingData)
                    pnWorkspace,
-                   dwTimestamp,
-                   eCaller);
+                   dwTimestamp);
 #else
                    pnWorkspace);
 #endif
+        eAlg = e2NByN;
     }
     else
     {
         //  FFT mult
 #if(_CollectDetailedTimingData)
-        MultFFT(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace,dwTimestamp,eCaller);
+        MultFFT(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace,dwTimestamp);
 #else
         MultFFT(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace);
 #endif
+        eAlg = eFFTMult;
     }
     if(NULL!=pnZSize)
     {
@@ -654,18 +786,19 @@ void CUnsignedArithmeticHelper::MultUBackend(size_t             nXSize,
         }
         *pnZSize = nSmallSize+nLargeSize;
     }
+    return eAlg;
 }
 
-void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
-                                               const DIGIT        *pXValue,
-                                               DIGIT              *pZValue,
-                                               DIGIT              *pnWorkspace,
+EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
+                                                             const DIGIT        *pXValue,
+                                                             DIGIT              *pZValue,
+                                                             DIGIT              *pnWorkspace,
 #if(_CollectDetailedTimingData)
-                                               DWORD64            &dwTimestamp,
-                                               EMultiplyAlgorithm eCaller,
+                                                             DWORD64            &dwTimestamp,
 #endif
-                                               size_t             *pnZSize)
+                                                             size_t             *pnZSize)
 {
+    EMultiplyAlgorithm eAlg = eBasicMultiply;
     if(NULL!=pnZSize)
     {
         if(0==pXValue[nXSize-1])
@@ -681,28 +814,33 @@ void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
             if(0==nXSize)
             {
                 *pnZSize=0;
-                return;
+                return eBasicMultiply;
             }
         }
     }
     if(nXSize <= 2*_REGISTER_BLOCK_SIZE)
     {
+#if(_CollectDetailedTimingData)
+        DWORD64 dwStart = dwTimestamp;
         MultUShortLong(nXSize, nXSize, pXValue, pXValue, pZValue);
+        dwTimestamp = s_Timer.GetMicroseconds();
+        g_nMultiplyCalls[eBasicMultiply]++;
+        g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
+#else
+        MultUShortLong(nXSize, nXSize, pXValue, pXValue, pZValue);
+#endif
     }
     else if(nXSize < c_pnMultiplicationThresholds[eBasicMultiply])
     {
-        MultUBasic(nXSize,
-                   nXSize,
-                   pXValue,
-                   pXValue,
-                   pZValue,
 #if(_CollectDetailedTimingData)
-                   false,
-                   dwTimestamp);
+        DWORD64 dwStart = dwTimestamp;
+        MultUBasic(nXSize, nXSize, pXValue, pXValue, pZValue, false);
+        dwTimestamp = s_Timer.GetMicroseconds();
+        g_nMultiplyCalls[eBasicMultiply]++;
+        g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
 #else
-                   false);
+        MultUBasic(nXSize, nXSize, pXValue, pXValue, pZValue, false);
 #endif
-
     }
     else if(nXSize < c_pnMultiplicationThresholds[e3By2])
     {
@@ -711,9 +849,9 @@ void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
                     pZValue,
 #if(_CollectDetailedTimingData)
                     dwTimestamp,
-                    eCaller,
 #endif
                     pnWorkspace);
+        eAlg = e3By2;
     }
     else if(nXSize < c_pnMultiplicationThresholds[e5By3])
     {
@@ -722,9 +860,9 @@ void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
                     pZValue,
 #if(_CollectDetailedTimingData)
                     dwTimestamp,
-                    eCaller,
 #endif
                     pnWorkspace);
+        eAlg = e5By3;
     }
 #ifndef _USESMALLDIGITS
     else if (nXSize < c_pnMultiplicationThresholds[e7By4])
@@ -734,9 +872,9 @@ void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
                     pZValue,
 #if(_CollectDetailedTimingData)
                     dwTimestamp,
-                    eCaller,
 #endif
                     pnWorkspace);
+        eAlg = e7By4;
     }
     else if (nXSize < c_pnMultiplicationThresholds[e9By5] && nXSize < c_pnMultiplicationThresholds[e2NByN])
     {
@@ -745,9 +883,9 @@ void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
                    pZValue,
 #if(_CollectDetailedTimingData)
                    dwTimestamp,
-                   eCaller,
 #endif
                    pnWorkspace);
+       eAlg = e9By5;
     }
 #else
     else if(nXSize < c_pnMultiplicationThresholds[e7By4] && nXSize < c_pnMultiplicationThresholds[e2NByN])
@@ -757,9 +895,9 @@ void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
                     pZValue,
 #if(_CollectDetailedTimingData)
                     dwTimestamp,
-                    eCaller,
 #endif
                     pnWorkspace);
+        eAlg = e7By4;
     }
 
 #endif
@@ -773,18 +911,19 @@ void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
                      pSystemToUse,
 #if(_CollectDetailedTimingData)
                      dwTimestamp,
-                     eCaller,
 #endif
                      pnWorkspace);
+        eAlg = e2NByN;
     }
     else
     {
         //  FFT mult
 #if(_CollectDetailedTimingData)
-        SquareFFT(nXSize,pXValue,pZValue,pnWorkspace, dwTimestamp, eCaller);
+        SquareFFT(nXSize,pXValue,pZValue,pnWorkspace, dwTimestamp);
 #else
         SquareFFT(nXSize,pXValue,pZValue,pnWorkspace);
 #endif
+        eAlg = eFFTMult;
     }
     if(NULL!=pnZSize)
     {
@@ -795,22 +934,23 @@ void CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
         }
         *pnZSize = nSize;
     }
+    return eAlg;
 }
 
-void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
-                                                size_t             nYSize,
-                                                size_t             &nZSize,
-                                                const DIGIT        *pXValue,
-                                                const DIGIT        *pYValue,
-                                                DIGIT              *pZValue,
+EMultiplyAlgorithm CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
+                                                              size_t             nYSize,
+                                                              size_t             &nZSize,
+                                                              const DIGIT        *pXValue,
+                                                              const DIGIT        *pYValue,
+                                                              DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
-                                                DWORD64            &dwTimestamp,
-                                                EMultiplyAlgorithm eCaller,
+                                                              DWORD64            &dwTimestamp,
 #endif
-                                                DIGIT              *pnWorkspace)
+                                                              DIGIT              *pnWorkspace)
 {
-    size_t      nSmallSize, nLargeSize;
-    const DIGIT *pnSmallData, *pnLargeData;
+    size_t             nSmallSize, nLargeSize;
+    const DIGIT        *pnSmallData, *pnLargeData;
+    EMultiplyAlgorithm eAlg = eBasicMultiply;
     if(nXSize<=nYSize)
     {
         nSmallSize  = nXSize;
@@ -827,7 +967,15 @@ void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
     }
     if(nSmallSize <= 2*_REGISTER_BLOCK_SIZE)
     {
-        MultAddUShortLong(nSmallSize,nLargeSize,pnSmallData,pnLargeData,pZValue);
+#if(_CollectDetailedTimingData)
+        DWORD64 dwStart = dwTimestamp;
+        MultAddUShortLong(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue);
+        dwTimestamp = s_Timer.GetMicroseconds();
+        g_nMultiplyCalls[eBasicMultiply]++;
+        g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
+#else
+        MultAddUShortLong(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue);
+#endif
         // get the final size
         if(nXSize+nYSize>nZSize)
         {
@@ -852,9 +1000,13 @@ void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
     else if(nSmallSize < c_pnMultiplicationThresholds[eBasicMultiply])
     {
 #if(_CollectDetailedTimingData)
-        MultUBasic(nSmallSize,nLargeSize,pnSmallData,pnLargeData,pZValue,true,dwTimestamp);
+        DWORD64 dwStart = dwTimestamp;
+        MultUBasic(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue, true);
+        dwTimestamp = s_Timer.GetMicroseconds();
+        g_nMultiplyCalls[eBasicMultiply]++;
+        g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
 #else
-        MultUBasic(nSmallSize,nLargeSize,pnSmallData,pnLargeData,pZValue,true);
+        MultUBasic(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue, true);
 #endif
         // get the final size
         if(nXSize+nYSize>nZSize)
@@ -889,11 +1041,11 @@ void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
                       pnWorkspace,
 #if(_CollectDetailedTimingData)
                       pnWorkspace + nMultSize,
-                      dwTimestamp,
-                      eCaller);
+                      dwTimestamp);
 #else
                       pnWorkspace + nMultSize);
 #endif
+            eAlg = e3By2;
         }
         else if (nSmallSize < c_pnMultiplicationThresholds[e5By3])
         {
@@ -904,10 +1056,10 @@ void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
                       pnWorkspace,
 #if(_CollectDetailedTimingData)
                       pnWorkspace + nMultSize,
-                      dwTimestamp,
-                      eCaller);
+                      dwTimestamp);
 #else
                       pnWorkspace + nMultSize);
+            eAlg = e5By3;
 #endif
         }
 #ifndef _USESMALLDIGITS
@@ -920,11 +1072,11 @@ void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
                       pnWorkspace,
 #if(_CollectDetailedTimingData)
                       pnWorkspace + nMultSize,
-                      dwTimestamp,
-                      eCaller);
+                      dwTimestamp);
 #else
                       pnWorkspace + nMultSize);
 #endif
+            eAlg = e7By4;
         }
         else if (nSmallSize < c_pnMultiplicationThresholds[e9By5] && nSmallSize < c_pnMultiplicationThresholds[e2NByN])
         {
@@ -935,20 +1087,21 @@ void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
                       pnWorkspace,
 #if(_CollectDetailedTimingData)
                       pnWorkspace + nMultSize,
-                      dwTimestamp,
-                      eCaller);
+                      dwTimestamp);
 #else
                       pnWorkspace + nMultSize);
 #endif
+            eAlg = e9By5;
         }
 #else
         else if (nSmallSize < c_pnMultiplicationThresholds[e7By4] && nSmallSize < c_pnMultiplicationThresholds[e2NByN])
         {
 #if(_CollectDetailedTimingData)
-            MultU7by4(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pnWorkspace, pnWorkspace + nMultSize, dwTimestamp, eCaller);
+            MultU7by4(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pnWorkspace, pnWorkspace + nMultSize, dwTimestamp);
 #else
             MultU7by4(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pnWorkspace, pnWorkspace + nMultSize);
 #endif
+            eAlg = e7By4;
         }
 #endif
         else if (nSmallSize < c_pnMultiplicationThresholds[e2NByN])
@@ -963,11 +1116,11 @@ void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
                        pSystemToUse,
 #if(_CollectDetailedTimingData)
                        pnWorkspace + nMultSize,
-                       dwTimestamp,
-                       eCaller);
+                       dwTimestamp);
 #else
                        pnWorkspace + nMultSize);
 #endif
+            eAlg = e2NByN;
         }
         else
         {
@@ -978,15 +1131,22 @@ void CUnsignedArithmeticHelper::MultAddUBackend(size_t             nXSize,
                     pnWorkspace,
 #if(_CollectDetailedTimingData)
                     pnWorkspace + nMultSize,
-                    dwTimestamp,
-                    eCaller);
+                    dwTimestamp);
 #else
                     pnWorkspace + nMultSize);
 #endif
+            eAlg = eFFTMult;
         }
         if(0 == pnWorkspace[nMultSize-1]) nMultSize--;
         AddXToYInPlace(nMultSize, nZSize, pnWorkspace, pZValue);
+#if(_CollectDetailedTimingData)
+        DWORD64 dwTimestamp2 = dwTimestamp;
+        dwTimestamp           =  s_Timer.GetMicroseconds();
+        g_nProcessTimes[eAlg] += (dwTimestamp - dwTimestamp2);
+#endif
+        return eAlg;
     }
+    return eAlg;
 }
 
 void CUnsignedArithmeticHelper::BigShortLongMultiply(size_t             nSmallSize,
@@ -996,7 +1156,6 @@ void CUnsignedArithmeticHelper::BigShortLongMultiply(size_t             nSmallSi
                                                      DIGIT              *pnZValue,
 #if(_CollectDetailedTimingData)
                                                      DWORD64            &dwTimestamp,
-                                                     EMultiplyAlgorithm eCaller,
 #endif
                                                      DIGIT              *pnWorkspace,
                                                      size_t             *pnZSize)
@@ -1008,7 +1167,7 @@ void CUnsignedArithmeticHelper::BigShortLongMultiply(size_t             nSmallSi
     nZSize = nStep;
     // Even needs to be one step ahead of the odd
 #if(_CollectDetailedTimingData)
-    MultUBackend(nSmallSize, nSmallSize, pnSmallValue, pnLargeValue, pnZValue, pnWorkspace, dwTimestamp, eCaller, pnZSize);
+    MultUBackend(nSmallSize, nSmallSize, pnSmallValue, pnLargeValue, pnZValue, pnWorkspace, dwTimestamp, pnZSize);
 #else
     MultUBackend(nSmallSize, nSmallSize, pnSmallValue, pnLargeValue, pnZValue, pnWorkspace, pnZSize);
 #endif
@@ -1016,7 +1175,7 @@ void CUnsignedArithmeticHelper::BigShortLongMultiply(size_t             nSmallSi
     {
         // in-place even piece
 #if(_CollectDetailedTimingData)
-        MultUBackend(nSmallSize, nSmallSize, pnSmallValue, pnLargeValue+i, pnZValue+i, pnWorkspace, dwTimestamp, eCaller, pnZSize);
+        MultUBackend(nSmallSize, nSmallSize, pnSmallValue, pnLargeValue+i, pnZValue+i, pnWorkspace, dwTimestamp, pnZSize);
 #else
         MultUBackend(nSmallSize, nSmallSize, pnSmallValue, pnLargeValue+i, pnZValue+i, pnWorkspace, pnZSize);
 #endif
@@ -1024,7 +1183,7 @@ void CUnsignedArithmeticHelper::BigShortLongMultiply(size_t             nSmallSi
         // in-place odd piece -- mult/add
         nZSize = nStep + nSmallSize;
 #if(_CollectDetailedTimingData)
-        MultAddUBackend(nSmallSize, nSmallSize, nZSize, pnSmallValue, pnLargeValue + i - nSmallSize, pnZValue + i - nSmallSize, dwTimestamp, eCaller, pnWorkspace);
+        MultAddUBackend(nSmallSize, nSmallSize, nZSize, pnSmallValue, pnLargeValue + i - nSmallSize, pnZValue + i - nSmallSize, dwTimestamp, pnWorkspace);
 #else
         MultAddUBackend(nSmallSize, nSmallSize, nZSize, pnSmallValue, pnLargeValue+i-nSmallSize, pnZValue+i-nSmallSize, pnWorkspace);
 #endif
@@ -1034,14 +1193,14 @@ void CUnsignedArithmeticHelper::BigShortLongMultiply(size_t             nSmallSi
         // even and odd piece left to do; even piece is smaller than usual
         // in-place even piece
 #if(_CollectDetailedTimingData)
-        MultUBackend(nSmallSize, nLargeSize-i, pnSmallValue, pnLargeValue + i, pnZValue + i, pnWorkspace, dwTimestamp, eCaller, pnZSize);
+        MultUBackend(nSmallSize, nLargeSize-i, pnSmallValue, pnLargeValue + i, pnZValue + i, pnWorkspace, dwTimestamp, pnZSize);
 #else
         MultUBackend(nSmallSize, nLargeSize-i, pnSmallValue, pnLargeValue + i, pnZValue + i, pnWorkspace, pnZSize);
 #endif
         // in-place odd piece -- mult/add
         nZSize = nStep + nLargeSize - i;
 #if(_CollectDetailedTimingData)
-        MultAddUBackend(nSmallSize, nSmallSize, nZSize, pnSmallValue, pnLargeValue + i - nSmallSize, pnZValue + i - nSmallSize, dwTimestamp, eCaller, pnWorkspace);
+        MultAddUBackend(nSmallSize, nSmallSize, nZSize, pnSmallValue, pnLargeValue + i - nSmallSize, pnZValue + i - nSmallSize, dwTimestamp, pnWorkspace);
 #else
         MultAddUBackend(nSmallSize, nSmallSize, nZSize, pnSmallValue, pnLargeValue + i - nSmallSize, pnZValue + i - nSmallSize, pnWorkspace);
 #endif
@@ -1055,7 +1214,7 @@ void CUnsignedArithmeticHelper::BigShortLongMultiply(size_t             nSmallSi
         }
         nZSize = nStep + nLargeSize - i;
 #if(_CollectDetailedTimingData)
-        MultAddUBackend(nSmallSize, nSmallSize + nLargeSize - i, nZSize, pnSmallValue, pnLargeValue + i - nSmallSize, pnZValue + i - nSmallSize, dwTimestamp, eCaller, pnWorkspace);
+        MultAddUBackend(nSmallSize, nSmallSize + nLargeSize - i, nZSize, pnSmallValue, pnLargeValue + i - nSmallSize, pnZValue + i - nSmallSize, dwTimestamp, pnWorkspace);
 #else
         MultAddUBackend(nSmallSize, nSmallSize + nLargeSize - i, nZSize, pnSmallValue, pnLargeValue + i - nSmallSize, pnZValue + i - nSmallSize, pnWorkspace);
 #endif
@@ -1071,7 +1230,6 @@ void CUnsignedArithmeticHelper::FinishUnbalancedMult(size_t             nXSize,
                                                      DIGIT              *pnZ,
 #if(_CollectDetailedTimingData)
                                                      DWORD64            &dwTimestamp,
-                                                     EMultiplyAlgorithm eCaller,
 #endif
                                                      DIGIT              *pnWorkspace,
                                                      size_t             *pnZSize)
@@ -1080,7 +1238,7 @@ void CUnsignedArithmeticHelper::FinishUnbalancedMult(size_t             nXSize,
     DOUBLEDIGIT nSum, nCarry;
 #if(_CollectDetailedTimingData)
     DWORD64 dwProcessTime = dwTimestamp;
-    MultUBackend(nXSize,nYSize-nXSize,pnX,pnY,pnWorkspace,pnWorkspace+nYSize,dwTimestamp,eCaller,pnZSize);
+    EMultiplyAlgorithm eCaller = MultUBackend(nXSize,nYSize-nXSize,pnX,pnY,pnWorkspace,pnWorkspace+nYSize,dwTimestamp,pnZSize);
 #else
     MultUBackend(nXSize,nYSize-nXSize,pnX,pnY,pnWorkspace,pnWorkspace+nYSize,pnZSize);
 #endif
@@ -1104,7 +1262,7 @@ void CUnsignedArithmeticHelper::FinishUnbalancedMult(size_t             nXSize,
     }
 #if _CollectDetailedTimingData
     dwTimestamp              =  s_Timer.GetMicroseconds();
-    s_nProcessTimes[eCaller] += dwTimestamp-dwProcessTime;
+    g_nProcessTimes[eCaller] += dwTimestamp-dwProcessTime;
 #endif
 }
 
@@ -5990,19 +6148,17 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
                                           DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                                           DIGIT              *pnWorkspace,
-                                          DWORD64            &dwTimestamp,
-                                          EMultiplyAlgorithm eCaller)
+                                          DWORD64            &dwTimestamp)
 #else
                                           DIGIT              *pnWorkspace)
 #endif
 {
-    size_t       nHalf,i,nUpper;
-    DOUBLEDIGIT  nSum1,nSum2,nCarry1,nCarry2,nBorrow;
-    DIGIT        *pD1,*pD2;
+    size_t      nHalf,i,nUpper;
+    DOUBLEDIGIT nSum1,nSum2,nCarry1,nCarry2,nBorrow;
+    DIGIT       *pD1,*pD2;
 #if(_CollectDetailedTimingData)
-    DWORD64      dwBuildTime = dwTimestamp;
-    DWORD64      dwRecursiveTime;
-    DWORD64      dwProcessTime;
+    DWORD64     dwBuildTime = dwTimestamp;
+    DWORD64     dwProcessTime;
 #endif
 
     nHalf = (nYSize+1)>>1;
@@ -6010,7 +6166,7 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
     {
         // unbalanced -- can't use this algorithm on the given full problem size
 #if(_CollectDetailedTimingData)
-        UNBALANCED_MULT(MultU3by2,nXSize,nYSize,pXValue,pYValue,pZValue,pnWorkspace,dwTimestamp,e3By2,NULL)
+        UNBALANCED_MULT(MultU3by2,nXSize,nYSize,pXValue,pYValue,pZValue,pnWorkspace,dwTimestamp,NULL)
 #else
         UNBALANCED_MULT(MultU3by2,nXSize,nYSize,pXValue,pYValue,pZValue,pnWorkspace,NULL)
 #endif
@@ -6056,36 +6212,15 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
         pD2[i] = (DIGIT) nCarry2;
         nUpper = (nHalf+1)<<1;
 #if(_CollectDetailedTimingData)
-        dwRecursiveTime      =  s_Timer.GetMicroseconds();
-        dwTimestamp          =  dwRecursiveTime;
-        s_nBuildTimes[e3By2] += dwRecursiveTime-dwBuildTime;
-        s_nMultiplyCalls[e3By2]++;
+        dwTimestamp          =  s_Timer.GetMicroseconds();
+        g_nBuildTimes[e3By2] += dwTimestamp-dwBuildTime;
+        g_nMultiplyCalls[e3By2]++;
         // (a+b)*(y+z)
-        MultUBackend(nHalf+1,
-                     nHalf+1,
-                     pD1,
-                     pD2,
-                     pnWorkspace,
-                     pnWorkspace+nUpper,
-                     dwTimestamp,
-                     e3By2);
+        MultUBackend(nHalf+1, nHalf+1, pD1, pD2, pnWorkspace, pnWorkspace+nUpper, dwTimestamp);
         // a*y
-        MultUBackend(nHalf,nHalf,pXValue,pYValue,pZValue,pnWorkspace+nUpper,dwTimestamp,e3By2);
+        MultUBackend(nHalf, nHalf, pXValue, pYValue, pZValue, pnWorkspace+nUpper, dwTimestamp);
         // b*z
-        MultUBackend(nXSize-nHalf,
-                     nYSize-nHalf,
-                     pXValue+nHalf,
-                     pYValue+nHalf,
-                     pZValue+nHalf+nHalf,
-                     pnWorkspace+nUpper,
-                     dwTimestamp,
-                     e3By2);
-        dwProcessTime = s_Timer.GetMicroseconds();
-        dwTimestamp   = dwProcessTime;
-        if(e3By2 != eCaller)
-        {
-            s_nRecursiveTimes[e5By3] += (dwProcessTime-dwRecursiveTime);
-        }
+        MultUBackend(nXSize-nHalf, nYSize-nHalf, pXValue+nHalf, pYValue+nHalf, pZValue+nHalf+nHalf, pnWorkspace+nUpper, dwTimestamp);
 #else
         // (a+b)*(y+z)
         MultUBackend(nHalf+1,
@@ -6154,8 +6289,9 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
             while(nCarry1);
         }
 #if(_CollectDetailedTimingData)
+        dwProcessTime          = dwTimestamp;
         dwTimestamp            =  s_Timer.GetMicroseconds();
-        s_nProcessTimes[e3By2] += dwTimestamp-dwProcessTime;
+        g_nProcessTimes[e3By2] += dwTimestamp-dwProcessTime;
 #endif
     }
 }
@@ -6165,21 +6301,23 @@ void CUnsignedArithmeticHelper::SquareU3by2(size_t             nXSize,
                                             DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                                             DWORD64            &dwTimestamp,
-                                            EMultiplyAlgorithm eCaller,
 #endif
                                             DIGIT              *pnWorkspace)
 {
+#if(_CollectDetailedTimingData)
+    DWORD64      dwProcessTime;
+#endif
     size_t       nHalf,i,nUpper;
     DOUBLEDIGIT  nSum,nCarry,nBorrow;
     DIGIT        *pD1, *pD2;
     nHalf = (nXSize+1)>>1;
 #if(_CollectDetailedTimingData)
     // a*b
-    MultUBackend(nXSize - nHalf, nHalf, pXValue + nHalf, pXValue, pnWorkspace, pnWorkspace + nXSize, dwTimestamp, eCaller);
+    MultUBackend(nXSize - nHalf, nHalf, pXValue + nHalf, pXValue, pnWorkspace, pnWorkspace + nXSize, dwTimestamp);
     // a*a
-    SquareUBackend(nHalf, pXValue, pZValue, pnWorkspace + nHalf + nHalf + 2, dwTimestamp, eCaller);
+    SquareUBackend(nHalf, pXValue, pZValue, pnWorkspace + nHalf + nHalf + 2, dwTimestamp);
     // b*b
-    SquareUBackend(nXSize - nHalf, pXValue + nHalf, pZValue + nHalf + nHalf, pnWorkspace + nHalf + nHalf + 2, dwTimestamp, eCaller);
+    SquareUBackend(nXSize - nHalf, pXValue + nHalf, pZValue + nHalf + nHalf, pnWorkspace + nHalf + nHalf + 2, dwTimestamp);
 #else
     // a*b
     MultUBackend(nXSize-nHalf, nHalf, pXValue+nHalf, pXValue, pnWorkspace, pnWorkspace + nXSize);
@@ -6206,6 +6344,12 @@ void CUnsignedArithmeticHelper::SquareU3by2(size_t             nXSize,
         }
         while(nCarry);
     }
+#if(_CollectDetailedTimingData)
+    g_nMultiplyCalls[e3By2]++;
+    dwProcessTime          =  dwTimestamp;
+    dwTimestamp            =  s_Timer.GetMicroseconds();
+    g_nProcessTimes[e3By2] += dwTimestamp-dwProcessTime;
+#endif
 }
 
 // Synopsis:	Performs extended-precision unsigned multiplication
@@ -6259,8 +6403,7 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
                                           DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                                           DIGIT              *pnWorkspace,
-                                          DWORD64            &dwTimestamp,
-                                          EMultiplyAlgorithm eCaller)
+                                          DWORD64            &dwTimestamp)
 #else
                                           DIGIT              *pnWorkspace)
 #endif
@@ -6276,18 +6419,17 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
     DOUBLEDIGIT               nR0_R2_Overlap;
 #if(_CollectDetailedTimingData)
     DWORD64                   dwBuildTime = dwTimestamp;
-    DWORD64                   dwRecursiveTime;
     DWORD64                   dwProcessTime;
 #endif
     nThird = (nYSize+2)/3;
     i      = (nThird<<1);
-    if (nXSize <= i || nXSize + nYSize < 3 + 5 * nThird)
+    if (nXSize <= i || nXSize + nYSize < 3 + 5*nThird)
     {
         if (nXSize == nYSize)
         {
             // too small to be done with this algorithm
 #if(_CollectDetailedTimingData)
-            MultU3by2(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, eCaller);
+            MultU3by2(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp);
 #else
             MultU3by2(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace);
 #endif
@@ -6296,7 +6438,7 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
         {
             // unbalanced -- can't use this algorithm on the given full problem size
 #if(_CollectDetailedTimingData)
-            UNBALANCED_MULT(MultU5by3, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, eCaller, NULL)
+            UNBALANCED_MULT(MultU5by3, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, NULL)
 #else
             UNBALANCED_MULT(MultU5by3, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, NULL)
 #endif
@@ -6403,22 +6545,16 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
         pR3    -= i;   // undo twiddle used to make arg computation faster
         i      =  nThird + 1;
 #if(_CollectDetailedTimingData)
-        dwRecursiveTime      =  s_Timer.GetMicroseconds();
-        dwTimestamp          =  dwRecursiveTime;
-        s_nBuildTimes[e5By3] += (dwRecursiveTime-dwBuildTime);
-        s_nMultiplyCalls[e5By3]++;
-        MultUBackend(i,i,pR1,pR1+i,pR2,pnWorkspace,dwTimestamp,e5By3);
+        dwTimestamp          =  s_Timer.GetMicroseconds();
+        g_nBuildTimes[e5By3] += (dwTimestamp-dwBuildTime);
+        MultUBackend(i,i,pR1,pR1+i,pR2,pnWorkspace,dwTimestamp);
         nR0_R2_Overlap = pR2[i + i - 2];
-        MultUBackend(i,i,pR3,pR3+i,pR1,pnWorkspace,dwTimestamp,e5By3);
-        MultUBackend(i,i,pR0,pR4,pR3,pnWorkspace,dwTimestamp,e5By3);
+        MultUBackend(i,i,pR3,pR3+i,pR1,pnWorkspace,dwTimestamp);
+        MultUBackend(i,i,pR0,pR4,pR3,pnWorkspace,dwTimestamp);
         pR0 -= 2; // undo twiddle
-        MultUBackend(nXSize-(nThird<<1),nYSize-(nThird<<1),pX0,pY0,pR0,pnWorkspace,dwTimestamp,e5By3);
-        MultUBackend(nThird,nThird,pX2,pY2,pR4,pnWorkspace,dwTimestamp,e5By3);
-        dwProcessTime   =  s_Timer.GetMicroseconds();
-        if(e5By3!=eCaller)
-        {
-            s_nRecursiveTimes[e5By3] += (dwProcessTime-dwRecursiveTime);
-        }
+        MultUBackend(nXSize-(nThird<<1),nYSize-(nThird<<1),pX0,pY0,pR0,pnWorkspace,dwTimestamp);
+        MultUBackend(nThird,nThird,pX2,pY2,pR4,pnWorkspace,dwTimestamp);
+        dwProcessTime = dwTimestamp;
 #else
         MultUBackend(i, i, pR1, pR1 + i, pR2, pnWorkspace);
         nR0_R2_Overlap = pR2[i + i - 2];
@@ -6604,8 +6740,9 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
             while(nCarry1);
         }
 #if(_CollectDetailedTimingData)
+        g_nMultiplyCalls[e5By3]++;
         dwTimestamp            =  s_Timer.GetMicroseconds();
-        s_nProcessTimes[e5By3] += dwTimestamp - dwProcessTime;
+        g_nProcessTimes[e5By3] += dwTimestamp - dwProcessTime;
 #endif
     }
 }
@@ -6615,7 +6752,6 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
                                             DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                                             DWORD64            &dwTimestamp,
-                                            EMultiplyAlgorithm eCaller,
 #endif
                                             DIGIT              *pnWorkspace)
 {
@@ -6630,7 +6766,6 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
     DOUBLEDIGIT               nR0_R2_Overlap;
 #if(_CollectDetailedTimingData)
     DWORD64                   dwBuildTime = dwTimestamp;
-    DWORD64                   dwRecursiveTime;
     DWORD64                   dwProcessTime;
 #endif
     nThird      = (nXSize+2)/3;
@@ -6691,21 +6826,15 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
     // R(3) args in R(4)
     // Compute order: R(2), R(1), R(3), R(0)/R(4)
 #if(_CollectDetailedTimingData)
-    dwRecursiveTime      =  s_Timer.GetMicroseconds();
-    dwTimestamp          =  dwRecursiveTime;
-    s_nBuildTimes[e5By3] += (dwRecursiveTime-dwBuildTime);
-    s_nMultiplyCalls[e5By3]++;
-    SquareUBackend(i,pR1,pR2,pnWorkspace,dwTimestamp,e5By3);
+    dwTimestamp          =  s_Timer.GetMicroseconds();
+    g_nBuildTimes[e5By3] += (dwTimestamp-dwBuildTime);
+    SquareUBackend(i,pR1,pR2,pnWorkspace,dwTimestamp);
     nR0_R2_Overlap = pR2[i + i - 2];
-    SquareUBackend(i,pR3,pR1,pnWorkspace,dwTimestamp,e5By3);
-    SquareUBackend(i,pR4,pR3,pnWorkspace,dwTimestamp,e5By3);
-    SquareUBackend(nXSize-(nThird<<1),pX0,pR0,pnWorkspace,dwTimestamp,e5By3);
-    SquareUBackend(nThird,pX2,pR4,pnWorkspace,dwTimestamp,e5By3);
-    dwProcessTime   =  s_Timer.GetMicroseconds();
-    if(e5By3!=eCaller)
-    {
-        s_nRecursiveTimes[e5By3] += (dwProcessTime-dwRecursiveTime);
-    }
+    SquareUBackend(i,pR3,pR1,pnWorkspace,dwTimestamp);
+    SquareUBackend(i,pR4,pR3,pnWorkspace,dwTimestamp);
+    SquareUBackend(nXSize-(nThird<<1),pX0,pR0,pnWorkspace,dwTimestamp);
+    SquareUBackend(nThird,pX2,pR4,pnWorkspace,dwTimestamp);
+    dwProcessTime =  dwTimestamp;
 #else
     SquareUBackend(i, pR1, pR2, pnWorkspace);
     nR0_R2_Overlap = pR2[nThird<<1];
@@ -6890,8 +7019,9 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
         while(nCarry1);
     }
 #if(_CollectDetailedTimingData)
+    g_nMultiplyCalls[e5By3]++;
     dwTimestamp            =  s_Timer.GetMicroseconds();
-    s_nProcessTimes[e5By3] += dwTimestamp - dwProcessTime;
+    g_nProcessTimes[e5By3] += dwTimestamp - dwProcessTime;
 #endif
 }
 
@@ -6966,8 +7096,7 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
                                           DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                                           DIGIT              *pnWorkspace,
-                                          DWORD64            &dwTimestamp, // on entry, time called.  On exit, time completed
-                                          EMultiplyAlgorithm eCaller)
+                                          DWORD64            &dwTimestamp) // on entry, time called.  On exit, time completed
 #else
                                           DIGIT              *pnWorkspace)
 #endif
@@ -6980,9 +7109,8 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
     DOUBLEDIGIT                nS0,nS1,nS2,nS3,nS4,nS5,nS6;
     size_t                     nFourth,i,j;
 #if(_CollectDetailedTimingData)
-    DWORD64                    dwBuild           = dwTimestamp;
-    DWORD64                    dwRecursiveTime;
     DWORD64                    dwProcess;
+    DWORD64                    dwBuild = dwTimestamp;
 #endif
 
     nFourth = (nYSize+3)>>2;
@@ -6993,7 +7121,7 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         {
             // too small to be done with this algorithm
 #if(_CollectDetailedTimingData)
-            MultU5by3(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, eCaller);
+            MultU5by3(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp);
 #else
             MultU5by3(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace);
 #endif
@@ -7002,7 +7130,7 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         {
             // unbalanced -- can't use this algorithm on the given full problem size
 #if(_CollectDetailedTimingData)
-            UNBALANCED_MULT(MultU7by4, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, eCaller, NULL)
+            UNBALANCED_MULT(MultU7by4, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, NULL)
 #else
             UNBALANCED_MULT(MultU7by4, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, NULL)
 #endif
@@ -7152,33 +7280,21 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
     // R0 (offset 4 digits so as not to interfere with R2 calculations) and R6 hold args for R5
     // Compute order: R4, R3, R2, R1, R5, R0/R6
 #if(_CollectDetailedTimingData)
-    dwRecursiveTime      =  s_Timer.GetMicroseconds();
-    dwTimestamp          =  dwRecursiveTime;
-    s_nBuildTimes[e7By4] += (dwRecursiveTime - dwBuild);
-    MultUBackend(i,i,pR3,pR3+i,pR4,pnWorkspace,dwTimestamp,e7By4);
+    dwTimestamp          =  s_Timer.GetMicroseconds();
+    g_nBuildTimes[e7By4] += (dwTimestamp - dwBuild);
+    MultUBackend(i,i,pR3,pR3+i,pR4,pnWorkspace,dwTimestamp);
     nP2_P4_Overlap = pR4[nFourth<<1]; // save value that will be overwritten when R2 is computed
-    MultUBackend(i,i,pR2,pR2+i,pR3,pnWorkspace,dwTimestamp,e7By4);
+    MultUBackend(i,i,pR2,pR2+i,pR3,pnWorkspace,dwTimestamp);
     pR2 -= 2; // undo offset
-    MultUBackend(i,i,pR1,pR1+i,pR2,pnWorkspace,dwTimestamp,e7By4);
+    MultUBackend(i,i,pR1,pR1+i,pR2,pnWorkspace,dwTimestamp);
     nP0_P2_Overlap = pR2[nFourth<<1]; // save value that will be overwritten when R0 is computed
-    MultUBackend(i,i,pR5,pR5+i,pR1,pnWorkspace,dwTimestamp,e7By4);
-    MultUBackend(i,i,pR0,pR6,pR5,pnWorkspace,dwTimestamp,e7By4);
+    MultUBackend(i,i,pR5,pR5+i,pR1,pnWorkspace,dwTimestamp);
+    MultUBackend(i,i,pR0,pR6,pR5,pnWorkspace,dwTimestamp);
     pR0 -= 4; // undo offset
-    MultUBackend(nFourth,nFourth,pXValue,pYValue,pR6,pnWorkspace,dwTimestamp,e7By4);
-    MultUBackend(nXSize-3*nFourth,
-                 nYSize-3*nFourth,
-                 pXValue+3*nFourth,
-                 pYValue+3*nFourth,
-                 pR0,
-                 pnWorkspace,
-                 dwTimestamp,
-                 e7By4);
+    MultUBackend(nFourth,nFourth,pXValue,pYValue,pR6,pnWorkspace,dwTimestamp);
+    MultUBackend(nXSize-3*nFourth,nYSize-3*nFourth,pXValue+3*nFourth,pYValue+3*nFourth,pR0,pnWorkspace,dwTimestamp);
     dwProcess   = s_Timer.GetMicroseconds();
     dwTimestamp = dwProcess;
-    if(e7By4!=eCaller)
-    {
-        s_nRecursiveTimes[e7By4] += (dwProcess-dwRecursiveTime);
-    }
 #else
     MultUBackend(i,i,pR3,pR3+i,pR4,pnWorkspace);
     nP2_P4_Overlap = pR4[nFourth<<1]; // save value that will be overwritten when R2 is computed
@@ -7333,9 +7449,7 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
     // pP4 = (3R0 - 14R1 + 26R2 - 24R3 + 11R4 - 2R5 + 2040R6)/24
     // pP5 = (-pR0 + 5R1 - 10R2 + 10R3 - 5R4 + pR5 - 1800R6)/120
     nS1            =  pR1[i];
-   // nS2      =  nP0_P2_Overlap;
     nS3            =  pR3[i];
- //   nS4      =  nP2_P4_Overlap;
     nS5            =  pR5[i];
     nSum1          =  nCarry1  + 300*nS1 + 200*nS3 + 12*nS5;
     nBorrow1       =  nBorrow1 + 300*nP0_P2_Overlap + 75*nP2_P4_Overlap;
@@ -7439,8 +7553,8 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
     }
 #if(_CollectDetailedTimingData)
     dwTimestamp            =  s_Timer.GetMicroseconds();
-    s_nProcessTimes[e7By4] += dwTimestamp-dwProcess;
-    s_nMultiplyCalls[e7By4]++;
+    g_nProcessTimes[e7By4] += dwTimestamp-dwProcess;
+    g_nMultiplyCalls[e7By4]++;
 #endif
 }
 
@@ -7449,7 +7563,6 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
                                             DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                                             DWORD64            &dwTimestamp, // on entry, time called.  On exit, time completed
-                                            EMultiplyAlgorithm eCaller,
 #endif
                                             DIGIT              *pnWorkspace)
 {
@@ -7461,9 +7574,8 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
     DOUBLEDIGIT                nS0,nS1,nS2,nS3,nS4,nS5,nS6;
     size_t                     nFourth,i,j;
 #if(_CollectDetailedTimingData)
-    DWORD64                    dwBuild           = dwTimestamp;
-    DWORD64                    dwRecursiveTime;
     DWORD64                    dwProcess;
+    DWORD64                    dwBuild = dwTimestamp;
 #endif
 
     nFourth     = (nXSize+3)>>2;
@@ -7554,30 +7666,20 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
     // R0 (offset 4 digits so as not to interfere with R2 calculations) and R6 hold args for R5
     // Compute order: R4, R3, R2, R1, R5, R0/R6
 #if(_CollectDetailedTimingData)
-    dwRecursiveTime      =  s_Timer.GetMicroseconds();
-    dwTimestamp          =  dwRecursiveTime;
-    s_nBuildTimes[e7By4] += (dwRecursiveTime - dwBuild);
-    SquareUBackend(i,pR3,pR4,pnWorkspace,dwTimestamp,e7By4);
+    dwTimestamp          =  s_Timer.GetMicroseconds();
+    g_nBuildTimes[e7By4] += (dwTimestamp - dwBuild);
+    SquareUBackend(i,pR3,pR4,pnWorkspace,dwTimestamp);
     nP2_P4_Overlap = pR4[nFourth<<1]; // save value that will be overwritten when R2 is computed
-    SquareUBackend(i,pR2,pR3,pnWorkspace,dwTimestamp,e7By4);
+    SquareUBackend(i,pR2,pR3,pnWorkspace,dwTimestamp);
     pR2 -= 2; // undo twiddle
-    SquareUBackend(i,pR1,pR2,pnWorkspace,dwTimestamp,e7By4);
+    SquareUBackend(i,pR1,pR2,pnWorkspace,dwTimestamp);
     nP0_P2_Overlap = pR2[nFourth<<1]; // save value that will be overwritten when R0 is computed
-    SquareUBackend(i,pR5,pR1,pnWorkspace,dwTimestamp,e7By4);
-    SquareUBackend(i,pR6,pR5,pnWorkspace,dwTimestamp,e7By4);
-    SquareUBackend(nFourth,pXValue,pR6,pnWorkspace,dwTimestamp,e7By4);
-    SquareUBackend(nXSize-3*nFourth,
-                   pXValue+3*nFourth,
-                   pR0,
-                   pnWorkspace,
-                   dwTimestamp,
-                   e7By4);
+    SquareUBackend(i,pR5,pR1,pnWorkspace,dwTimestamp);
+    SquareUBackend(i,pR6,pR5,pnWorkspace,dwTimestamp);
+    SquareUBackend(nFourth,pXValue,pR6,pnWorkspace,dwTimestamp);
+    SquareUBackend(nXSize-3*nFourth,pXValue+3*nFourth,pR0,pnWorkspace,dwTimestamp);
     dwProcess   = s_Timer.GetMicroseconds();
     dwTimestamp = dwProcess;
-    if(e7By4!=eCaller)
-    {
-        s_nRecursiveTimes[e7By4] += (dwProcess-dwRecursiveTime);
-    }
 #else
     SquareUBackend(i,pR3,pR4,pnWorkspace);
     nP2_P4_Overlap = pR4[nFourth<<1]; // save value that will be overwritten when R2 is computed
@@ -7729,9 +7831,7 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
     // pP4 = (3R0 - 14R1 + 26R2 - 24R3 + 11R4 - 2R5 + 2040R6)/24
     // pP5 = (-pR0 + 5R1 - 10R2 + 10R3 - 5R4 + pR5 - 1800R6)/120
     nS1            =  pR1[i];
-//    nS2            =  nP0_P2_Overlap;
     nS3            =  pR3[i];
-//    nS4            =  nP2_P4_Overlap;
     nS5            =  pR5[i];
     nSum1          =  nCarry1  + 300*nS1 + 200*nS3 + 12*nS5;
     nBorrow1       =  nBorrow1 + 300*nP0_P2_Overlap + 75*nP2_P4_Overlap;
@@ -7835,8 +7935,8 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
     }
 #if(_CollectDetailedTimingData)
     dwTimestamp            =  s_Timer.GetMicroseconds();
-    s_nProcessTimes[e7By4] += dwTimestamp-dwProcess;
-    s_nMultiplyCalls[e7By4]++;
+    g_nProcessTimes[e7By4] += dwTimestamp-dwProcess;
+    g_nMultiplyCalls[e7By4]++;
 #endif
 }
 
@@ -7902,16 +8002,18 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
                                           DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                                           DIGIT              *pnWorkspace,
-                                          DWORD64            &dwTimestamp, // on entry, time called.  On exit, time completed
-                                          EMultiplyAlgorithm eCaller)
+                                          DWORD64            &dwTimestamp) // on entry, time called.  On exit, time completed
 #else
                                           DIGIT              *pnWorkspace)
 #endif
 {
-    DOUBLEDIGIT x0, x1, x2, x3, x4, y0, y1, y2, y3, y4, nAdd, nSub, nCarry1, nCarry2, nCarry3, nCarry4, nCarry5, nCarry6, nCarry7, nBorrow1, nBorrow2, nBorrow3, nBorrow4, nBorrow5, nBorrow6, nBorrow7;
-    DOUBLEDIGIT nP0_P2_overlap, nP2_P4_overlap, nP4_P6_overlap, nR0, nR1, nR2, nR3, nR4, nR5, nR6, nR7, nR8;
+    DOUBLEDIGIT  x0, x1, x2, x3, x4, y0, y1, y2, y3, y4, nAdd, nSub, nCarry1, nCarry2, nCarry3, nCarry4, nCarry5, nCarry6, nCarry7, nBorrow1, nBorrow2, nBorrow3, nBorrow4, nBorrow5, nBorrow6, nBorrow7;
+    DOUBLEDIGIT  nP0_P2_overlap, nP2_P4_overlap, nP4_P6_overlap, nR0, nR1, nR2, nR3, nR4, nR5, nR6, nR7, nR8;
     unsigned int i, nResidual;
-    size_t nFifth = (nYSize + 4)/5;
+    size_t       nFifth = (nYSize + 4)/5;
+#if(_CollectDetailedTimingData)
+    DWORD64 dwProcessTime, dwBuildTime = dwTimestamp;
+#endif
     // check to make sure x, y big enough for the method!
     if((nFifth<<2)>=nXSize || nXSize + nYSize < 7 + 9*nFifth)  // Too few digits in the smaller number to use the normal technique
     {
@@ -7919,7 +8021,7 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         {
             // too small to do with this algorithm
 #if(_CollectDetailedTimingData)
-            MultU7by4(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, eCaller);
+            MultU7by4(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp);
 #else
             MultU7by4(nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace);
 #endif
@@ -7928,7 +8030,7 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         {
             // unbalanced -- can't use this algorithm on the given full problem size
 #if(_CollectDetailedTimingData)
-            UNBALANCED_MULT(MultU9by5, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, eCaller, NULL)
+            UNBALANCED_MULT(MultU9by5, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, dwTimestamp, NULL)
 #else
             UNBALANCED_MULT(MultU9by5, nXSize, nYSize, pXValue, pYValue, pZValue, pnWorkspace, NULL)
 #endif
@@ -8132,18 +8234,21 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
     // So: compute P7, then P6, then P1, then P4 (being careful to save the overlap digit of P6), then P3, then P2 (saving overlap
     // digit with P4), then P5, the P8 and P0
 #if(_CollectDetailedTimingData)
-    MultUBackend(i, i, pArgR7 - i, pArgR7, pR7, pnWorkspace, dwTimestamp, eCaller);
-    MultUBackend(i, i, pArgR6 - i, pArgR6, pR6, pnWorkspace, dwTimestamp, eCaller);
+    dwTimestamp          =  s_Timer.GetMicroseconds();
+    g_nBuildTimes[e9By5] += (dwTimestamp-dwBuildTime);
+    MultUBackend(i, i, pArgR7 - i, pArgR7, pR7, pnWorkspace, dwTimestamp);
+    MultUBackend(i, i, pArgR6 - i, pArgR6, pR6, pnWorkspace, dwTimestamp);
     nP4_P6_overlap = pR6[nFifth<<1];
-    MultUBackend(i, i, pArgR1 - i, pArgR1, pR1, pnWorkspace, dwTimestamp, eCaller);
-    MultUBackend(i, i, pArgR4 - i, pArgR4, pR4, pnWorkspace, dwTimestamp, eCaller);
+    MultUBackend(i, i, pArgR1 - i, pArgR1, pR1, pnWorkspace, dwTimestamp);
+    MultUBackend(i, i, pArgR4 - i, pArgR4, pR4, pnWorkspace, dwTimestamp);
     nP2_P4_overlap = pR4[nFifth<<1];
-    MultUBackend(i, i, pArgR3 - i, pArgR3, pR3, pnWorkspace, dwTimestamp, eCaller);
-    MultUBackend(i, i, pArgR2 - i, pArgR2, pR2, pnWorkspace, dwTimestamp, eCaller);
+    MultUBackend(i, i, pArgR3 - i, pArgR3, pR3, pnWorkspace, dwTimestamp);
+    MultUBackend(i, i, pArgR2 - i, pArgR2, pR2, pnWorkspace, dwTimestamp);
     nP0_P2_overlap = pR2[nFifth<<1];
-    MultUBackend(i, i, pR0+6, pR8, pR5, pnWorkspace, dwTimestamp, eCaller);
-    MultUBackend(i-1, i-1, pXValue, pYValue, pR8, pnWorkspace, dwTimestamp, eCaller);
-    MultUBackend(nXSize - (nFifth<<2), nYSize - (nFifth<<2), pXValue + (nFifth<<2), pYValue + (nFifth<<2), pR0, pnWorkspace, dwTimestamp, eCaller);
+    MultUBackend(i, i, pR0+6, pR8, pR5, pnWorkspace, dwTimestamp);
+    MultUBackend(i-1, i-1, pXValue, pYValue, pR8, pnWorkspace, dwTimestamp);
+    MultUBackend(nXSize - (nFifth<<2), nYSize - (nFifth<<2), pXValue + (nFifth<<2), pYValue + (nFifth<<2), pR0, pnWorkspace, dwTimestamp);
+    dwProcessTime = dwTimestamp;
 #else
     MultUBackend(i, i, pArgR7 - i, pArgR7, pR7, pnWorkspace);
     MultUBackend(i, i, pArgR6 - i, pArgR6, pR6, pnWorkspace);
@@ -8488,6 +8593,11 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         }
         while(nCarry1);
     }
+#if(_CollectDetailedTimingData)
+    dwTimestamp            =  s_Timer.GetMicroseconds();
+    g_nProcessTimes[e9By5] += (dwTimestamp-dwProcessTime);
+    g_nMultiplyCalls[e9By5]++;
+#endif
     // and that's it -- we're done!
 }
 
@@ -8496,13 +8606,15 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
                                             DIGIT              *pZValue,
 #if(_CollectDetailedTimingData)
                                             DWORD64            &dwTimestamp,
-                                            EMultiplyAlgorithm eCaller,
 #endif
                                             DIGIT              *pnWorkspace)
 {
     DOUBLEDIGIT x0, x1, x2, x3, x4, nAdd, nSub, nCarry1, nCarry2, nCarry3, nCarry4, nCarry5, nCarry6, nCarry7, nBorrow1, nBorrow2, nBorrow3, nBorrow4, nBorrow5, nBorrow6, nBorrow7;
     DOUBLEDIGIT nP0_P2_overlap, nP2_P4_overlap, nP4_P6_overlap, nR0, nR1, nR2, nR3, nR4, nR5, nR6, nR7, nR8;
     unsigned int i, nResidual;
+#if(_CollectDetailedTimingData)
+    DWORD64 dwProcessTime, dwBuildTime = dwTimestamp;
+#endif
     size_t      nFifth = (nXSize + 4)/5;
     DIGIT       *pR0   = pZValue + (nFifth<<3);
     DIGIT       *pR1   = pnWorkspace;
@@ -8617,18 +8729,21 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
     // So: compute P7, then P6, then P1, then P4 (being careful to save the overlap digit of P6), then P3, then P2 (saving overlap
     // digit with P4), then P5, the P8 and P0
 #if(_CollectDetailedTimingData)
-    SquareUBackend(i, pArgR7, pR7, pnWorkspace, dwTimestamp, eCaller);
-    SquareUBackend(i, pArgR6, pR6, pnWorkspace, dwTimestamp, eCaller);
+    dwTimestamp          =  s_Timer.GetMicroseconds();
+    g_nBuildTimes[e9By5] += (dwTimestamp-dwBuildTime);
+    SquareUBackend(i, pArgR7, pR7, pnWorkspace, dwTimestamp);
+    SquareUBackend(i, pArgR6, pR6, pnWorkspace, dwTimestamp);
     nP4_P6_overlap = pR6[nFifth<<1];
-    SquareUBackend(i, pArgR1, pR1, pnWorkspace, dwTimestamp, eCaller);
-    SquareUBackend(i,pArgR4, pR4, pnWorkspace, dwTimestamp, eCaller);
+    SquareUBackend(i, pArgR1, pR1, pnWorkspace, dwTimestamp);
+    SquareUBackend(i,pArgR4, pR4, pnWorkspace, dwTimestamp);
     nP2_P4_overlap = pR4[nFifth<<1];
-    SquareUBackend(i, pArgR3, pR3, pnWorkspace, dwTimestamp, eCaller);
-    SquareUBackend(i, pArgR2, pR2, pnWorkspace, dwTimestamp, eCaller);
+    SquareUBackend(i, pArgR3, pR3, pnWorkspace, dwTimestamp);
+    SquareUBackend(i, pArgR2, pR2, pnWorkspace, dwTimestamp);
     nP0_P2_overlap = pR2[nFifth<<1];
-    SquareUBackend(i, pR8, pR5, pnWorkspace, dwTimestamp, eCaller);
-    SquareUBackend(i-1, pXValue, pR8, pnWorkspace, dwTimestamp, eCaller);
-    SquareUBackend(nXSize - (nFifth<<2), pXValue + (nFifth<<2), pR0, pnWorkspace, dwTimestamp, eCaller);
+    SquareUBackend(i, pR8, pR5, pnWorkspace, dwTimestamp);
+    SquareUBackend(i-1, pXValue, pR8, pnWorkspace, dwTimestamp);
+    SquareUBackend(nXSize - (nFifth<<2), pXValue + (nFifth<<2), pR0, pnWorkspace, dwTimestamp);
+    dwProcessTime = dwTimestamp;
 #else
     SquareUBackend(i, pArgR7, pR7, pnWorkspace);
     SquareUBackend(i, pArgR6, pR6, pnWorkspace);
@@ -8973,21 +9088,46 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         }
         while(nCarry1);
     }
+#if(_CollectDetailedTimingData)
+    dwTimestamp            =  s_Timer.GetMicroseconds();
+    g_nProcessTimes[e9By5] += (dwTimestamp-dwProcessTime);
+    g_nMultiplyCalls[e9By5]++;
+#endif
     // and that's it -- we're done!
 }
 #endif
 
-void CUnsignedArithmeticHelper::Divide(size_t nXSize,
-                                       size_t nYSize,
-                                       size_t &nXDivYSize,
-                                       size_t &nRemainderSize,
-                                       DIGIT  *pXValue,
-                                       DIGIT  *pYValue,
-                                       DIGIT  *pXDivYValue,
-                                       DIGIT  *pWorkspace)
+void CUnsignedArithmeticHelper::Divide(size_t  nXSize,
+                                       size_t  nYSize,
+                                       size_t  &nXDivYSize,
+                                       size_t  &nRemainderSize,
+                                       DIGIT   *pXValue,
+                                       DIGIT   *pYValue,
+                                       DIGIT   *pXDivYValue,
+                                       DIGIT   *pWorkspace)
+{
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DivideBackend(nXSize, nYSize, nXDivYSize, nRemainderSize, pXValue, pYValue, pXDivYValue, dwTimestamp, pWorkspace);
+#else
+    DivideBackend(nXSize, nYSize, nXDivYSize, nRemainderSize, pXValue, pYValue, pXDivYValue, pWorkspace);
+#endif
+}
+
+void CUnsignedArithmeticHelper::DivideBackend(size_t  nXSize,
+                                              size_t  nYSize,
+                                              size_t  &nXDivYSize,
+                                              size_t  &nRemainderSize,
+                                              DIGIT   *pXValue,
+                                              DIGIT   *pYValue,
+                                              DIGIT   *pXDivYValue,
+#if(_CollectDetailedTimingData)
+                                              DWORD64 &dwTimestamp,
+#endif
+                                              DIGIT   *pWorkspace)
 {
 #if _CollectDetailedTimingData
-    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
 #endif
     int nCompare = CBigInteger::CompareUnsigned(nXSize,nYSize,pXValue,pYValue);
     if(nCompare<0)
@@ -9019,12 +9159,22 @@ void CUnsignedArithmeticHelper::Divide(size_t nXSize,
                 // less than the number to be divided by.  Fastest way to restore it
                 // is to just add the value in: this avoids any conditionals, and atomic
                 // adds are fast.
+#if _CollectDetailedTimingData
+                DivideRecursive(nYSize<<1,
+                                nYSize,
+                                pXValue+nXSize-(nYSize<<1),
+                                pYValue,
+                                pXDivYValue+nXSize-(nYSize<<1),
+                                dwTimestamp,
+                                pWorkspace);
+#else
                 DivideRecursive(nYSize<<1,
                                 nYSize,
                                 pXValue+nXSize-(nYSize<<1),
                                 pYValue,
                                 pXDivYValue+nXSize-(nYSize<<1),
                                 pWorkspace);
+#endif
                 // restore value overwritten
                 pXDivYValue[nXSize-nYSize] += nLast;
                 nXSize                     -= nYSize;
@@ -9033,7 +9183,11 @@ void CUnsignedArithmeticHelper::Divide(size_t nXSize,
             while(nYSize<<1 < nXSize);
         }
         // final (possibly first) division
+#if _CollectDetailedTimingData
+        DivideRecursive(nXSize,nYSize,pXValue,pYValue,pXDivYValue,dwTimestamp,pWorkspace);
+#else
         DivideRecursive(nXSize,nYSize,pXValue,pYValue,pXDivYValue,pWorkspace);
+#endif
         // restore value overwritten
         pXDivYValue[nXSize-nYSize] += nLast;
         // compute the actual size of XDivY
@@ -9053,8 +9207,9 @@ void CUnsignedArithmeticHelper::Divide(size_t nXSize,
         }
     }
 #if _CollectDetailedTimingData
-    CUnsignedArithmeticHelper::s_nDivideTime[eTotalDivideTime] += s_Timer.GetMicroseconds() - dwTimestamp;
-    CUnsignedArithmeticHelper::s_nDivideTime[eTotalDivideCalls]++;
+    dwTimestamp                                                =  s_Timer.GetMicroseconds();
+    g_nDivideTime[eTotalDivideTime] += dwTimestamp - dwTimestamp2;
+    g_nDivideTime[eTotalDivideCalls]++;
 #endif
 };
 
@@ -9062,14 +9217,14 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                                             size_t      nYSize,
                                             DIGIT       *pXValue,
                                             const DIGIT *pYValue,
+#if(_CollectDetailedTimingData)
+                                            DWORD64     &dwTimestamp,
+#endif
                                             DIGIT       *pXDivYValue)
 {
     DOUBLEDIGIT  nD1,nD2,nD3,nD4;
     size_t       i,ii;
     DOUBLEDIGIT	 nCarry, nBorrow, nProd, nMult;
-#if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-#endif
     if(1==nYSize)
     {
         // special case
@@ -9316,7 +9471,9 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
         }
     }
 #if(_CollectDetailedTimingData)
-    s_nDivideTime[eBasicDivideTime] += s_Timer.GetMicroseconds() - dwTimestamp;
+    DWORD64 dwTimestamp2            =  s_Timer.GetMicroseconds();
+    g_nDivideTime[eBasicDivideTime] += dwTimestamp2 - dwTimestamp;
+    dwTimestamp                     =  dwTimestamp2;
 #endif
 }
 
@@ -9379,26 +9536,33 @@ size_t CUnsignedArithmeticHelper::DivideSubproblemSize(size_t nXSize, size_t nYS
 // Here, it's clear that the local work is the multiplication, plus the recursive work of the two divides.  Lower bitshift
 // gives less local work -- but makes the subproblems larger.
 // NEVER call this function when X has more than twice as many digits as y!
-void CUnsignedArithmeticHelper::DivideRecursive(size_t nXSize,
-                                                size_t nYSize,
-                                                DIGIT  *pXValue,
-                                                DIGIT  *pYValue,
-                                                DIGIT  *pXDivYValue,
-                                                DIGIT  *pWorkspace)
+void CUnsignedArithmeticHelper::DivideRecursive(size_t  nXSize,
+                                                size_t  nYSize,
+                                                DIGIT   *pXValue,
+                                                DIGIT   *pYValue,
+                                                DIGIT   *pXDivYValue,
+#if(_CollectDetailedTimingData)
+                                                DWORD64 &dwTimestamp,
+#endif
+                                                DIGIT   *pWorkspace)
 {
     size_t       i,j,nXDivYSize,nXModYSize,nSmallY,nDivOffset,nLowestAdded,nNumDIGITsDivOverlap;
     DOUBLEDIGIT	 nCarry, nValX, nValProd;
     DIGIT        *pDivSmall,*pXSmall,*pYSmall;
+#if(_CollectDetailedTimingData)
+    DWORD64 dwProcessTime = 0, dwMultTime, dwTimestamp2;
+    dwTimestamp = s_Timer.GetMicroseconds();
+#endif
     // if the problem is "small," use the basic algorithm
     if (nYSize < c_nDivideThresholdSmall || nXSize-nYSize < c_nDivideThresholdDiff)
     {
+#if(_CollectDetailedTimingData)
+        DivideBasic(nXSize, nYSize, pXValue, pYValue, dwTimestamp, pXDivYValue);
+#else
         DivideBasic(nXSize, nYSize, pXValue, pYValue, pXDivYValue);
+#endif
         return;
     }
-#if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp   = s_Timer.GetMicroseconds();
-    DWORD64 dwProcessTime = 0, dwMultTime;
-#endif
     // Break problem down recursively: want to use at most half of y for subproblem
     nSmallY = DivideSubproblemSize(nXSize, nYSize, nDivOffset);
     // y shift: nYSize - nSmallY1
@@ -9426,9 +9590,10 @@ void CUnsignedArithmeticHelper::DivideRecursive(size_t nXSize,
     {
         pYValue[i]++;
 #if(_CollectDetailedTimingData)
-        s_nDivideTime[eDivideProcessTime] += s_Timer.GetMicroseconds() - dwTimestamp;
-        DivideRecursive(nSmallY<<1, nSmallY, pXSmall, pYSmall, pDivSmall, pWorkspace);
-        dwTimestamp = s_Timer.GetMicroseconds();
+        dwTimestamp2                      =  s_Timer.GetMicroseconds();
+        g_nDivideTime[eDivideProcessTime] += dwTimestamp2 - dwTimestamp;
+        DivideRecursive(nSmallY<<1, nSmallY, pXSmall, pYSmall, pDivSmall, dwTimestamp2, pWorkspace);
+        dwTimestamp = dwTimestamp2;
 #else
         DivideRecursive(nSmallY<<1, nSmallY, pXSmall, pYSmall, pDivSmall, pWorkspace);
 #endif
@@ -9440,10 +9605,10 @@ void CUnsignedArithmeticHelper::DivideRecursive(size_t nXSize,
     // (y mod (1<<bitshift))*div
 #if(_CollectDetailedTimingData)
     dwMultTime                          =  s_Timer.GetMicroseconds();
-    s_nDivideTime[eDivideProcessTime]   += dwMultTime - dwTimestamp;
+    g_nDivideTime[eDivideProcessTime]   += dwMultTime - dwTimestamp;
     dwTimestamp                         =  dwMultTime;
-    MultUBackend(nXDivYSize, nYSize-nSmallY, pDivSmall, pYValue, pWorkspace, pWorkspace+nXDivYSize+nYSize-nSmallY, dwTimestamp, eTopLevel);
-    s_nDivideTime[eDivideMultCallsTime] += dwTimestamp - dwMultTime;
+    MultUBackend(nXDivYSize, nYSize-nSmallY, pDivSmall, pYValue, pWorkspace, pWorkspace+nXDivYSize+nYSize-nSmallY, dwTimestamp);
+    g_nDivideTime[eDivideMultCallsTime] += dwTimestamp - dwMultTime;
 #else
     MultUBackend(nXDivYSize, nYSize-nSmallY, pDivSmall, pYValue, pWorkspace, pWorkspace+nXDivYSize+nYSize-nSmallY);
 #endif
@@ -9476,9 +9641,10 @@ void CUnsignedArithmeticHelper::DivideRecursive(size_t nXSize,
         nNumDIGITsDivOverlap = (nLowestAdded <= nSmallY) ? (nSmallY-nLowestAdded+1) : 0;
         for(i=0; i<nNumDIGITsDivOverlap; i++) pWorkspace[i] = pXDivYValue[nLowestAdded+i];
 #if(_CollectDetailedTimingData)
-        s_nDivideTime[eDivideProcessTime] += s_Timer.GetMicroseconds() - dwTimestamp;
-        DivideRecursive(nXSize, nYSize, pXValue, pYValue, pXDivYValue, pWorkspace+nNumDIGITsDivOverlap);
-        dwTimestamp = s_Timer.GetMicroseconds();
+        dwTimestamp2                      =  s_Timer.GetMicroseconds();
+        g_nDivideTime[eDivideProcessTime] += dwTimestamp2 - dwTimestamp;
+        DivideRecursive(nXSize, nYSize, pXValue, pYValue, pXDivYValue, dwTimestamp2, pWorkspace+nNumDIGITsDivOverlap);
+        dwTimestamp = dwTimestamp2;
 #else
         DivideRecursive(nXSize, nYSize, pXValue, pYValue, pXDivYValue, pWorkspace+nNumDIGITsDivOverlap);
 #endif
@@ -9498,7 +9664,9 @@ void CUnsignedArithmeticHelper::DivideRecursive(size_t nXSize,
         }
     }
 #if(_CollectDetailedTimingData)
-    s_nDivideTime[eDivideProcessTime] += s_Timer.GetMicroseconds() - dwTimestamp;
+    dwTimestamp2                      =  s_Timer.GetMicroseconds();
+    g_nDivideTime[eDivideProcessTime] += dwTimestamp2 - dwTimestamp;
+    dwTimestamp                       =  dwTimestamp2;
 #endif
 }
 
@@ -9545,31 +9713,51 @@ size_t CUnsignedArithmeticHelper::GCD(size_t nXSize,
                                       DIGIT  *pGCDValue,
                                       DIGIT  *pWorkspace)
 {
+    size_t  nGCDSize;
+#if _CollectDetailedTimingData
+    DWORD64 dwTimestamp  = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
+    g_nGCDTime[eTotalGCDCalls]++;
+#endif
     // copy the base values into the workspace -- GCDBase is destructive!
     memcpy(pWorkspace,pXValue,nXSize*sizeof(DIGIT));
     memcpy(pWorkspace+nXSize,pYValue,nYSize*sizeof(DIGIT));
     // chose order for operands -- GCDBase assumes the larger
     // of (x, y) is the first given.
+#if _CollectDetailedTimingData
+    dwTimestamp                 =  s_Timer.GetMicroseconds();
+    g_nGCDTime[eGCDProcessTime] += (dwTimestamp - dwTimestamp2);
+#endif
     if(0<=CBigInteger::CompareUnsigned(nXSize,nYSize,pXValue,pYValue))
     {
         // x is the larger
-        return GCDBase(nXSize,
-                       nYSize,
-                       pWorkspace,
-                       pWorkspace+nXSize,
-                       pGCDValue,
-                       pWorkspace+nXSize+nYSize);
+        nGCDSize = GCDBase(nXSize,
+                           nYSize,
+                           pWorkspace,
+                           pWorkspace+nXSize,
+                           pGCDValue,
+#if _CollectDetailedTimingData
+                           dwTimestamp,
+#endif
+                           pWorkspace+nXSize+nYSize);
     }
     else
     {
         // Y is the larger
-        return GCDBase(nYSize,
-                       nXSize,
-                       pWorkspace+nXSize,
-                       pWorkspace,
-                       pGCDValue,
-                       pWorkspace+nXSize+nYSize);
+        nGCDSize = GCDBase(nYSize,
+                           nXSize,
+                           pWorkspace+nXSize,
+                           pWorkspace,
+                           pGCDValue,
+#if _CollectDetailedTimingData
+                           dwTimestamp,
+#endif
+                           pWorkspace+nXSize+nYSize);
     }
+#if _CollectDetailedTimingData
+    g_nGCDTime[eGCDTotalTime] += (dwTimestamp - dwTimestamp2);
+#endif
+    return nGCDSize;
 }
 
 void CUnsignedArithmeticHelper::GCD(size_t nXSize,
@@ -9585,6 +9773,11 @@ void CUnsignedArithmeticHelper::GCD(size_t nXSize,
                                     bool   &bXCoefNegative,
                                     DIGIT  *pWorkspace)
 {
+#if _CollectDetailedTimingData
+    DWORD64 dwTimestamp  = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
+    g_nGCDTime[eTotalGCDCalls]++;
+#endif
     // if either X or Y is 0, do directly -- back-end functions don't deal with 0 operand well.
     // (If BOTH are 0, we end up with a GCD of 0.)
     if(0==nXSize)
@@ -9625,6 +9818,9 @@ void CUnsignedArithmeticHelper::GCD(size_t nXSize,
                     pXCoefValue,
                     pYCoefValue,
                     bXCoefNegative,
+#if _CollectDetailedTimingData
+                    dwTimestamp,
+#endif
                     pWorkspace);
         }
         else
@@ -9641,6 +9837,9 @@ void CUnsignedArithmeticHelper::GCD(size_t nXSize,
                     pYCoefValue,
                     pXCoefValue,
                     bXCoefNegative,
+#if _CollectDetailedTimingData
+                    dwTimestamp,
+#endif
                     pWorkspace);
             // swap xcoef sign -- doing in reverse expected order!
             bXCoefNegative = !bXCoefNegative;
@@ -9660,7 +9859,11 @@ void CUnsignedArithmeticHelper::GCD(size_t nXSize,
         // x*xcoef
         if (nXCoefSize)
         {
+#if _CollectDetailedTimingData
+            MultUBackend(nXSize, nXCoefSize, pXValue, pXCoefValue, pXTimesXCoef, pWorkspace, dwTimestamp);
+#else
             MultUBackend(nXSize, nXCoefSize, pXValue, pXCoefValue, pXTimesXCoef, pWorkspace);
+#endif
             if (0 == pXTimesXCoef[nXXcoefSize - 1]) nXXcoefSize--;
         }
         else
@@ -9670,7 +9873,11 @@ void CUnsignedArithmeticHelper::GCD(size_t nXSize,
         // y*ycoef
         if (nYCoefSize)
         {
+#if _CollectDetailedTimingData
+            MultUBackend(nYSize, nYCoefSize, pYValue, pYCoefValue, pYTimesYCoef, pWorkspace, dwTimestamp);
+#else
             MultUBackend(nYSize, nYCoefSize, pYValue, pYCoefValue, pYTimesYCoef, pWorkspace);
+#endif
             if (0 == pYTimesYCoef[nYYcoefSize - 1]) nYYcoefSize--;
         }
         else
@@ -9685,27 +9892,50 @@ void CUnsignedArithmeticHelper::GCD(size_t nXSize,
         }
     }
 #endif
+#if _CollectDetailedTimingData
+    g_nGCDTime[eGCDTotalTime] += (dwTimestamp - dwTimestamp2);
+#endif
 }
 
-size_t CUnsignedArithmeticHelper::GCDBase(size_t nXSize,
-                                          size_t nYSize,
-                                          DIGIT  *pXValue,
-                                          DIGIT  *pYValue,
-                                          DIGIT  *pGCDValue,
-                                          DIGIT  *pWorkspace)
+size_t CUnsignedArithmeticHelper::GCDBase(size_t  nXSize,
+                                          size_t  nYSize,
+                                          DIGIT   *pXValue,
+                                          DIGIT   *pYValue,
+                                          DIGIT   *pGCDValue,
+#if(_CollectDetailedTimingData)
+                                          DWORD64 &dwTimestamp,
+#endif
+                                          DIGIT   *pWorkspace)
 {
-    DIGIT  *pHold;
-    size_t i, nModSize = 1234567;
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp2;
+#endif
+    DIGIT   *pHold;
+    size_t  nDivSize, nModSize;
     do
     {
-        Divide(nXSize,
-               nYSize,
-               i, // dummy
-               nModSize,
-               pXValue,
-               pYValue,
-               pWorkspace,
-               pWorkspace+nXSize-nYSize+1);
+#if(_CollectDetailedTimingData)
+        dwTimestamp2 = dwTimestamp;
+        DivideBackend(nXSize,
+                      nYSize,
+                      nDivSize, // actually don't care about this value
+                      nModSize,
+                      pXValue,
+                      pYValue,
+                      pWorkspace, // can we save some space by using pGCDValue here?  Debug resolve todo!
+                      dwTimestamp,
+                      pWorkspace+nXSize-nYSize+1);
+        g_nGCDTime[eGCDDivideTime] += (dwTimestamp - dwTimestamp2);
+#else
+        DivideBackend(nXSize,
+                      nYSize,
+                      nDivSize, // actually don't care about this value
+                      nModSize,
+                      pXValue,
+                      pYValue,
+                      pWorkspace, // can we save some space by using pGCDValue here?  Debug resolve todo!
+                      pWorkspace+nXSize-nYSize+1);
+#endif
         if(0==nModSize)
         {
             break;
@@ -9717,10 +9947,15 @@ size_t CUnsignedArithmeticHelper::GCDBase(size_t nXSize,
         pYValue = pHold;
     }
     while(1);
-    for(i=0;i<nYSize;i++)
+    for(size_t i=0; i<nYSize; i++)
     {
         pGCDValue[i] = pYValue[i];
     }
+#if(_CollectDetailedTimingData)
+    dwTimestamp2               =  dwTimestamp;
+    dwTimestamp                =  s_Timer.GetMicroseconds();
+    g_nGCDTime[eGCDDivideTime] += (dwTimestamp - dwTimestamp2);
+#endif
     return nYSize;
 }
 
@@ -9747,19 +9982,25 @@ size_t CUnsignedArithmeticHelper::GCDBase(size_t nXSize,
 // as we go along, then note that if g = gcd(x, y) and ax + by = g then
 // b = (g-ax)/y -- so we need only do a single add/divide at the end and t, old_t are not needed
 // And if the y coef is not asked for (NULL passed) need not even do that
-void CUnsignedArithmeticHelper::GCDCoef(size_t nXSize,
-                                        size_t nYSize,
-                                        size_t &nGCDSize,
-                                        size_t &nXCoefSize,
-                                        size_t &nYCoefSize,
-                                        DIGIT  *pXValue,
-                                        DIGIT  *pYValue,
-                                        DIGIT  *pGCDValue,
-                                        DIGIT  *pXCoefValue,
-                                        DIGIT  *pYCoefValue,
-                                        bool   &bXCoefNegative,
-                                        DIGIT  *pWorkspace)
+void CUnsignedArithmeticHelper::GCDCoef(size_t  nXSize,
+                                        size_t  nYSize,
+                                        size_t  &nGCDSize,
+                                        size_t  &nXCoefSize,
+                                        size_t  &nYCoefSize,
+                                        DIGIT   *pXValue,
+                                        DIGIT   *pYValue,
+                                        DIGIT   *pGCDValue,
+                                        DIGIT   *pXCoefValue,
+                                        DIGIT   *pYCoefValue,
+                                        bool    &bXCoefNegative,
+#if(_CollectDetailedTimingData)
+                                        DWORD64 &dwTimestamp,
+#endif
+                                        DIGIT   *pWorkspace)
 {
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp2;
+#endif
     if(nYSize*sizeof(DIGIT) <= c_nMaxBYTESizeForRecursiveGCD && NULL != pXCoefValue && NULL != pYCoefValue)
     {
         // use recursive version.  It's faster when we want both coefficients, but blows out the stack for large x, y
@@ -9767,7 +10008,14 @@ void CUnsignedArithmeticHelper::GCDCoef(size_t nXSize,
         // copy the base values into the workspace -- GCDBase is destructive!
         memcpy(pWorkspace,pXValue,nXSize*sizeof(DIGIT));
         memcpy(pWorkspace+nXSize,pYValue,nYSize*sizeof(DIGIT));
+#if(_CollectDetailedTimingData)
+        dwTimestamp2                =  s_Timer.GetMicroseconds();
+        g_nGCDTime[eGCDProcessTime] += (dwTimestamp2 - dwTimestamp);
+        dwTimestamp                 =  dwTimestamp2;
+        GCDCoef_recursive(nXSize, nYSize, nGCDSize, nXCoefSize, nYCoefSize, pWorkspace, pWorkspace+nXSize, pGCDValue, pXCoefValue, pYCoefValue, bXCoefNegative, dwTimestamp, pWorkspace+nXSize+nYSize);
+#else
         GCDCoef_recursive(nXSize, nYSize, nGCDSize, nXCoefSize, nYCoefSize, pWorkspace, pWorkspace+nXSize, pGCDValue, pXCoefValue, pYCoefValue, bXCoefNegative, pWorkspace+nXSize+nYSize);
+#endif
         return;
     }
     size_t nQuotientSize, nRemainderSize, nProductSize, nSSize, nSSize_old;
@@ -9804,14 +10052,29 @@ void CUnsignedArithmeticHelper::GCDCoef(size_t nXSize,
     do
     {
         // R, R_old: (old_r, r) <- (r, old_r - quotient * r) <-> (old_r, r) <- (r, old_r%r)
-        Divide(nXSize,
-               nYSize,
-               nQuotientSize,
-               nRemainderSize,
-               pR_old,
-               pR,
-               pQuotient,
-               pWorkspace);
+#if(_CollectDetailedTimingData)
+        dwTimestamp2                =  s_Timer.GetMicroseconds();
+        g_nGCDTime[eGCDProcessTime] += (dwTimestamp2 - dwTimestamp);
+        DivideBackend(nXSize,
+                      nYSize,
+                      nQuotientSize,
+                      nRemainderSize,
+                      pR_old,
+                      pR,
+                      pQuotient,
+                      dwTimestamp,
+                      pWorkspace);
+        g_nGCDTime[eGCDDivideTime] += (dwTimestamp - dwTimestamp2);
+#else
+        DivideBackend(nXSize,
+                      nYSize,
+                      nQuotientSize,
+                      nRemainderSize,
+                      pR_old,
+                      pR,
+                      pQuotient,
+                      pWorkspace);
+#endif
         if (0 == nRemainderSize) break;
         nXSize = nYSize;
         nYSize = nRemainderSize;
@@ -9848,8 +10111,10 @@ void CUnsignedArithmeticHelper::GCDCoef(size_t nXSize,
             else
             {
 #if _CollectDetailedTimingData
-                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                MultUBackend(nSSize, nQuotientSize, pS, pQuotient, pProduct, pWorkspace, dwTimestamp, eTopLevel);
+                dwTimestamp2 = dwTimestamp;
+                dwTimestamp  = s_Timer.GetMicroseconds();
+                MultUBackend(nSSize, nQuotientSize, pS, pQuotient, pProduct, pWorkspace, dwTimestamp);
+                g_nGCDTime[eGCDMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
                 MultUBackend(nSSize, nQuotientSize, pS, pQuotient, pProduct, pWorkspace);
 #endif
@@ -9899,12 +10164,17 @@ void CUnsignedArithmeticHelper::GCDCoef(size_t nXSize,
             // happens half the time -- pS in "wrong" slot; copy it into right one (guessed wrong initially)
             memcpy(pXCoefValue, pS, nXCoefSize*sizeof(DIGIT));
         }
+#if _CollectDetailedTimingData
+        dwTimestamp2                =  dwTimestamp;
+        dwTimestamp                 =  s_Timer.GetMicroseconds();
+        g_nGCDTime[eGCDProcessTime] += (dwTimestamp - dwTimestamp2);
+#endif
         if (NULL != pYCoefValue)
         {
             // want y coef, too
             // have the GCD and x coefficient at this point.  Compute the y coefficient:
             // <y coef> = (gcd - <x coef>x)/y
-#if 0
+#if 0 // nice idea; doesn't help
             if (s_nGCDThreshold < nGCDSize)
             {
                 // compute with extra small operations
@@ -9929,7 +10199,7 @@ void CUnsignedArithmeticHelper::GCDCoef(size_t nXSize,
                 nProductSize = nQuotientSize + nXCoefSize;
 #if _CollectDetailedTimingData
                 DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                MultUBackend(nQuotientSize, nXCoefSize, pSlot2, pXCoefValue, pWorkspace, pWorkspace + nProductSize, dwTimestamp, eTopLevel);
+                MultUBackend(nQuotientSize, nXCoefSize, pSlot2, pXCoefValue, pWorkspace, pWorkspace + nProductSize, dwTimestamp);
 #else
                 MultUBackend(nQuotientSize, nXCoefSize, pSlot2, pXCoefValue, pWorkspace, pWorkspace + nProductSize);
 #endif
@@ -9967,37 +10237,57 @@ void CUnsignedArithmeticHelper::GCDCoef(size_t nXSize,
                 // GCD isn't big enough to make it worthwhile to divide out by it
                 nProductSize = nXCoefSize + nOrigXSize;
 #if _CollectDetailedTimingData
-                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                MultUBackend(nXCoefSize, nOrigXSize, pXCoefValue, pXValue, pWorkspace, pWorkspace + nProductSize, dwTimestamp, eTopLevel);
+                dwTimestamp2 = dwTimestamp;
+                MultUBackend(nXCoefSize, nOrigXSize, pXCoefValue, pXValue, pWorkspace, pWorkspace + nProductSize, dwTimestamp);
+                g_nGCDTime[eGCDMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
                 MultUBackend(nXCoefSize, nOrigXSize, pXCoefValue, pXValue, pWorkspace, pWorkspace + nProductSize);
 #endif
                 pWorkspace[nProductSize] = 0; // prevent overflow
                 if (0 == pWorkspace[nProductSize - 1]) nProductSize--;
+#if _CollectDetailedTimingData
                 AddSigned(nProductSize, nGCDSize, nQuotientSize, pWorkspace, pGCDValue, pWorkspace, !bXCoefNegative, false, bSumNeg);
-                Divide(nQuotientSize, nOrigYSize, nYCoefSize, nRemainderSize, pWorkspace, pYValue, pYCoefValue, pWorkspace + nQuotientSize);
+                dwTimestamp2                =  dwTimestamp;
+                dwTimestamp                 =  s_Timer.GetMicroseconds();
+                g_nGCDTime[eGCDProcessTime] += (dwTimestamp - dwTimestamp2);
+                DivideBackend(nQuotientSize, nOrigYSize, nYCoefSize, nRemainderSize, pWorkspace, pYValue, pYCoefValue, dwTimestamp2, pWorkspace + nQuotientSize);
+                g_nGCDTime[eGCDDivideTime]  += (dwTimestamp2 - dwTimestamp);
+                dwTimestamp                 =  dwTimestamp2;
+#else
+                AddSigned(nProductSize, nGCDSize, nQuotientSize, pWorkspace, pGCDValue, pWorkspace, !bXCoefNegative, false, bSumNeg);
+                DivideBackend(nQuotientSize, nOrigYSize, nYCoefSize, nRemainderSize, pWorkspace, pYValue, pYCoefValue, pWorkspace + nQuotientSize);
+#endif
             }
         }
     }
 }
 
 // old version.  Works, but blows out the stack for X, Y in the low 100s of digits.  But faster for small  X, Y -- so use it there (only)
-void CUnsignedArithmeticHelper::GCDCoef_recursive(size_t nXSize,
-                                                  size_t nYSize,
-                                                  size_t &nGCDSize,
-                                                  size_t &nXCoefSize,
-                                                  size_t &nYCoefSize,
-                                                  DIGIT  *pXValue,
-                                                  DIGIT  *pYValue,
-                                                  DIGIT  *pGCDValue,
-                                                  DIGIT  *pXCoefValue,
-                                                  DIGIT  *pYCoefValue,
-                                                  bool   &bXCoefNegative,
-                                                  DIGIT  *pWorkspace)
+void CUnsignedArithmeticHelper::GCDCoef_recursive(size_t  nXSize,
+                                                  size_t  nYSize,
+                                                  size_t  &nGCDSize,
+                                                  size_t  &nXCoefSize,
+                                                  size_t  &nYCoefSize,
+                                                  DIGIT   *pXValue,
+                                                  DIGIT   *pYValue,
+                                                  DIGIT   *pGCDValue,
+                                                  DIGIT   *pXCoefValue,
+                                                  DIGIT   *pYCoefValue,
+                                                  bool    &bXCoefNegative,
+#if(_CollectDetailedTimingData)
+                                                  DWORD64 &dwTimestamp,
+#endif
+                                                  DIGIT   *pWorkspace)
 {
     size_t  i,j,nXDivYSize,nXModYSize;
     size_t  nXDivYSpace=nXSize-nYSize+1;
-    Divide(nXSize,nYSize,nXDivYSize,nXModYSize,pXValue,pYValue,pWorkspace,pWorkspace+nXDivYSpace);
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp2 = dwTimestamp;
+    DivideBackend(nXSize, nYSize, nXDivYSize, nXModYSize, pXValue, pYValue, pWorkspace, dwTimestamp, pWorkspace + nXDivYSpace);
+    g_nGCDTime[eGCDDivideTime] += (dwTimestamp - dwTimestamp2);
+#else
+    DivideBackend(nXSize,nYSize,nXDivYSize,nXModYSize,pXValue,pYValue,pWorkspace,pWorkspace+nXDivYSpace);
+#endif
     // set the size of X to that of the computed X mod Y (remainder)
     if(0==nXModYSize)  // found the GCD: y
     {
@@ -10034,6 +10324,9 @@ void CUnsignedArithmeticHelper::GCDCoef_recursive(size_t nXSize,
                           pYCoefValue,
                           pXCoefValue,
                           bXCoefNegative,
+#if(_CollectDetailedTimingData)
+                          dwTimestamp,
+#endif
                           pWorkspace+nXDivYSpace);
         bXCoefNegative = !bXCoefNegative; // sign flips with each step
         // Algorithm:   Euler's method: if d is the gcd of u and v, then
@@ -10044,15 +10337,15 @@ void CUnsignedArithmeticHelper::GCDCoef_recursive(size_t nXSize,
         //              ax + by = d)
         //              Then, a = b' and b = a' - (x/y)b'.
 #if _CollectDetailedTimingData
-        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+        dwTimestamp2 = dwTimestamp;
         MultUBackend(nXDivYSize,
                      nXCoefSize,
                      pWorkspace,
                      pXCoefValue,
                      pWorkspace+nXDivYSpace,
                      pWorkspace+nXDivYSpace+nXDivYSize+nXCoefSize,
-                     dwTimestamp,
-                     eTopLevel);
+                     dwTimestamp);
+        g_nGCDTime[eGCDMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
         MultUBackend(nXDivYSize,
                      nXCoefSize,
@@ -10075,6 +10368,11 @@ void CUnsignedArithmeticHelper::GCDCoef_recursive(size_t nXSize,
                          pWorkspace+nXDivYSpace,
                          pYCoefValue);
     }
+#if _CollectDetailedTimingData
+    dwTimestamp2                =  dwTimestamp;
+    dwTimestamp                 =  s_Timer.GetMicroseconds();
+    g_nGCDTime[eGCDProcessTime] += (dwTimestamp - dwTimestamp2);
+#endif
 }
 
 // Synopsis:	The idea of divide-and-conquer multiplication, using
@@ -10185,7 +10483,6 @@ void CUnsignedArithmeticHelper::ConstructArgumentsFor2NByNSubproblems(size_t    
                                                                       DIGIT              *pnOverflowDigits,
                                                                       SSystemData        *pSystemToUse,
 #if(_CollectDetailedTimingData)
-                                                                      EMultiplyAlgorithm eCaller,
                                                                       DWORD64            &dwTimestamp, // on entry, time called.  On exit, time completed
 #endif
                                                                       DIGIT              *pnWorkspace)
@@ -10298,16 +10595,14 @@ void CUnsignedArithmeticHelper::ConstructArgumentsFor2NByNSubproblems(size_t    
                          pnX+nChunkOffset,
                          ppnRi[i]+nChunkOffset,
                          pnWorkspace,
-                         dwTimestamp,
-                         e2NByN);
+                         dwTimestamp);
             MultUBackend(nCoefSize,
                          nPieceSize,
                          pSystemToUse->m_pppCoefficientsRi[i][nNumPieces-2],
                          pnY+nChunkOffset,
                          ppnRi[i]+nChunkOffset+nMaxRIOpSize,
                          pnWorkspace,
-                         dwTimestamp,
-                         e2NByN);
+                         dwTimestamp);
 #else
             MultUBackend(nCoefSize,
                          nPieceSize,
@@ -10435,7 +10730,6 @@ void CUnsignedArithmeticHelper::ConstructArgumentsFor2NByNSubproblems(size_t    
                                 ppnRi[i]+nChunkOffset,
 #if(_CollectDetailedTimingData)
                                 dwTimestamp,
-                                eCaller,
 #endif
                                 pnWorkspace);
                 MultAddUBackend(nCoefSize,
@@ -10446,7 +10740,6 @@ void CUnsignedArithmeticHelper::ConstructArgumentsFor2NByNSubproblems(size_t    
                                 ppnRi[i]+nChunkOffset+nMaxRIOpSize,
 #if(_CollectDetailedTimingData)
                                 dwTimestamp,
-                                eCaller,
 #endif
                                 pnWorkspace);
             }
@@ -10532,7 +10825,6 @@ void CUnsignedArithmeticHelper::ConstructArgumentsFor2NByNSubproblems(size_t    
                                                                       const DIGIT        *pnX,
                                                                       SSystemData        *pSystemToUse,
 #if(_CollectDetailedTimingData)
-                                                                      EMultiplyAlgorithm eCaller,
                                                                       DWORD64            &dwTimestamp, // on entry, time called.  On exit, time completed
 #endif
                                                                       DIGIT              *pnWorkspace)
@@ -10550,7 +10842,6 @@ void CUnsignedArithmeticHelper::ConstructArgumentsFor2NByNSubproblems(size_t    
                      pnWorkspace,
 #if(_CollectDetailedTimingData)
                      dwTimestamp,
-                     eCaller,
                      pnRiOpSizes + i);
 #else
             pnRiOpSizes + i);
@@ -10573,7 +10864,6 @@ void CUnsignedArithmeticHelper::ConstructArgumentsFor2NByNSubproblems(size_t    
                             ppnRi[i],
 #if(_CollectDetailedTimingData)
                             dwTimestamp,
-                            eCaller,
                             pnWorkspace);
 #else
                             pnWorkspace);
@@ -10641,7 +10931,6 @@ void CUnsignedArithmeticHelper::ComputeProductFrom2NByNSubproblemResults(size_t 
                                                                          DIGIT               *pnZValue,
                                                                          SSystemData         *pSystemToUse,
 #if(_CollectDetailedTimingData)
-                                                                         EMultiplyAlgorithm  eCaller,
                                                                          DWORD64             &dwTimestamp, // on entry, time called.  On exit, time completed
 #endif
                                                                          DIGIT               *pnWorkspace)
@@ -10697,8 +10986,7 @@ void CUnsignedArithmeticHelper::ComputeProductFrom2NByNSubproblemResults(size_t 
                                  pOp1,
 #if(_CollectDetailedTimingData)
                                  pnWorkspace,
-                                 dwTimestamp,
-                                 eCaller);
+                                 dwTimestamp);
 #else
                                  pnWorkspace);
 #endif
@@ -10718,8 +11006,7 @@ void CUnsignedArithmeticHelper::ComputeProductFrom2NByNSubproblemResults(size_t 
                                  pOp2,
 #if(_CollectDetailedTimingData)
                                  pnWorkspace,
-                                 dwTimestamp,
-                                 eCaller);
+                                 dwTimestamp);
 #else
                                  pnWorkspace);
 #endif
@@ -10734,14 +11021,17 @@ void CUnsignedArithmeticHelper::ComputeProductFrom2NByNSubproblemResults(size_t 
         {
             // do division
             size_t nRemainderSize; // always 0: dummy variable here
-            Divide(nPiComponentSize,
-                   pSystemToUse->m_ppnSizesPi[i][j],
-                   nPiComponentSize,
-                   nRemainderSize,
-                   pOp1,
-                   pSystemToUse->m_pppCoefficientsPi[i][j],
-                   pOp2,
-                   pnWorkspace);
+            DivideBackend(nPiComponentSize,
+                          pSystemToUse->m_ppnSizesPi[i][j],
+                          nPiComponentSize,
+                          nRemainderSize,
+                          pOp1,
+                          pSystemToUse->m_pppCoefficientsPi[i][j],
+                          pOp2,
+#if(_CollectDetailedTimingData)
+                          dwTimestamp,
+#endif
+                          pnWorkspace);
             // add (or subtract) P(i) into place
             DIGIT *pDest = pnZValue + nOffset;
             nCarry = 0;
@@ -10760,11 +11050,6 @@ void CUnsignedArithmeticHelper::ComputeProductFrom2NByNSubproblemResults(size_t 
         }
         nOffset -= nSubproblemSize;
     }
-#if(_CollectDetailedTimingData)
-    dwTimestamp             =  s_Timer.GetMicroseconds();
-    s_nProcessTimes[e2NByN] += dwTimestamp - dwProcess;
-    s_nMultiplyCalls[e2NByN]++;
-#endif
 }
 
 void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
@@ -10775,8 +11060,7 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
                                            SSystemData        *pSystemToUse,
 #if(_CollectDetailedTimingData)
                                            DIGIT              *pWorkspace,
-                                           DWORD64            &dwTimestamp,
-                                           EMultiplyAlgorithm eCaller)
+                                           DWORD64            &dwTimestamp)
 #else
                                            DIGIT              *pWorkspace)
 #endif
@@ -10786,8 +11070,8 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
                  *pnRiSizes, *pnRiOpSizes, nSmallXSize, nSmallYSize, n,
                  nMaxRISize = 0, nOverflowSize, nMaxRiSize;
 #if(_CollectDetailedTimingData)
-    DWORD64      dwBuild = dwTimestamp;
-    DWORD64      dwRecursiveTime;
+    DWORD64      dwBuildTime = dwTimestamp;
+    DWORD64      dwProcessTime;
 #endif
     n               = pSystemToUse->m_nSystemSize;
     nSubproblemSize = (nYSize+(n-1))/n;
@@ -10804,13 +11088,13 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
             // can't use this algorithm at all
 #ifndef _USESMALLDIGITS
 #if(_CollectDetailedTimingData)
-            MultU9by5(nXSize, nYSize, pXValue, pYValue, pZValue, pWorkspace, dwTimestamp, eCaller);
+            MultU9by5(nXSize, nYSize, pXValue, pYValue, pZValue, pWorkspace, dwTimestamp);
 #else
             MultU9by5(nXSize, nYSize, pXValue, pYValue, pZValue, pWorkspace);
 #endif
 #else
 #if(_CollectDetailedTimingData)
-            MultU7by4(nXSize, nYSize, pXValue, pYValue, pZValue, pWorkspace, dwTimestamp, eCaller);
+            MultU7by4(nXSize, nYSize, pXValue, pYValue, pZValue, pWorkspace, dwTimestamp);
 #else
             MultU7by4(nXSize, nYSize, pXValue, pYValue, pZValue, pWorkspace);
 #endif
@@ -10821,8 +11105,8 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
             // try with equal sizes
             size_t nProdSize;
 #if _CollectDetailedTimingData
-            MultU2NByN(nXSize, nXSize, pXValue, pYValue + nYSize - nXSize, pZValue + nYSize - nXSize, pSystemToUse, pWorkspace, dwTimestamp, e2NByN);
-            FinishUnbalancedMult(nXSize, nYSize, pXValue, pYValue, pZValue, dwTimestamp, e2NByN, pWorkspace, &nProdSize);
+            MultU2NByN(nXSize, nXSize, pXValue, pYValue + nYSize - nXSize, pZValue + nYSize - nXSize, pSystemToUse, pWorkspace, dwTimestamp);
+            FinishUnbalancedMult(nXSize, nYSize, pXValue, pYValue, pZValue, dwTimestamp, pWorkspace, &nProdSize);
 #else
             MultU2NByN(nXSize, nXSize, pXValue, pYValue + nYSize - nXSize, pZValue + nYSize - nXSize, pSystemToUse, pWorkspace);
             FinishUnbalancedMult(nXSize, nYSize, pXValue, pYValue, pZValue, pWorkspace, &nProdSize);
@@ -10889,7 +11173,6 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
                                           pnOverflowDigits,
                                           pSystemToUse,
 #if(_CollectDetailedTimingData)
-                                          eCaller,
                                           dwTimestamp,
 #endif
                                           pWorkspace);
@@ -10897,13 +11180,12 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
     // Perform the (primary) multiplications, generating the r(i)s
 #if(_CollectDetailedTimingData)
     dwTimestamp           =  s_Timer.GetMicroseconds();
-    dwRecursiveTime       =  dwTimestamp;
-    s_nBuildTimes[e2NByN] += dwTimestamp-dwBuild;
+    g_nBuildTimes[e2NByN] += dwTimestamp-dwBuildTime;
 #endif
     for(i=2*n-3;i>=1;i--)
     {
 #if(_CollectDetailedTimingData)
-        MultUBackend(pnRiOpSizes[(i-1)<<1],pnRiOpSizes[1+((i-1)<<1)],pRi[i-1],pRi[i-1]+nMaxRIOpSize,pRi[i],pWorkspace,dwTimestamp,e2NByN,pnRiSizes+i);
+        MultUBackend(pnRiOpSizes[(i-1)<<1],pnRiOpSizes[1+((i-1)<<1)],pRi[i-1],pRi[i-1]+nMaxRIOpSize,pRi[i],pWorkspace,dwTimestamp,pnRiSizes+i);
 #else
         MultUBackend(pnRiOpSizes[(i-1)<<1],pnRiOpSizes[1+((i-1)<<1)],pRi[i-1],pRi[i-1]+nMaxRIOpSize,pRi[i],pWorkspace,pnRiSizes+i);
 #endif
@@ -10914,7 +11196,7 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
     }
     i = 2*n-2;
 #if(_CollectDetailedTimingData)
-    MultUBackend(nSubproblemSize,nSubproblemSize,pXValue,pYValue,pRi[i],pWorkspace,dwTimestamp,e2NByN,pnRiSizes+i);
+    MultUBackend(nSubproblemSize,nSubproblemSize,pXValue,pYValue,pRi[i],pWorkspace,dwTimestamp,pnRiSizes+i);
 #else
     MultUBackend(nSubproblemSize,nSubproblemSize,pXValue,pYValue,pRi[i],pWorkspace,pnRiSizes+i);
 #endif
@@ -10932,8 +11214,8 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
                  pRi[0],
                  pWorkspace,
                  dwTimestamp,
-                 e2NByN,
                  pnRiSizes);
+    dwProcessTime = dwTimestamp;
 #else
     MultUBackend(nSmallXSize,
                  nSmallYSize,
@@ -10947,13 +11229,6 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
     {
         nMaxRISize = pnRiSizes[0];
     }
-#if(_CollectDetailedTimingData)
-    dwTimestamp = s_Timer.GetMicroseconds();
-    if(e2NByN!=eCaller)
-    {
-        s_nRecursiveTimes[e2NByN] += (dwTimestamp-dwRecursiveTime);
-    }
-#endif
     if(0==nMaxRISize)
     {
         // product is 0.  Unlikely to happen, but ComputeProductFrom2NByNSubproblemResults gets stuck in an endless
@@ -10975,11 +11250,15 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
                                                  pZValue,
                                                  pSystemToUse,
 #if(_CollectDetailedTimingData)
-                                                 eCaller,
                                                  dwTimestamp,
 #endif
                                                  pWorkspace);
     }
+#if(_CollectDetailedTimingData)
+    dwTimestamp             =  s_Timer.GetMicroseconds();
+    g_nProcessTimes[e2NByN] += (dwTimestamp-dwProcessTime);
+    g_nMultiplyCalls[e2NByN]++;
+#endif
 }
 
 void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
@@ -10988,7 +11267,6 @@ void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
                                              SSystemData        *pSystemToUse,
 #if(_CollectDetailedTimingData)
                                              DWORD64            &dwTimestamp,
-                                             EMultiplyAlgorithm eCaller,
 #endif
                                              DIGIT              *pWorkspace)
 {
@@ -10996,6 +11274,10 @@ void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
     size_t       nSubproblemSize, nMaxRIOpSize, nMaxCoefSize, i,
                  *pnRiSizes, *pnRiOpSizes, nSmallXSize, nSmallYSize, n,
                  nMaxRiSize;
+#if(_CollectDetailedTimingData)
+    DWORD64      dwBuildTime = dwTimestamp;
+    DWORD64      dwProcessTime;
+#endif
     n               = pSystemToUse->m_nSystemSize;
     nSubproblemSize = (nXSize+(n-1))/n;
     // might not need this size check?  TODO
@@ -11009,13 +11291,13 @@ void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
         // which boils down to the size must be greater than (<max coef> + nPieces)*nPieces + 1
 #ifndef _USESMALLDIGITS
 #if(_CollectDetailedTimingData)
-        SquareU9by5(nXSize, pXValue, pZValue, dwTimestamp, eCaller, pWorkspace);
+        SquareU9by5(nXSize, pXValue, pZValue, dwTimestamp, pWorkspace);
 #else
         SquareU9by5(nXSize, pXValue, pZValue, pWorkspace);
 #endif
 #else
 #if(_CollectDetailedTimingData)
-        SquareU7by4(nXSize, pXValue, pZValue, dwTimestamp, eCaller, pWorkspace);
+        SquareU7by4(nXSize, pXValue, pZValue, dwTimestamp, pWorkspace);
 #else
         SquareU7by4(nXSize, pXValue, pZValue, pWorkspace);
 #endif
@@ -11075,17 +11357,20 @@ void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
                                           pXValue,
                                           pSystemToUse,
 #if(_CollectDetailedTimingData)
-                                          eCaller,
                                           dwTimestamp,
 #endif
                                           pWorkspace);
+#if(_CollectDetailedTimingData)
+    dwTimestamp           =  s_Timer.GetMicroseconds();
+    g_nBuildTimes[e2NByN] += dwTimestamp-dwBuildTime;
+#endif
     // The operands for the r(i)s have now been computed
     // Perform the (primary) multiplications, generating the r(i)s
     nMaxRiSize = 0;
     for(i=2*n-3;i>=1;i--)
     {
 #if(_CollectDetailedTimingData)
-        SquareUBackend(pnRiOpSizes[i-1],pRi[i-1],pRi[i],pWorkspace,dwTimestamp,eCaller,pnRiSizes+i);
+        SquareUBackend(pnRiOpSizes[i-1],pRi[i-1],pRi[i],pWorkspace,dwTimestamp,pnRiSizes+i);
 #else
         SquareUBackend(pnRiOpSizes[i-1],pRi[i-1],pRi[i],pWorkspace,pnRiSizes+i);
 #endif
@@ -11096,7 +11381,7 @@ void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
     }
     i = 2*n-2;
 #if(_CollectDetailedTimingData)
-    SquareUBackend(nSubproblemSize,pXValue,pRi[i],pWorkspace,dwTimestamp,eCaller,pnRiSizes+i);
+    SquareUBackend(nSubproblemSize,pXValue,pRi[i],pWorkspace,dwTimestamp,pnRiSizes+i);
 #else
     SquareUBackend(nSubproblemSize,pXValue,pRi[i],pWorkspace,pnRiSizes+i);
 #endif
@@ -11105,15 +11390,12 @@ void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
         nMaxRiSize = pnRiSizes[i];
     }
     nSmallXSize = nXSize-(n-1)*nSubproblemSize;
-    SquareUBackend(nSmallXSize,
-                   pXValue+(n-1)*nSubproblemSize,
-                   pRi[0],
-                   pWorkspace,
 #if(_CollectDetailedTimingData)
-                   dwTimestamp,
-                   eCaller,
+    SquareUBackend(nSmallXSize, pXValue+(n-1)*nSubproblemSize, pRi[0], pWorkspace, dwTimestamp, pnRiSizes);
+    dwProcessTime = dwTimestamp;
+#else
+    SquareUBackend(nSmallXSize, pXValue + (n - 1) * nSubproblemSize, pRi[0], pWorkspace, pnRiSizes);
 #endif
-                   pnRiSizes);
     if(nMaxRiSize<pnRiSizes[0])
     {
         nMaxRiSize = pnRiSizes[0];
@@ -11139,11 +11421,15 @@ void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
                                                  pZValue,
                                                  pSystemToUse,
 #if(_CollectDetailedTimingData)
-                                                 eCaller,
                                                  dwTimestamp,
 #endif
                                                  pWorkspace);
     }
+#if(_CollectDetailedTimingData)
+    dwTimestamp             =  s_Timer.GetMicroseconds();
+    g_nProcessTimes[e2NByN] += (dwTimestamp-dwProcessTime);
+    g_nMultiplyCalls[e2NByN]++;
+#endif
 }
 
 // Adds two signed values.  The buffers are assumed to be accurate.
@@ -11494,323 +11780,6 @@ bool CUnsignedArithmeticHelper::SBitShift::Sub(SBitShift &nSub)
     m_nBitShift -= nSub.m_nBitShift;
     return true;
 }
-
-#if 0
-void CUnsignedArithmeticHelper::FFT_Basic(const DIGIT *pToCompute,
-                                          size_t      nOffsetInToCompute,
-                                          size_t      nLength,
-                                          size_t      nToComputeLength,
-                                          SBitShift   nRoot,
-                                          size_t      nStep,
-                                          size_t      nToComputeElementSize,
-                                          size_t      nToComputeFirstElementSize, // because not all the elements will be the same size in general
-                                          size_t      nFieldSize,
-                                          DIGIT       *pFFT,
-                                          DIGIT       *pnWorkspace)
-{
-    bool bNeedToMod;
-    DOUBLEDIGIT nSum,nCarry; // or nDifference, nBorrow
-    size_t      i,j;
-    if(2==nLength)
-    {
-        // base case
-        // FFT[0] = pToCompute[0]+pToCompute[nStep]
-        nCarry           =  0;
-        pToCompute       += nOffsetInToCompute; // align pToCompute with first element to access in it for convenience & efficiency
-        nToComputeLength -= nOffsetInToCompute;
-        if(nStep<nToComputeLength)
-        {
-            if(nStep+nToComputeFirstElementSize==nToComputeLength)
-            {
-                for(i=0;i<nToComputeFirstElementSize;i++)
-                {
-                    nSum    = (nCarry+pToCompute[i])+pToCompute[nStep+i];
-                    nCarry  = (nSum>>c_nDigitSize);
-                    pFFT[i] = (DIGIT) nSum;
-                }
-                for(;i<nToComputeElementSize;i++)
-                {
-                    nSum    = nCarry+pToCompute[i];
-                    nCarry  = (nSum>>c_nDigitSize);
-                    pFFT[i] = (DIGIT) nSum;
-                }
-            }
-            else
-            {
-                for(i=0;i<nToComputeElementSize;i++)
-                {
-                    nSum    = (nCarry+pToCompute[i])+pToCompute[nStep+i];
-                    nCarry  = (nSum>>c_nDigitSize);
-                    pFFT[i] = (DIGIT) nSum;
-                }
-            }
-            // note that this might write past FFT[0] into FFT[1] in computing FFT inverse -- but so what?
-            // We'll write the correct value when we compute FFT[1] -- no need to check for overflow
-            pFFT[i++] = (DIGIT) nCarry;
-        }
-        else
-        {
-            // pToCompute[0] -- low-order part -- has nonzero data
-            if(nToComputeFirstElementSize==nToComputeLength)
-            {
-                for(i=0;i<nToComputeFirstElementSize;i++)
-                {
-                    pFFT[i] = pToCompute[i];
-                }
-            }
-            else
-            {
-                for(i=0;i<nToComputeElementSize;i++)
-                {
-                    pFFT[i] = pToCompute[i];
-                }
-            }
-        }
-        for(;i<=nFieldSize;i++)
-        {
-            pFFT[i] = 0;
-        }
-        // check for overflow
-        if(0<pFFT[nFieldSize])
-        {
-            bNeedToMod = false;
-            if(1<pFFT[nFieldSize])
-            {
-                bNeedToMod = true;
-            }
-            else
-            {
-                for(i=0;i<nFieldSize;i++)
-                {
-                    if(0<pFFT[i])
-                    {
-                        bNeedToMod = true;
-                        break;
-                    }
-                }
-            }
-            if(bNeedToMod)
-            {
-                // need to subtract out 1+2^nFieldSize
-                pFFT[nFieldSize]--;
-                i=0;
-                do
-                {
-                    ;//pFFT[i]--;
-                }
-                while(0==pFFT[i++]--);
-            }
-        }
-        // FFT[1] = pToCompute[0]-pToCompute[nStep]
-        pFFT += (nFieldSize+1); // offset to next element
-        if(nStep<nToComputeLength)
-        {
-            nCarry = 0;  // borrow here
-            if(nStep+nToComputeFirstElementSize==nToComputeLength)
-            {
-                for(i=0;i<nToComputeFirstElementSize;i++)
-                {
-                    nSum    = pToCompute[nStep+i]+nCarry;
-                    nCarry  = (pToCompute[i]<nSum) ? 1 : 0;
-                    pFFT[i] = (DIGIT) (pToCompute[i]-nSum);
-                }
-                for(;i<nToComputeElementSize;i++)
-                {
-                    nSum    = nCarry;
-                    nCarry  = (pToCompute[i]<nSum) ? 1 : 0;
-                    pFFT[i] = (DIGIT) (pToCompute[i]-nSum);
-                }
-            }
-            else
-            {
-                for(i=0;i<nToComputeElementSize;i++)
-                {
-                    nSum    = pToCompute[nStep+i]+nCarry;
-                    nCarry  = (pToCompute[i]<nSum) ? 1 : 0;
-                    pFFT[i] = (DIGIT) (pToCompute[i]-nSum);
-                }
-            }
-            for(;i<nFieldSize;i++)
-            {
-                pFFT[i] = (DIGIT) -nCarry;
-            }
-            pFFT[nFieldSize] = 0;
-            if(0!=nCarry)
-            {
-                // need to add in 1+2^nFieldSize
-                i = 0;
-                do
-                {
-                    pFFT[i]++;
-                }
-                while(0==pFFT[i++]);
-            }
-        }
-        else
-        {
-            // pToCompute[0] -- low-order part -- has nonzero data
-            if(nToComputeFirstElementSize==nToComputeLength)
-            {
-                for(i=0;i<nToComputeFirstElementSize;i++)
-                {
-                    pFFT[i] = pToCompute[i];
-                }
-            }
-            else
-            {
-                for(i=0;i<nToComputeElementSize;i++)
-                {
-                    pFFT[i] = pToCompute[i];
-                }
-            }
-            for(;i<=nFieldSize;i++)
-            {
-                pFFT[i] = 0;
-            }
-        }
-    }
-    else
-    {
-    // THE FFT ALGORITHM
-    // =================
-    // Here is the general algorithm in pseudo-C:
-
-    // Let A be array of length m, w be primitive mth root of unity.
-    // Goal: produce DFT F(A): evaluation of A at 1, w, w^2,...,w^{m-1}.
-    // FFT(A, m, w)
-    // {
-    //   if (m==1)
-    //   {
-    //     return vector (a_0)
-    //   }
-    //   else
-    //   {
-    //     A_even = (a_0, a_2, ..., a_{m-2})
-    //     A_odd  = (a_1, a_3, ..., a_{m-1})
-    //     V_even = FFT(A_even, m/2, w^2)    //w^2 is a primitive m/2-th root of unity
-    //     V_odd  = FFT(A_odd, m/2, w^2)
-    //     V      = new vector of length m
-    //     for (j=0; j < m/2; ++j)
-    //     {
-    //       V[j]     = V_even[j] + w^j*V_odd[j]
-    //       V[j+m/2] = V_even[j] - w^j*V_odd[j]
-    //     }
-    //   }
-    //   return V
-    // }
-        // recursive algorithm
-        nLength = nLength>>1;
-        SBitShift nRootIterator;
-        SBitShift nRootSquared;
-        size_t    nOffset = (nFieldSize+1)*nLength; // used repeatedly
-        DIGIT     *pEven  = pnWorkspace;
-        DIGIT     *pOdd   = pnWorkspace+nOffset;
-        pnWorkspace = pOdd + nOffset;
-        nRootSquared.m_nBitShift   = nRoot.m_nBitShift;
-        nRootSquared.m_nDigitShift = nRoot.m_nDigitShift;
-        nRootSquared.Double();
-        FFT_Basic(pToCompute,
-                  nOffsetInToCompute,
-                  nLength,
-                  nToComputeLength,
-                  nRootSquared,
-                  nStep<<1,
-                  nToComputeElementSize,
-                  nToComputeFirstElementSize,
-                  nFieldSize,
-                  pEven,
-                  pnWorkspace);
-        if(nOffsetInToCompute+nStep<nToComputeLength)
-        {
-            FFT_Basic(pToCompute,
-                      nOffsetInToCompute+nStep,
-                      nLength,
-                      nToComputeLength,
-                      nRootSquared,
-                      nStep<<1,
-                      nToComputeElementSize,
-                      nToComputeFirstElementSize,
-                      nFieldSize,
-                      pOdd,
-                      pnWorkspace);
-        }
-        else
-        {
-            // the "odd" elements are all 0
-            memset(pOdd,0,sizeof(DIGIT)*nOffset);
-        }
-        for(j=0;j<nOffset;j+=(nFieldSize+1))
-        {
-            // mult each odd element by w^j
-            Mult2toMmodOnePlus2toN(pOdd+j,nFieldSize,nRootIterator,pnWorkspace);
-            // even+odd
-            nCarry = 0;
-            for(i=0;i<=nFieldSize;i++)
-            {
-                nSum      = (nCarry+pEven[j+i])+pnWorkspace[i];
-                nCarry    = (nSum>>c_nDigitSize);
-                pFFT[j+i] = (DIGIT) nSum;
-            }
-            // check for overflow
-            bNeedToMod = false;
-            if(1<=pFFT[j+nFieldSize])
-            {
-                // overflow possible
-                if(1<pFFT[j+nFieldSize])
-                {
-                    bNeedToMod = true;
-                }
-                else
-                {
-                    for(i=0;i<nFieldSize;i++)
-                    {
-                        if(0!=pFFT[j+i])
-                        {
-                            bNeedToMod = true;
-                            break;
-                        }
-                    }
-                }
-                if(bNeedToMod)
-                {
-                    pFFT[j+nFieldSize]--;
-                    i = 0;
-                    do
-                    {
-                        pFFT[j+i]--;
-                    }
-                    while((DIGIT) -1 == pFFT[j+i++]);
-                }
-            }
-            // even-odd
-            nCarry = 0;  // borrow here
-            for(i=0;i<nFieldSize;i++)
-            {
-                nSum              = pnWorkspace[i]+nCarry;
-                nCarry            = (pEven[j+i]<nSum) ? 1 : 0;
-                pFFT[nOffset+j+i] = (DIGIT) (pEven[j+i]-nSum);
-            }
-            nSum = nCarry+pnWorkspace[i];
-            if(pEven[j+i]<nSum)
-            {
-                // need to add in 1+2^nFieldSize
-                pFFT[nOffset+j+i] = 0;
-                i                 = 0;
-                do
-                {
-                    pFFT[nOffset+j+i]++;
-                }
-                while(0==pFFT[nOffset+j+i++]);
-            }
-            else
-            {
-                pFFT[nOffset+j+i] = (DIGIT) (pEven[j+i]-nSum);
-            }
-            nRootIterator.Add(nRoot);
-        }
-    }
-}
-#endif
 
 void CUnsignedArithmeticHelper::ExpandBaseNumberForFFT(const DIGIT *pnToExpand,
                                                        size_t      nToExpandLength,
@@ -12250,421 +12219,6 @@ void CUnsignedArithmeticHelper::FFTInverse(const DIGIT *pFFT,
         }
     }
 }
-#if 0
-void CUnsignedArithmeticHelper::FFT3(const DIGIT *pBase,    // the number whose FFT is to be computed
-                                     DIGIT       *pFFT,
-                                     size_t      nBaseSize, // the size of the number whose FFT is to be computed
-                                     size_t      nChunkSize,
-                                     size_t      nBaseStep, // should start at nChunkSize+1
-                                     size_t      nLength,
-                                     size_t      nFieldSize,
-                                     SBitShift   nRootUnity,
-                                     DIGIT       *pnWorkspace)
-{
-    DOUBLEDIGIT nSum, nDifference, nCarry, nBorrow, nEven, nOdd;
-    bool        bOpEndedOutsideField;
-    DIGIT       *pFFT_Even, *pFFT_Odd;
-    size_t      i, j;
-    nLength = nLength>>1; // length of subproblems for this stage
-    size_t nSubFFTSize = nLength*(nFieldSize+1); // used repeatedly
-    if(1==nLength)
-    {
-        size_t nOddSize,nEvenSize;
-        if(nBaseStep<nBaseSize)
-        {
-            if(nBaseStep+nChunkSize<=nBaseSize)
-            {
-                nOddSize = nChunkSize;
-            }
-            else
-            {
-                nOddSize = nBaseSize-nBaseStep;
-            }
-            nEvenSize = nChunkSize;
-        }
-        else
-        {
-            nOddSize  = 0;
-            nEvenSize = (nBaseSize<nChunkSize) ? nBaseSize : nChunkSize;
-        }
-        // note that nOddSize <= nEvenSize in all cases
-        nCarry  = 0;
-        nBorrow = 0;
-        // V[0]   = V_even[0] + V_odd[0] and
-        // V[m/2] = V_even[0] - V_odd[0]
-        pFFT_Even = (DIGIT *) pBase;
-        pFFT_Odd  = (DIGIT *) (pBase+nBaseStep);
-        for(i=0;i<nOddSize;i++)
-        {
-            nEven                = pFFT_Even[i];
-            nOdd                 = pFFT_Odd[i];
-            nSum                 = nCarry+nEven+nOdd;
-            pFFT[i]              = (DIGIT) nSum;
-            nDifference          = nOdd+nBorrow;
-            pFFT[nFieldSize+1+i] = (DIGIT) (nEven-nDifference);
-            nCarry               = nSum>>c_nDigitSize;
-            nBorrow              = (nEven<nDifference) ? 1 : 0;
-        }
-        for(;i<nEvenSize;i++)
-        {
-            nEven                = pFFT_Even[i];
-            nSum                 = nCarry+nEven;
-            pFFT[i]              = (DIGIT) nSum;
-            nDifference          = nBorrow;
-            pFFT[nFieldSize+1+i] = (DIGIT) (nEven-nDifference);
-            nCarry               = nSum>>c_nDigitSize;
-            nBorrow              = (nEven<nDifference) ? 1 : 0;
-        }
-        // check for overflow on the subtract
-        if(0<nBorrow)
-        {
-            memset(pFFT+nSubFFTSize+i,-1,(nFieldSize+1-i)*sizeof(DIGIT));
-            // need to add in (1+2^nFieldSize)
-            pFFT[nFieldSize+1+nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                               // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                               // largest possible number in the field -> no borrowing necessary!)
-            j                             = 0;
-            do
-            {
-                ;
-            }
-            while(0==++pFFT[nFieldSize+1+j++]);
-        }
-        else
-        {
-            memset(pFFT+nFieldSize+1+i,0,(nFieldSize+1-i)*sizeof(DIGIT));
-        }
-        // note that we CANNOT have overflow on the add -- nOddSize<=nEveenSize<=nChunkSize<nFieldSize
-        pFFT[i++] = (DIGIT) nCarry;
-        memset(pFFT+i,0,(nFieldSize+1-i)*sizeof(DIGIT));
-    }
-    else
-    {
-        SBitShift nRootIterator;
-        SBitShift nRootSquared;
-        pFFT_Odd                   = pFFT;
-        pFFT_Even                  = pFFT_Odd + nSubFFTSize;
-        nRootSquared.m_nBitShift   = nRootUnity.m_nBitShift;
-        nRootSquared.m_nDigitShift = nRootUnity.m_nDigitShift;
-        nRootSquared.Double();
-        FFT3(pBase,pFFT_Even,nBaseSize,nChunkSize,nBaseStep<<1,nLength,nFieldSize,nRootSquared,pnWorkspace);
-        if(nBaseStep<nBaseSize)
-        {
-            FFT3(pBase+nBaseStep,pFFT_Odd,nBaseSize-nBaseStep,nChunkSize,nBaseStep<<1,nLength,nFieldSize,nRootSquared,pnWorkspace);
-        }
-        else
-        {
-            memset(pFFT_Odd,0,nSubFFTSize*sizeof(DIGIT));
-        }
-        for(j=0;j<nSubFFTSize;j+=(nFieldSize+1))
-        {
-            // mult each odd element by w^j
-            Mult2toMmodOnePlus2toN(pFFT_Odd+j,nFieldSize,nRootIterator,pnWorkspace);
-            nRootIterator.Add(nRootUnity); // move iterator to the next power of the root of unity
-            nCarry  = 0;
-            nBorrow = 0;
-            // V[j]     = V_even[j] + w^j*V_odd[j] and
-            // V[j+m/2] = V_even[j] - w^j*V_odd[j]
-            for(i=0;i<nFieldSize+1;i++)
-            {
-                nEven                    = pFFT_Even[j+i];
-                nOdd                     = pnWorkspace[i];
-                nSum                     = nCarry+nEven+nOdd;
-                pFFT[2*j+i]              = (DIGIT) nSum;
-                nDifference              = nOdd+nBorrow;
-                pFFT[nFieldSize+1+2*j+i] = (DIGIT) (nEven-nDifference); // this will overwrite some values before we read them!!!  TODO
-                nCarry                   = nSum>>c_nDigitSize;
-                nBorrow                  = (nEven<nDifference) ? 1 : 0;
-            }
-            // check for overflow on the add
-            if(0<pFFT[2*j+nFieldSize])
-            {
-                bOpEndedOutsideField = false;
-                if(1<pFFT[2*j+nFieldSize])
-                {
-                    bOpEndedOutsideField = true;
-                }
-                else
-                {
-                    for(i=0;i<nFieldSize;i++)
-                    {
-                        if(0<pFFT[2*j+i])
-                        {
-                            bOpEndedOutsideField = true;
-                            break;
-                        }
-                    }
-                }
-                if(bOpEndedOutsideField)
-                {
-                    // need to subtract off (1+2^nFieldSize)
-                    pFFT[2*j+nFieldSize]--;
-                    i = 0;
-                    do
-                    {
-                        ;
-                    }
-                    while(0==pFFT[2*j+i++]--);
-                }
-            }
-            // check for overflow on the subtract
-            if(0<nBorrow)
-            {
-                // need to add in (1+2^nFieldSize)
-                pFFT[nFieldSize+1+2*j+nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                                       // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                                       // largest possible number in the field -> no borrowing necessary!)
-                i                                 = 0;
-                do
-                {
-                    ;
-                }
-                while(0==++pFFT[nFieldSize+1+2*j+i++]);
-            }
-        }
-    }
-}
-
-void CUnsignedArithmeticHelper::FFT3(const DIGIT *pBase,    // the number whose FFT is to be computed
-                                     DIGIT       *pFFT,
-                                     size_t      nBaseSize, // the size of the number whose FFT is to be computed
-                                     size_t      nChunkSize,
-                                     size_t      nBaseStep, // should start at nChunkSize+1
-                                     size_t      nLength,
-                                     size_t      nFieldSize,
-                                     SBitShift   nRootUnity,
-                                     DIGIT       *pnWorkspace)
-{
-    DOUBLEDIGIT nSum, nDifference, nCarry, nBorrow, nEven, nOdd;
-    bool        bOpEndedOutsideField;
-    DIGIT       *pFFT_Even, *pFFT_Odd;
-    size_t      i, j;
-    nLength = nLength>>1; // length of subproblems for this stage
-    if(1==nLength)
-    {
-        size_t nOddSize,nEvenSize;
-        if(nBaseStep<nBaseSize)
-        {
-            if(nBaseStep+nChunkSize<=nBaseSize)
-            {
-                nOddSize = nChunkSize;
-            }
-            else
-            {
-                nOddSize = nBaseSize-nBaseStep;
-            }
-            nEvenSize = nChunkSize;
-        }
-        else
-        {
-            nOddSize  = 0;
-            nEvenSize = (nBaseSize<nChunkSize) ? nBaseSize : nChunkSize;
-        }
-        // note that nOddSize <= nEvenSize in all cases
-        nCarry  = 0;
-        nBorrow = 0;
-        // V[0] = V_even[0] + V_odd[0] and
-        // V[1] = V_even[0] - V_odd[0]
-        pFFT_Even = (DIGIT *) pBase;
-        pFFT_Odd  = (DIGIT *) (pBase+nBaseStep);
-        for(i=0;i<nOddSize;i++)
-        {
-            nEven                = pFFT_Even[i];
-            nOdd                 = pFFT_Odd[i];
-            nSum                 = nCarry+nEven+nOdd;
-            pFFT[i]              = (DIGIT) nSum;
-            nDifference          = nOdd+nBorrow;
-            pFFT[nFieldSize+1+i] = (DIGIT) (nEven-nDifference);
-            nCarry               = nSum>>c_nDigitSize;
-            nBorrow              = (nEven<nDifference) ? 1 : 0;
-        }
-        for(;i<nEvenSize;i++)
-        {
-            nEven                = pFFT_Even[i];
-            nSum                 = nCarry+nEven;
-            pFFT[i]              = (DIGIT) nSum;
-            nDifference          = nBorrow;
-            pFFT[nFieldSize+1+i] = (DIGIT) (nEven-nDifference);
-            nCarry               = nSum>>c_nDigitSize;
-            nBorrow              = (nEven<nDifference) ? 1 : 0;
-        }
-        // check for overflow on the subtract
-        if(0<nBorrow)
-        {
-            memset(pFFT+nFieldSize+1+i,-1,(nFieldSize+1-i)*sizeof(DIGIT));
-            // need to add in (1+2^nFieldSize)
-            pFFT[nFieldSize+1+nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                               // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                               // largest possible number in the field -> no borrowing necessary!)
-            j                             = 0;
-            do
-            {
-                ;
-            }
-            while(0==++pFFT[nFieldSize+1+j++]);
-        }
-        else
-        {
-            memset(pFFT+nFieldSize+1+i,0,(nFieldSize+1-i)*sizeof(DIGIT));
-        }
-        // note that we CANNOT have overflow on the add -- nOddSize<=nEveenSize<=nChunkSize<nFieldSize
-        pFFT[i++] = (DIGIT) nCarry;
-        memset(pFFT+i,0,(nFieldSize+1-i)*sizeof(DIGIT));
-    }
-    else
-    {
-        SBitShift nRootIterator;
-        SBitShift nRootSquared;
-        size_t    nSubFFTSize = nLength*(nFieldSize+1); // used repeatedly
-        pFFT_Even                  = pFFT;
-        pFFT_Odd                   = pFFT_Even + nSubFFTSize;
-        nRootSquared.m_nBitShift   = nRootUnity.m_nBitShift;
-        nRootSquared.m_nDigitShift = nRootUnity.m_nDigitShift;
-        nRootSquared.Double();
-        FFT3(pBase,pFFT_Even,nBaseSize,nChunkSize,nBaseStep<<1,nLength,nFieldSize,nRootSquared,pnWorkspace);
-        if(nBaseStep<nBaseSize)
-        {
-            FFT3(pBase+nBaseStep,pFFT_Odd,nBaseSize-nBaseStep,nChunkSize,nBaseStep<<1,nLength,nFieldSize,nRootSquared,pnWorkspace);
-        }
-        else
-        {
-            memset(pFFT_Odd,0,nSubFFTSize*sizeof(DIGIT));
-        }
-        j = 0;
-        do
-        {
-            // mult each odd element by w^j
-            DIGIT *pLow0  = pFFT_Even+j;
-            DIGIT *pHigh0 = pFFT_Odd+j;
-            j+=(nFieldSize+1);
-            DIGIT *pLow1  = pFFT_Even+j;
-            DIGIT *pHigh1 = pFFT_Odd+j;
-            j+=(nFieldSize+1);
-            Mult2toMmodOnePlus2toN(pHigh0,nFieldSize,nRootIterator,pnWorkspace);
-            nRootIterator.Add(nRootUnity); // move iterator to the next power of the root of unity
-            Mult2toMmodOnePlus2toN(pHigh1,nFieldSize,nRootIterator,pnWorkspace+nFieldSize+1);
-            nRootIterator.Add(nRootUnity); // move iterator to the next power of the root of unity
-            DOUBLEDIGIT nCarryLow    = 0;
-            DOUBLEDIGIT nBorrowLow   = 0;
-            DOUBLEDIGIT nCarryHigh   = 0;
-            DOUBLEDIGIT nBorrowHigh  = 0;
-            DIGIT nEven0, nEven1, nOdd0, nOdd1;
-            // V[2*j]         = V_even[j]   + w^j*V_odd[2*j] and
-            // V[2*j+1]       = V_even[j]   - w^j*V_odd[2*j] and
-            // V[2*j+m/2]     = V_even[j+1] + w^(j+1)*V_odd[j+1] and
-            // V[2*j+m/2+1]   = V_even[j+1] - w^(j+1)*V_odd[j+1]
-            for(i=0;i<nFieldSize+1;i++)
-            {
-                nEven0      = pLow0[i];
-                nEven1      = pLow1[i];
-                nOdd0       = pnWorkspace[i];
-                nOdd1       = pnWorkspace[nFieldSize+1+i];
-                nSum        = (nCarryLow+nEven0)+nOdd0;
-                pLow0[i]    = (DIGIT) nSum;
-                nDifference = nOdd0+nBorrowLow;
-                pLow1[i]    = (DIGIT) (nEven0-nDifference);
-                nCarryLow   = nSum>>c_nDigitSize;
-                nBorrowLow  = (nEven0<nDifference) ? 1 : 0;
-                nSum        = (nCarryHigh+nEven1)+nOdd1;
-                pHigh0[i]   = (DIGIT) nSum;
-                nDifference = nOdd1+nBorrowHigh;
-                pHigh1[i]   = (DIGIT) (nEven1-nDifference);
-                nCarryHigh  = nSum>>c_nDigitSize;
-                nBorrowHigh = (nEven1<nDifference) ? 1 : 0;
-            }
-            // check for overflow on the low add, subtract
-            if(0<pLow0[nFieldSize])
-            {
-                bOpEndedOutsideField = false;
-                if(1<pLow0[nFieldSize])
-                {
-                    bOpEndedOutsideField = true;
-                }
-                else
-                {
-                    for(i=0;i<nFieldSize;i++)
-                    {
-                        if(0<pLow0[i])
-                        {
-                            bOpEndedOutsideField = true;
-                            break;
-                        }
-                    }
-                }
-                if(bOpEndedOutsideField)
-                {
-                    // need to subtract off (1+2^nFieldSize)
-                    pLow0[nFieldSize]--;
-                    i = 0;
-                    do
-                    {
-                        ;
-                    }
-                    while(0==pLow0[i++]--);
-                }
-            }
-            if(0<nBorrowLow)
-            {
-                // need to add in (1+2^nFieldSize)
-                pLow1[nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                       // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                       // largest possible number in the field -> no borrowing necessary!)
-                i                 = 0;
-                do
-                {
-                    ;
-                }
-                while(0==++pLow1[i++]);
-            }
-            // check for overflow on the high add, subtracts
-            if(0<pHigh0[nFieldSize])
-            {
-                bOpEndedOutsideField = false;
-                if(1<pHigh0[nFieldSize])
-                {
-                    bOpEndedOutsideField = true;
-                }
-                else
-                {
-                    for(i=0;i<nFieldSize;i++)
-                    {
-                        if(0<pHigh0[i])
-                        {
-                            bOpEndedOutsideField = true;
-                            break;
-                        }
-                    }
-                }
-                if(bOpEndedOutsideField)
-                {
-                    // need to subtract off (1+2^nFieldSize)
-                    pHigh0[nFieldSize]--;
-                    i = 0;
-                    do
-                    {
-                        ;
-                    }
-                    while(0==pHigh0[i++]--);
-                }
-            }
-            if(0<nBorrowHigh)
-            {
-                // need to add in (1+2^nFieldSize)
-                pHigh1[nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                        // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                        // largest possible number in the field -> no borrowing necessary!)
-                i                  = 0;
-                do
-                {
-                    ;
-                }
-                while(0==++pHigh1[i++]);
-            }
-        }
-        while(j<nSubFFTSize);
-    }
-}
-#endif
 
 void CUnsignedArithmeticHelper::FFT_opt_wrapper(DIGIT       *pFFT,
                                                 size_t      nLength,
@@ -13263,7 +12817,6 @@ void CUnsignedArithmeticHelper::Convolve(DIGIT       *pnFFT_a,
                      pnWorkspace,
                      pnWorkspace+((nFieldSize+1)<<1),
                      dwTimestamp,
-                     eFFTMult,
                      &nProdSize);
 #else
         MultUBackend(nASize,
@@ -13274,9 +12827,7 @@ void CUnsignedArithmeticHelper::Convolve(DIGIT       *pnFFT_a,
                      pnWorkspace+((nFieldSize+1)<<1),
                      &nProdSize);
 #endif
-     //   DIGIT nBuzz = (i!=nLength-1) ? pnFFT_a[nFieldSize+1] : 0; // debug remove todo // not it
         ModBy2nPlus1(pnWorkspace,pnFFT_a,nFieldSize);
-       // if ((i != nLength - 1) && nBuzz != pnFFT_a[nFieldSize + 1]) printf("whoopsie %i %i\n",i,nLength); // debug remove todo
         pnFFT_a += nFieldSize+1;
         pnFFT_b += nFieldSize+1;
     }
@@ -13313,7 +12864,6 @@ void CUnsignedArithmeticHelper::ConvolveSquare(DIGIT   *pnFFT_a,
                        pnWorkspace+((nFieldSize+1)<<1),
 #if(_CollectDetailedTimingData)
                        dwTimestamp,
-                       eFFTMult,
 #endif
                        &nProdSize);
         ModBy2nPlus1(pnWorkspace, pnFFT_a, nFieldSize);
@@ -13345,8 +12895,7 @@ void CUnsignedArithmeticHelper::MultFFT(size_t             nXSize,
                                         DIGIT              *pnZValue,
 #if(_CollectDetailedTimingData)
                                         DIGIT              *pnWorkspace,
-                                        DWORD64            &dwTimestamp,
-                                        EMultiplyAlgorithm eCaller)
+                                        DWORD64            &dwTimestamp)
 #else
                                         DIGIT              *pnWorkspace)
 #endif
@@ -13356,10 +12905,6 @@ void CUnsignedArithmeticHelper::MultFFT(size_t             nXSize,
     SBitShift   nRootUnity;
     DIGIT       *pnFFT_x,*pnFFT_y;
     BYTE        byMaxOverflowSize;
-    if (nYSize < nXSize || 2 * nXSize <= nYSize) // debug remove todo
-    {
-        printf("bad sizes slipped in to FFTMult!\n");
-    }
 #if(_CollectDetailedTimingData)
     DWORD64     dwBuild = dwTimestamp;
     DWORD64     dwRecursiveTime;
@@ -13373,13 +12918,9 @@ void CUnsignedArithmeticHelper::MultFFT(size_t             nXSize,
 #if(_CollectDetailedTimingData)
     dwRecursiveTime         =  s_Timer.GetMicroseconds();
     dwTimestamp             =  dwRecursiveTime;
-    s_nBuildTimes[eFFTMult] += (dwRecursiveTime - dwBuild);
+    g_nBuildTimes[eFFTMult] += (dwRecursiveTime - dwBuild);
     Convolve(pnFFT_y,pnFFT_x,nFFTLength,nFieldSize,pnZValue,dwTimestamp); // use Z as workspace -- less memory needed
     dwProcess = dwTimestamp;
-    if(eFFTMult!=eCaller)
-    {
-        s_nRecursiveTimes[eFFTMult] += (dwProcess-dwRecursiveTime);
-    }
 #else
     // convolve workspace needs is 2*(field size + 1) + multiply needs(field size+1, field size +1) -- which is less than the size of Z.  Use Z as the workspace to save memory
     Convolve(pnFFT_y,pnFFT_x,nFFTLength,nFieldSize,pnZValue);
@@ -13392,8 +12933,8 @@ void CUnsignedArithmeticHelper::MultFFT(size_t             nXSize,
     GetProductFromInverseFFT(pnFFT_x,pnZValue,nChunkSize,nFieldSize,nXSize+nYSize,byMaxOverflowSize);
 #if(_CollectDetailedTimingData)
     dwTimestamp               =  s_Timer.GetMicroseconds();
-    s_nProcessTimes[eFFTMult] += dwTimestamp-dwProcess;
-    s_nMultiplyCalls[eFFTMult]++;
+    g_nProcessTimes[eFFTMult] += dwTimestamp-dwProcess;
+    g_nMultiplyCalls[eFFTMult]++;
 #endif
 }
 
@@ -13479,8 +13020,7 @@ void CUnsignedArithmeticHelper::SquareFFT(size_t             nXSize,
                                           DIGIT              *pnZValue,
 #if _CollectDetailedTimingData
                                           DIGIT              *pnWorkspace,
-                                          DWORD64            &dwTimestamp,
-                                          EMultiplyAlgorithm eCaller)
+                                          DWORD64            &dwTimestamp)
 #else
                                           DIGIT              *pnWorkspace)
 #endif
@@ -13502,13 +13042,9 @@ void CUnsignedArithmeticHelper::SquareFFT(size_t             nXSize,
 #if(_CollectDetailedTimingData)
     dwRecursiveTime         =  s_Timer.GetMicroseconds();
     dwTimestamp             =  dwRecursiveTime;
-    s_nBuildTimes[eFFTMult] += (dwRecursiveTime - dwBuild);
-    ConvolveSquare(pnFFT,nFFTLength,nFieldSize,dwRecursiveTime,pnZValue);
+    g_nBuildTimes[eFFTMult] += (dwRecursiveTime - dwBuild);
+    ConvolveSquare(pnFFT,nFFTLength,nFieldSize,dwTimestamp,pnZValue);
     dwProcess = dwTimestamp;
-    if(eFFTMult!=eCaller)
-    {
-        s_nRecursiveTimes[eFFTMult] += (dwProcess-dwRecursiveTime);
-    }
 #else
     ConvolveSquare(pnFFT,nFFTLength,nFieldSize,pnZValue);
 #endif
@@ -13519,8 +13055,8 @@ void CUnsignedArithmeticHelper::SquareFFT(size_t             nXSize,
     GetProductFromInverseFFT(pnFFT_inv,pnZValue,nChunkSize,nFieldSize,nXSize+nXSize,byMaxOverflowSize);
 #if(_CollectDetailedTimingData)
     dwTimestamp               =  s_Timer.GetMicroseconds();
-    s_nProcessTimes[eFFTMult] += dwTimestamp-dwProcess;
-    s_nMultiplyCalls[eFFTMult]++;
+    g_nProcessTimes[eFFTMult] += dwTimestamp-dwProcess;
+    g_nMultiplyCalls[eFFTMult]++;
 #endif
 }
 
@@ -13566,21 +13102,28 @@ void CUnsignedArithmeticHelper::PowerModulus(size_t      nXSize,
                                              DIGIT       *pnWorkspace,
                                              bool        bProtectAgainstTimingAttacks)
 {
+#if(_CollectDetailedTimingData)
+    DWORD64     dwTimestamp  = s_Timer.GetMicroseconds();
+    DWORD64     dwTimestamp2 = dwTimestamp, dwTimestamp3;
+    g_nPowerModulusTime[eTotalPowerModulusCalls]++;
+#endif
     size_t      nPowerBit, nPowerDigit;
     const DIGIT *pX;
     GetLeadBit(nYSize, pnYValue, nPowerDigit, nPowerBit);
     if (nXSize > nZSize || (1==nYSize && 1==*pnYValue && -1!=CBigInteger::CompareUnsigned(nXSize,nYSize,pnXValue,pnYValue)))
     {
         // first "multiply" -- just compute X mod Z and copy into place
-        /*pX          =  pnWorkspace;
-        pnWorkspace += nZSize;
-        memcpy(pnPowerModulus, pnXValue, sizeof(DIGIT)*nXSize);
-        Divide(nXSize, nZSize, nXSize, nPowerModulusSize, pnPowerModulus, pnZValue, pnWorkspace, pnWorkspace + nXSize);
-        nXSize = nPowerModulusSize;
-        memcpy((DIGIT *) pX, pnPowerModulus, sizeof(DIGIT)*nXSize);*/
         pX          =  pnWorkspace;
         memcpy(pnWorkspace, pnXValue, sizeof(DIGIT)*nXSize);
-        Divide(nXSize, nZSize, nXSize, nPowerModulusSize, pnWorkspace, pnZValue, pnWorkspace+nXSize, pnWorkspace+nXSize+nXSize-nZSize+1);
+#if(_CollectDetailedTimingData)
+        dwTimestamp3                                  =  s_Timer.GetMicroseconds();
+        dwTimestamp2                                  =  dwTimestamp3;
+        g_nPowerModulusTime[ePowerModulusProcessTime] += (dwTimestamp3 - dwTimestamp);
+        DivideBackend(nXSize, nZSize, nXSize, nPowerModulusSize, pnWorkspace, pnZValue, pnWorkspace + nXSize, dwTimestamp2, pnWorkspace + nXSize + nXSize - nZSize + 1);
+        g_nPowerModulusTime[ePowerModulusDivideTime]  += (dwTimestamp2 - dwTimestamp3);
+#else
+        DivideBackend(nXSize, nZSize, nXSize, nPowerModulusSize, pnWorkspace, pnZValue, pnWorkspace+nXSize, pnWorkspace+nXSize+nXSize-nZSize+1);
+#endif
         nXSize = nPowerModulusSize;
         memcpy(pnPowerModulus, pX, sizeof(DIGIT)*nXSize);
         pnWorkspace += nZSize;
@@ -13598,9 +13141,6 @@ void CUnsignedArithmeticHelper::PowerModulus(size_t      nXSize,
         size_t nDivSize; // dummy variable; don't care about it
         size_t nNewModulusSize;
         size_t nProdSize;
-#if(_CollectDetailedTimingData)
-        DWORD64 dwTimestamp;
-#endif
         do
         {
             // update power bit "pointer" to the next bit
@@ -13621,26 +13161,72 @@ void CUnsignedArithmeticHelper::PowerModulus(size_t      nXSize,
                 // end of the line -- number has 0 as its power modulus -- e.g. 4 with modulus 16: (4*4)%16 = 0, so (4^n)%16 = 0 for 1<n
                 break;
             }
+#if(_CollectDetailedTimingData)
+            dwTimestamp3                                   =  s_Timer.GetMicroseconds();
+            g_nPowerModulusTime[ePowerModulusProcessTime]  += (dwTimestamp3 - dwTimestamp2);
+            dwTimestamp2                                   =  dwTimestamp3;
             SquareUBackend(nPowerModulusSize,
                            pnPowerModulus,
                            pnWorkspace,
                            pnWorkspace+(nZSize<<1),
-#if(_CollectDetailedTimingData)
-                           dwTimestamp,
-                           eTopLevel,
-#endif
+                           dwTimestamp2,
+                           &nProdSize);
+            g_nPowerModulusTime[ePowerModulusMultiplyTime] += (dwTimestamp2 - dwTimestamp3);
+            dwTimestamp3                                   =  dwTimestamp2;
+            // take modulus
+            DivideBackend(nProdSize,
+                          nZSize,
+                          nDivSize,
+                          nPowerModulusSize,
+                          pnWorkspace,
+                          pnZValue,
+                          pnWorkspace+(nZSize<<1),         // div value -- don't care what it is, actually
+                          dwTimestamp2,
+                          pnWorkspace+(nZSize<<1)+nProdSize-nZSize+1);
+            g_nPowerModulusTime[ePowerModulusDivideTime]  += (dwTimestamp2 - dwTimestamp3);
+#else
+            SquareUBackend(nPowerModulusSize,
+                           pnPowerModulus,
+                           pnWorkspace,
+                           pnWorkspace+(nZSize<<1),
                            &nProdSize);
             // take modulus
-            Divide(nProdSize,
-                   nZSize,
-                   nDivSize,
-                   nPowerModulusSize,
-                   pnWorkspace,
-                   pnZValue,
-                   pnWorkspace+(nZSize<<1),         // div value -- don't care what it is, actually
-                   pnWorkspace+(nZSize<<1)+nProdSize-nZSize+1);
+            DivideBackend(nProdSize,
+                          nZSize,
+                          nDivSize,
+                          nPowerModulusSize,
+                          pnWorkspace,
+                          pnZValue,
+                          pnWorkspace+(nZSize<<1),         // div value -- don't care what it is, actually
+                          pnWorkspace+(nZSize<<1)+nProdSize-nZSize+1);
+#endif
             if(0 != (nPowerBit&(pnYValue[nPowerDigit])) || bProtectAgainstTimingAttacks)
             {
+#if(_CollectDetailedTimingData)
+                // multiply by x
+                dwTimestamp3 = dwTimestamp2;
+                MultUBackend(nPowerModulusSize,
+                             nXSize,
+                             pnWorkspace,
+                             pX,
+                             pnWorkspace+(nZSize<<1), // KNOW that nPowerModulusSize <= nZSize; this way, don't need to save old power modulus size, too
+                             pnWorkspace+(nZSize<<1)+nPowerModulusSize+nXSize,
+                             dwTimestamp2,
+                             &nProdSize);
+                g_nPowerModulusTime[ePowerModulusMultiplyTime] += (dwTimestamp2 - dwTimestamp3);
+                dwTimestamp3                                   =  dwTimestamp2;
+                // take modulus
+                DivideBackend(nProdSize,
+                              nZSize,
+                              nDivSize,
+                              nNewModulusSize,
+                              pnWorkspace+(nZSize<<1),
+                              pnZValue,
+                              pnWorkspace+(nZSize<<1)+nProdSize,
+                              dwTimestamp2,
+                              pnWorkspace+(nZSize<<1)+nProdSize+nProdSize-nZSize+1);
+                g_nPowerModulusTime[ePowerModulusDivideTime] += (dwTimestamp2 - dwTimestamp3);
+#else
                 // multiply by x
                 MultUBackend(nPowerModulusSize,
                              nXSize,
@@ -13648,20 +13234,17 @@ void CUnsignedArithmeticHelper::PowerModulus(size_t      nXSize,
                              pX,
                              pnWorkspace+(nZSize<<1), // KNOW that nPowerModulusSize <= nZSize; this way, don't need to save old power modulus size, too
                              pnWorkspace+(nZSize<<1)+nPowerModulusSize+nXSize,
-#if(_CollectDetailedTimingData)
-                             dwTimestamp,
-                             eTopLevel,
-#endif
                              &nProdSize);
                 // take modulus
-                Divide(nProdSize,
-                       nZSize,
-                       nDivSize,
-                       nNewModulusSize,
-                       pnWorkspace+(nZSize<<1),
-                       pnZValue,
-                       pnWorkspace+(nZSize<<1)+nProdSize,
-                       pnWorkspace+(nZSize<<1)+nProdSize+nProdSize-nZSize+1);
+                DivideBackend(nProdSize,
+                              nZSize,
+                              nDivSize,
+                              nNewModulusSize,
+                              pnWorkspace+(nZSize<<1),
+                              pnZValue,
+                              pnWorkspace+(nZSize<<1)+nProdSize,
+                              pnWorkspace+(nZSize<<1)+nProdSize+nProdSize-nZSize+1);
+#endif
                 if(0 != (nPowerBit&(pnYValue[nPowerDigit])))
                 {
                     // copy result back into power modulus
@@ -13682,6 +13265,12 @@ void CUnsignedArithmeticHelper::PowerModulus(size_t      nXSize,
         }
         while(1);
     }
+#if(_CollectDetailedTimingData)
+    dwTimestamp3 = s_Timer.GetMicroseconds();
+    g_nPowerModulusTime[ePowerModulusProcessTime] += (dwTimestamp3 - dwTimestamp2);
+    g_nPowerModulusTime[ePowerModulusTotalTime]   += (dwTimestamp3 - dwTimestamp);
+    dwTimestamp                                   =  dwTimestamp3;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -13745,6 +13334,9 @@ void CUnsignedArithmeticHelper::ToMontgomeryForm(size_t      nXSize,
                                                  const DIGIT *pXValue,
                                                  DIGIT       *pNValue,
                                                  DIGIT       *pXMontgomeryValue,
+#if(_CollectDetailedTimingData)
+                                                 DWORD64     &dwTimestamp,
+#endif
                                                  DIGIT       *pWorkspace)
 {
     size_t nDummy; // used to hold the size of aR/N -- a value we don't care about
@@ -13753,7 +13345,15 @@ void CUnsignedArithmeticHelper::ToMontgomeryForm(size_t      nXSize,
     {
         pXMontgomeryValue[nNSize+i] = pXValue[i];
     }
-    Divide(nXSize+nNSize, nNSize, nDummy, nXMontgomerySize, pXMontgomeryValue, pNValue, pWorkspace, pWorkspace+nXSize+1);
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp2 = s_Timer.GetMicroseconds();
+    g_nPowerModulusTime[ePowerModulusProcessTime] += (dwTimestamp2 - dwTimestamp);
+    dwTimestamp                                   =  dwTimestamp2;
+    DivideBackend(nXSize+nNSize, nNSize, nDummy, nXMontgomerySize, pXMontgomeryValue, pNValue, pWorkspace, dwTimestamp, pWorkspace+nXSize+1);
+    g_nPowerModulusTime[ePowerModulusDivideTime]  += (dwTimestamp - dwTimestamp2);
+#else
+    DivideBackend(nXSize+nNSize, nNSize, nDummy, nXMontgomerySize, pXMontgomeryValue, pNValue, pWorkspace, pWorkspace+nXSize+1);
+#endif
 }
 
 // x == (xMontgomery*R') mod N
@@ -13765,18 +13365,28 @@ void CUnsignedArithmeticHelper::FromMontgomeryForm(size_t      nMontgomerySize,
                                                    DIGIT       *pNValue,
                                                    const DIGIT *pRPrimeValue,
                                                    DIGIT       *pXValue,
+#if(_CollectDetailedTimingData)
+                                                   DWORD64     &dwTimestamp,
+#endif
                                                    DIGIT       *pWorkspace)
 {
     size_t nDummy; // used to hold the size of aR'/N -- a value we don't care about
 #if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-    MultUBackend(nMontgomerySize, nRPrimeSize, pXMontgomeryValue, pRPrimeValue, pWorkspace, pWorkspace+nMontgomerySize+nRPrimeSize, dwTimestamp, eTopLevel);
+    DWORD64 dwTimestamp2 = dwTimestamp;
+    MultUBackend(nMontgomerySize, nRPrimeSize, pXMontgomeryValue, pRPrimeValue, pWorkspace, pWorkspace+nMontgomerySize+nRPrimeSize, dwTimestamp2);
+    g_nPowerModulusTime[ePowerModulusMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
     MultUBackend(nMontgomerySize, nRPrimeSize, pXMontgomeryValue, pRPrimeValue, pWorkspace, pWorkspace+nMontgomerySize+nRPrimeSize);
 #endif
     nXSize = nMontgomerySize + nRPrimeSize;
     if(0==pWorkspace[nXSize-1]) nXSize--;
-    Divide(nXSize, nNSize, nDummy, nXSize, pWorkspace, pNValue, pWorkspace+nMontgomerySize+nRPrimeSize, pWorkspace+nMontgomerySize+nRPrimeSize+nXSize-nNSize+1);
+#if(_CollectDetailedTimingData)
+    dwTimestamp2 = dwTimestamp;
+    DivideBackend(nXSize, nNSize, nDummy, nXSize, pWorkspace, pNValue, pWorkspace+nMontgomerySize+nRPrimeSize, dwTimestamp, pWorkspace+nMontgomerySize+nRPrimeSize+nXSize-nNSize+1);
+    g_nPowerModulusTime[ePowerModulusMultiplyTime] += (dwTimestamp - dwTimestamp2);
+#else
+    DivideBackend(nXSize, nNSize, nDummy, nXSize, pWorkspace, pNValue, pWorkspace+nMontgomerySize+nRPrimeSize, pWorkspace+nMontgomerySize+nRPrimeSize+nXSize-nNSize+1);
+#endif
     memcpy(pXValue, pWorkspace, nXSize*sizeof(DIGIT));
 }
 
@@ -13803,6 +13413,9 @@ void CUnsignedArithmeticHelper::REDC(size_t       nNSize,
                                      const DIGIT  *pNPrimeValue,
                                      const DIGIT  *pTValue,
                                      DIGIT        *pSValue,
+#if(_CollectDetailedTimingData)
+                                     DWORD64      &dwTimestamp,
+#endif
                                      DIGIT        *pWorkspace)
 {
     DOUBLEDIGIT nCarry, nSum;
@@ -13813,15 +13426,15 @@ void CUnsignedArithmeticHelper::REDC(size_t       nNSize,
     //           divide by R skipping the last nNSize digits
     // m = ((T mod R)*N') mod R
 #if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
     MultUBackend(nMSize, // taking size min gives T mod R
                  nNPrimeSize,
                  pTValue,
                  pNPrimeValue,
                  pM,
                  pWorkspace + nNPrimeSize + nNSize,
-                 dwTimestamp,
-                 eTopLevel);
+                 dwTimestamp);
+    g_nPowerModulusTime[ePowerModulusMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
     MultUBackend(nMSize, // taking size min gives T mod R
                  nNPrimeSize,
@@ -13842,8 +13455,9 @@ void CUnsignedArithmeticHelper::REDC(size_t       nNSize,
         // mN
         size_t nMultSize = nMSize + nNSize;
 #if _CollectDetailedTimingData
-        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-        MultUBackend(nMSize, nNSize, pM, pNValue, pWorkspace, pWorkspace+nMultSize, dwTimestamp, eTopLevel);
+        dwTimestamp2 = dwTimestamp;
+        MultUBackend(nMSize, nNSize, pM, pNValue, pWorkspace, pWorkspace+nMultSize, dwTimestamp);
+        g_nPowerModulusTime[ePowerModulusMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
         MultUBackend(nMSize, nNSize, pM, pNValue, pWorkspace, pWorkspace+nMultSize);
 #endif
@@ -13888,6 +13502,11 @@ void CUnsignedArithmeticHelper::REDC(size_t       nNSize,
             pSValue[i] = pTValue[i+nNSize];
         }
     }
+#if _CollectDetailedTimingData
+    dwTimestamp2                                  =  dwTimestamp;
+    dwTimestamp                                   =  s_Timer.GetMicroseconds();
+    g_nPowerModulusTime[ePowerModulusProcessTime] += (dwTimestamp - dwTimestamp2);
+#endif
 }
 
 void CUnsignedArithmeticHelper::MontgomeryMultiply(size_t       nXSize,
@@ -13900,20 +13519,23 @@ void CUnsignedArithmeticHelper::MontgomeryMultiply(size_t       nXSize,
                                                    const DIGIT  *pNValue,
                                                    const DIGIT  *pNPrimeValue,
                                                    DIGIT        *pZValue,
+#if(_CollectDetailedTimingData)
+                                                   DWORD64      &dwTimestamp,
+#endif
                                                    DIGIT        *pWorkspace)
 {
     DIGIT *pIntermediateValue = pWorkspace;
     pWorkspace += nXSize + nYSize;
 #if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
     MultUBackend(nXSize,
                  nYSize,
                  pXValue,
                  pYValue,
                  pIntermediateValue,
                  pWorkspace,
-                 dwTimestamp,
-                 eTopLevel);
+                 dwTimestamp);
+    g_nPowerModulusTime[ePowerModulusMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
     MultUBackend(nXSize,
                  nYSize,
@@ -13924,7 +13546,11 @@ void CUnsignedArithmeticHelper::MontgomeryMultiply(size_t       nXSize,
 #endif
     nZSize = nXSize + nYSize;
     if(0==pIntermediateValue[nZSize-1]) nZSize--;
+#if(_CollectDetailedTimingData)
+    REDC(nNSize, nNPrimeSize, nZSize, pNValue, pNPrimeValue, pIntermediateValue, pZValue, dwTimestamp, pWorkspace);
+#else
     REDC(nNSize, nNPrimeSize, nZSize, pNValue, pNPrimeValue, pIntermediateValue, pZValue, pWorkspace);
+#endif
 }
 
 void CUnsignedArithmeticHelper::MontgomerySquare(size_t       nXSize,
@@ -13935,18 +13561,21 @@ void CUnsignedArithmeticHelper::MontgomerySquare(size_t       nXSize,
                                                  const DIGIT  *pNValue,
                                                  const DIGIT  *pNPrimeValue,
                                                  DIGIT        *pZValue,
+#if(_CollectDetailedTimingData)
+                                                 DWORD64      &dwTimestamp,
+#endif
                                                  DIGIT        *pWorkspace)
 {
     DIGIT *pIntermediateValue = pWorkspace;
     pWorkspace += (nXSize<<1);
 #if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
     SquareUBackend(nXSize,
                    pXValue,
                    pIntermediateValue,
                    pWorkspace,
-                   dwTimestamp,
-                   eTopLevel);
+                   dwTimestamp);
+    g_nPowerModulusTime[ePowerModulusMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
     SquareUBackend(nXSize,
                    pXValue,
@@ -13955,7 +13584,11 @@ void CUnsignedArithmeticHelper::MontgomerySquare(size_t       nXSize,
 #endif
     nZSize = nXSize<<1;
     if(0==pIntermediateValue[nZSize-1]) nZSize--;
+#if(_CollectDetailedTimingData)
+    REDC(nNSize, nNPrimeSize, nZSize, pNValue, pNPrimeValue, pIntermediateValue, pZValue, dwTimestamp, pWorkspace);
+#else
     REDC(nNSize, nNPrimeSize, nZSize, pNValue, pNPrimeValue, pIntermediateValue, pZValue, pWorkspace);
+#endif
 }
 
 void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
@@ -14017,7 +13650,14 @@ void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
     pXMontgomery             = pnWorkspace;
     pnPowerModulusMontgomery = pXMontgomery             + nXSize + nModulusSize; // pX needs nXSize + nModulusSize space (initial copy for divide)
     pnWorkspace              = pnPowerModulusMontgomery + nModulusSize + 1; // needs modulus space, +1 extra digit for overflow
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp  = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
+    g_nPowerModulusTime[eTotalPowerModulusCalls]++;
+    ToMontgomeryForm(nXSize, nModulusSize, nXSize, pnXValue, pnModulusValue, pXMontgomery, dwTimestamp, pnWorkspace);
+#else
     ToMontgomeryForm(nXSize, nModulusSize, nXSize, pnXValue, pnModulusValue, pXMontgomery, pnWorkspace);
+#endif
     if (0 != nXSize)
     {
         MontgomeryPowerModulus(nXSize,
@@ -14032,16 +13672,33 @@ void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
                                pnModulusValue,
                                pnModulusPrimeValue,
                                pnPowerModulusMontgomery,
+#if(_CollectDetailedTimingData)
+                               dwTimestamp,
+#endif
                                pnWorkspace,
                                bProtectAgainstTimingAttacks);
         // convert back to standard form and store the result in pnPowerModulus
-        FromMontgomeryForm(nPowerModulusSizeMontgomery, nModulusSize, nRPrimeSize, nPowerModulusSize, pnPowerModulusMontgomery, pnModulusValue, pnRPrimeValue, pnPowerModulus, pnWorkspace);
+        FromMontgomeryForm(nPowerModulusSizeMontgomery,
+                           nModulusSize,
+                           nRPrimeSize,
+                           nPowerModulusSize,
+                           pnPowerModulusMontgomery,
+                           pnModulusValue,
+                           pnRPrimeValue,
+                           pnPowerModulus,
+#if(_CollectDetailedTimingData)
+                           dwTimestamp,
+#endif
+                           pnWorkspace);
     }
     else
     {
         // zero in, zero out
         nPowerModulusSize = 0;
     }
+#if(_CollectDetailedTimingData)
+    g_nPowerModulusTime[ePowerModulusTotalTime] += (dwTimestamp - dwTimestamp2);
+#endif
 }
 
 void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
@@ -14056,6 +13713,9 @@ void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
                                                        const DIGIT *pnModulusValue,
                                                        const DIGIT *pModulusPrimeValue,
                                                        DIGIT       *pnPowerModulus,
+#if(_CollectDetailedTimingData)
+                                                       DWORD64     &dwTimestamp,
+#endif
                                                        DIGIT       *pnWorkspace,
                                                        bool        bProtectAgainstTimingAttacks)
 {
@@ -14065,9 +13725,6 @@ void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
     nPowerModulusSize = nXSize;
     if(0<nPowerDigit || 1<nPowerBit)
     {
-#if(_CollectDetailedTimingData)
-        DWORD64 dwTimestamp;
-#endif
         do
         {
             // update power bit "pointer" to the next bit
@@ -14097,6 +13754,9 @@ void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
                              pnModulusValue,
                              pModulusPrimeValue,
                              bMultAndSquare ? pnWorkspace : pnPowerModulus,
+#if(_CollectDetailedTimingData)
+                             dwTimestamp,
+#endif
                              pnWorkspace+(nModulusSize<<1)+1);
             if(bMultAndSquare)
             {
@@ -14111,6 +13771,9 @@ void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
                                    pnModulusValue,
                                    pModulusPrimeValue,
                                    pnPowerModulus,
+#if(_CollectDetailedTimingData)
+                                   dwTimestamp,
+#endif
                                    pnWorkspace + (nModulusSize<<1)+1);
             }
             else if(bProtectAgainstTimingAttacks)
@@ -14127,6 +13790,9 @@ void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
                                    pnModulusValue,
                                    pModulusPrimeValue,
                                    pnWorkspace,
+#if(_CollectDetailedTimingData)
+                                   dwTimestamp,
+#endif
                                    pnWorkspace + (nModulusSize<<1)+1);
             }
         }
@@ -14144,7 +13810,15 @@ void CUnsignedArithmeticHelper::SQRT(size_t nXSize, size_t &nRootSize, DIGIT *pn
     }
     else
     {
+#if(_CollectDetailedTimingData)
+        DWORD64 dwTimestamp  = s_Timer.GetMicroseconds();
+        DWORD64 dwTimestamp2 = dwTimestamp;
+        SquareRootRecursive(nXSize, nRootSize, pnX, pnSquareRoot, dwTimestamp, pWorkspace);
+        g_nSquareRootTime[eTotalSquareRootTime] += (dwTimestamp - dwTimestamp2);
+        g_nSquareRootTime[eTotalSquareRootCalls]++;
+#else
         SquareRootRecursive(nXSize, nRootSize, pnX, pnSquareRoot, pWorkspace);
+#endif
     }
 }
 
@@ -14159,17 +13833,30 @@ void CUnsignedArithmeticHelper::SQRT(size_t nXSize, size_t &nRootSize, DIGIT *pn
   Note that Newton is faster for this problem than for the problem y^2 <= x: the 20y'y1 term makes it closer to linear,
   so Newton converges faster
 */
-void CUnsignedArithmeticHelper::SquareRootRecursive(size_t nXSize,
-                                                    size_t &nRootSize,
-                                                    DIGIT  *pnX,
-                                                    DIGIT  *pnRoot,
-                                                    DIGIT  *pnWorkspace)
+void CUnsignedArithmeticHelper::SquareRootRecursive(size_t  nXSize,
+                                                    size_t  &nRootSize,
+                                                    DIGIT   *pnX,
+                                                    DIGIT   *pnRoot,
+#if(_CollectDetailedTimingData)
+                                                    DWORD64 &dwTimestamp,
+#endif
+                                                    DIGIT   *pnWorkspace)
 {
-    DIGIT  *pnX1, *pnX2, *pnYPrime, *pnY1;
-    size_t nOffset, nX1Size, nX2Size, nYPrimeSize, nYPrimeSquaredSize, nY1Size, i;
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp2;
+#endif
+    DIGIT   *pnX1, *pnX2, *pnYPrime, *pnY1;
+    size_t  nOffset, nX1Size, nX2Size, nYPrimeSize, nYPrimeSquaredSize, nY1Size, i;
     if (nXSize < c_nSquareRootThreshold)
     {
-        SquareRootNewton(nXSize, nRootSize, pnX, pnRoot, pnWorkspace);
+        SquareRootNewton(nXSize,
+                         nRootSize,
+                         pnX,
+                         pnRoot,
+#if(_CollectDetailedTimingData)
+                         dwTimestamp,
+#endif
+                         pnWorkspace);
     }
     else
     {
@@ -14178,13 +13865,21 @@ void CUnsignedArithmeticHelper::SquareRootRecursive(size_t nXSize,
         pnX1        = pnWorkspace;
         pnYPrime    = pnX1     + (nOffset>>1); // NOTE: we use that y' immediately follows x1 in memory!
         pnWorkspace = pnYPrime + ((nXSize + 1)>>1) + 1;
-        SquareRootRecursive(nXSize - nOffset, nYPrimeSize, pnX + nOffset, pnYPrime, pnWorkspace);
+        SquareRootRecursive(nXSize - nOffset,
+                            nYPrimeSize,
+                            pnX + nOffset,
+                            pnYPrime,
+#if(_CollectDetailedTimingData)
+                            dwTimestamp,
+#endif
+                            pnWorkspace);
         // x2 is X - y'^2
         pnX2        =  pnWorkspace;
         pnWorkspace += nXSize + 1; // +1: needs a little extra space for intermediate results
 #if(_CollectDetailedTimingData)
-        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-        SquareUBackend(nYPrimeSize, pnYPrime, pnWorkspace, pnWorkspace + (nYPrimeSize<<1), dwTimestamp, eTopLevel);
+        dwTimestamp2 = dwTimestamp;
+        SquareUBackend(nYPrimeSize, pnYPrime, pnWorkspace, pnWorkspace + (nYPrimeSize<<1), dwTimestamp);
+        g_nSquareRootTime[eSquareRootMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
         SquareUBackend(nYPrimeSize, pnYPrime, pnWorkspace, pnWorkspace + (nYPrimeSize<<1));
 #endif
@@ -14211,7 +13906,13 @@ void CUnsignedArithmeticHelper::SquareRootRecursive(size_t nXSize,
         pnY1        =  pnWorkspace;
         pnWorkspace += nX2Size+1; // max size Y1 can be, with one extra DIGIT for overflow
         // solve for y1, the largest value satisfying (x1 + y1)*y1 <= x2
+#if(_CollectDetailedTimingData)
+        dwTimestamp2                              =  s_Timer.GetMicroseconds();
+        g_nSquareRootTime[eSquareRootProcessTime] += (dwTimestamp2 - dwTimestamp);
+        GeneralSquareRootRecursive(nX1Size, nX2Size, nY1Size, pnX1, pnX2, pnY1, dwTimestamp, pnWorkspace);
+#else
         GeneralSquareRootRecursive(nX1Size, nX2Size, nY1Size, pnX1, pnX2, pnY1, pnWorkspace);
+#endif
         // splice the two parts together into the root
         nRootSize = (nXSize+1)>>1;
         for(i=0; i<nY1Size; i++)
@@ -14252,6 +13953,11 @@ void CUnsignedArithmeticHelper::SquareRootRecursive(size_t nXSize,
                 nCarry    = (nCarry>>c_nDigitSize);
             }
         }
+#if(_CollectDetailedTimingData)
+        dwTimestamp2                              =  dwTimestamp;
+        dwTimestamp                               =  s_Timer.GetMicroseconds();
+        g_nSquareRootTime[eSquareRootProcessTime] += (dwTimestamp - dwTimestamp2);
+#endif
     }
 }
 
@@ -14304,14 +14010,20 @@ size_t BitSize(size_t nXSize, DIGIT *pnX)
 // ya = ya'<<(n DIGITs)
 // Solving for ya is clearly a smaller problem than solving for y, and the residual problem for finding yb should also be much reduced -- at least for the size of x2
 // Note x1 should have an extra DIGIT of space for overflow!  Assumed without checking
-void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
-                                                           size_t nX2Size,
-                                                           size_t &nRootSize,
-                                                           DIGIT  *pnX1,
-                                                           DIGIT  *pnX2,
-                                                           DIGIT  *pnRoot,
-                                                           DIGIT  *pnWorkspace)
+void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
+                                                           size_t  nX2Size,
+                                                           size_t  &nRootSize,
+                                                           DIGIT   *pnX1,
+                                                           DIGIT   *pnX2,
+                                                           DIGIT   *pnRoot,
+#if(_CollectDetailedTimingData)
+                                                           DWORD64 &dwTimestamp,
+#endif
+                                                           DIGIT   *pnWorkspace)
 {
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp2;
+#endif
     // if X2 <= X1, do directly
     int nCompare = CBigInteger::CompareUnsigned(nX2Size, nX1Size, pnX2, pnX1);
     if (1 != nCompare)
@@ -14322,11 +14034,27 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
     else if (0 == nX1Size)
     {
         // square root function is simpler
-        SquareRootRecursive(nX2Size, nRootSize, pnX2, pnRoot, pnWorkspace);
+        SquareRootRecursive(nX2Size,
+                            nRootSize,
+                            pnX2,
+                            pnRoot,
+#if(_CollectDetailedTimingData)
+                            dwTimestamp,
+#endif
+                            pnWorkspace);
     }
     else if(nX2Size<c_nSquareRootThreshold)
     {
-        GeneralSquareRootNewton(nX1Size, nX2Size, nRootSize, pnX1, pnX2, pnRoot, pnWorkspace);
+        GeneralSquareRootNewton(nX1Size,
+                                nX2Size,
+                                nRootSize,
+                                pnX1,
+                                pnX2,
+                                pnRoot,
+#if(_CollectDetailedTimingData)
+                                dwTimestamp,
+#endif
+                                pnWorkspace);
     }
     else
     {
@@ -14396,14 +14124,28 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
             pnX2a[i] = 0; // buffer guard in case nYbSize < nYaSize+nHalfOffset (see below)
             if(pnX1a)
             {
+#if(_CollectDetailedTimingData)
+                dwTimestamp2                                   =  dwTimestamp;
+                dwTimestamp                                    =  s_Timer.GetMicroseconds();
+                g_nSquareRootTime[eSquareRootPartAProcessTime] += (dwTimestamp - dwTimestamp2);
+                GeneralSquareRootRecursive(nX1aSize, nX2aSize, nYaSize, pnX1a, pnX2a, pnYa, dwTimestamp, pnWorkspace);
+#else
                 GeneralSquareRootRecursive(nX1aSize, nX2aSize, nYaSize, pnX1a, pnX2a, pnYa, pnWorkspace);
+#endif
                 // don't need what remains of X1a, x2a -- reuse the space
                 pnWorkspace -= ((nX2aSize + 1)<<1);
             }
             else
             {
                 *pnWorkspace = 1;
+#if(_CollectDetailedTimingData)
+                dwTimestamp2                                   =  dwTimestamp;
+                dwTimestamp                                    =  s_Timer.GetMicroseconds();
+                g_nSquareRootTime[eSquareRootPartAProcessTime] += (dwTimestamp - dwTimestamp2);
+                GeneralSquareRootRecursive(1, nX2aSize, nYaSize, pnWorkspace, pnX2a, pnYa, dwTimestamp, pnWorkspace + nX2aSize + 1);
+#else
                 GeneralSquareRootRecursive(1, nX2aSize, nYaSize, pnWorkspace, pnX2a, pnYa, pnWorkspace + nX2aSize + 1);
+#endif
                 // don't need what remains of X2a -- reuse the space
                 pnWorkspace -= (nX2aSize + 1);
             }
@@ -14411,7 +14153,16 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
             {
                 // the recursion got us nowhere.  Need to use Newton for the whole thing.  Never seen this happen, but possible in theory
                 pnWorkspace = pnYa; // don't need it anymore; reuse space
-                GeneralSquareRootNewton(nX1Size, nX2Size, nRootSize, pnX1, pnX2, pnRoot, pnWorkspace);
+                GeneralSquareRootNewton(nX1Size,
+                                        nX2Size,
+                                        nRootSize,
+                                        pnX1,
+                                        pnX2,
+                                        pnRoot,
+#if(_CollectDetailedTimingData)
+                                        dwTimestamp,
+#endif
+                                        pnWorkspace);
             }
             else
             {
@@ -14495,8 +14246,12 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                 pnYa    += nHalfOffset;
                 nYaSize -= nHalfOffset;
 #if _CollectDetailedTimingData
-                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                MultUBackend(nX2aSize, nYaSize, pnX1PlusY, pnYa, pnWorkspace, pnWorkspace+nX2aSize+nYaSize, dwTimestamp, eTopLevel);
+                dwTimestamp2                                    =  dwTimestamp;
+                dwTimestamp                                     =  s_Timer.GetMicroseconds();
+                g_nSquareRootTime[eSquareRootPartAProcessTime]  += (dwTimestamp - dwTimestamp2);
+                dwTimestamp2                                    =  dwTimestamp;
+                MultUBackend(nX2aSize, nYaSize, pnX1PlusY, pnYa, pnWorkspace, pnWorkspace+nX2aSize+nYaSize, dwTimestamp);
+                g_nSquareRootTime[eSquareRootPartAMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
                 MultUBackend(nX2aSize, nYaSize, pnX1PlusY, pnYa, pnWorkspace, pnWorkspace+nX2aSize+nYaSize);
 #endif
@@ -14510,7 +14265,14 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                 // put Yb directly into pnRoot -- no need to copy.  Debug resolve todo
                 pnYb        =  pnWorkspace;
                 pnWorkspace += nX2Size;
+#if _CollectDetailedTimingData
+                dwTimestamp2                                    =  dwTimestamp;
+                dwTimestamp                                     =  s_Timer.GetMicroseconds();
+                g_nSquareRootTime[eSquareRootPartAProcessTime]  += (dwTimestamp - dwTimestamp2);
+                GeneralSquareRootRecursive(nX1aSize, nX2aSize, nYbSize, pnX1, pnX2, pnYb, dwTimestamp, pnWorkspace);
+#else
                 GeneralSquareRootRecursive(nX1aSize, nX2aSize, nYbSize, pnX1, pnX2, pnYb, pnWorkspace);
+#endif
                 // splice the two parts together into the root.  Note the root is (Ya << <half offset>) + Yb,
                 // and Ya is already in place.
                 // Copy Yb into place.
@@ -14571,6 +14333,11 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                     }
                 }
             }
+#if _CollectDetailedTimingData
+            dwTimestamp2                                    =  dwTimestamp;
+            dwTimestamp                                     =  s_Timer.GetMicroseconds();
+            g_nSquareRootTime[eSquareRootPartAProcessTime]  += (dwTimestamp - dwTimestamp2);
+#endif
         }
         else
         {
@@ -14699,6 +14466,11 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                         while(nCarry1);
                         if(nRootSize<i) nRootSize = i;
                     }
+#if _CollectDetailedTimingData
+                    dwTimestamp2                                    =  dwTimestamp;
+                    dwTimestamp                                     =  s_Timer.GetMicroseconds();
+                    g_nSquareRootTime[eSquareRootPartBProcessTime]  += (dwTimestamp - dwTimestamp2);
+#endif
                     break; // done
                 }
                 else
@@ -14721,7 +14493,16 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                         while(nCarry1);
                         nX1aSize = nX1Size;
                         if(nX1aSize<i) nX1aSize = i;
-                        Divide(nX2Size-nDigitShift, nX1aSize-nDigitShift, nYaSize, nX2aSize, pnX2+nDigitShift, pnX1+nDigitShift, pnYa, pnWorkspace);
+#if _CollectDetailedTimingData
+                        dwTimestamp2                                    =  dwTimestamp;
+                        dwTimestamp                                     =  s_Timer.GetMicroseconds();
+                        g_nSquareRootTime[eSquareRootPartBProcessTime]  += (dwTimestamp - dwTimestamp2);
+                        dwTimestamp2                                    =  dwTimestamp;
+                        DivideBackend(nX2Size-nDigitShift, nX1aSize-nDigitShift, nYaSize, nX2aSize, pnX2+nDigitShift, pnX1+nDigitShift, pnYa, dwTimestamp, pnWorkspace);
+                        g_nSquareRootTime[eSquareRootPartBDivideTime]   += (dwTimestamp - dwTimestamp2);
+#else
+                        DivideBackend(nX2Size-nDigitShift, nX1aSize-nDigitShift, nYaSize, nX2aSize, pnX2+nDigitShift, pnX1+nDigitShift, pnYa, pnWorkspace);
+#endif
                         nX2Size = nX2aSize + nDigitShift;
                         // undo the twiddle of x1
                         nCarry1 = 2;
@@ -14808,11 +14589,15 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                         }
                         // Ya*(Ya + x1 mod(1<<BitDiff))
 #if _CollectDetailedTimingData
-                        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                        MultUBackend(nYaSize, nTopSize, pnYa, pnTop, pnBottom, pnWorkspace, dwTimestamp, eTopLevel);
+                        dwTimestamp2                                    =  dwTimestamp;
+                        dwTimestamp                                     =  s_Timer.GetMicroseconds();
+                        g_nSquareRootTime[eSquareRootPartBProcessTime]  += (dwTimestamp - dwTimestamp2);
+                        dwTimestamp2                                    =  dwTimestamp;
+                        MultUBackend(nYaSize, nTopSize, pnYa, pnTop, pnBottom, pnWorkspace, dwTimestamp);
+                        g_nSquareRootTime[eSquareRootPartBMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
                         MultUBackend(nYaSize, nTopSize, pnYa, pnTop, pnBottom, pnWorkspace);
-                        #endif
+#endif
                         nBottomSize = nYaSize + nTopSize;
                         if(0==pnBottom[nBottomSize-1]) nBottomSize--;
                         // YY<<BitDiff + (2Ya)<<BitDiff + x2 mod(1<<BitDiff) - Ya*(Ya + x1 mod(1<<BitDiff))
@@ -14841,7 +14626,16 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                         // get shift of upper bits of x2
                         pnX2a    = pnX2+nDigitShift;
                         nTopSize = CBigIntegerHelper::ShiftRightInPlace(nX2Size-nDigitShift, nBitShift, 0, pnX2a);
-                        Divide(nTopSize, nBottomSize, nYaSize, nX2aSize, pnX2a, pnBottom, pnYa, pnWorkspace);
+#if _CollectDetailedTimingData
+                        dwTimestamp2                                    =  dwTimestamp;
+                        dwTimestamp                                     =  s_Timer.GetMicroseconds();
+                        g_nSquareRootTime[eSquareRootPartBProcessTime]  += (dwTimestamp - dwTimestamp2);
+                        dwTimestamp2                                    =  dwTimestamp;
+                        DivideBackend(nTopSize, nBottomSize, nYaSize, nX2aSize, pnX2a, pnBottom, pnYa, dwTimestamp, pnWorkspace);
+                        g_nSquareRootTime[eSquareRootPartBDivideTime]   += (dwTimestamp - dwTimestamp2);
+#else
+                        DivideBackend(nTopSize, nBottomSize, nYaSize, nX2aSize, pnX2a, pnBottom, pnYa, pnWorkspace);
+#endif
                         // Now, the upper bits of X2 contains YY (and we don't care about the value in pnBottom anymore)
                         // X1[nDigitShift] is the DIGIT of X1 that is "partial" in X1 mod(1<<BitDiff)
                         // Likewise in X2 mod(1<<BitDiff)
@@ -14955,8 +14749,12 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                         // Ya + x1 mod(1<<BitDiff) is in pnBottom
                         // Ya*(Ya + x1 mod(1<<BitDiff))
 #if _CollectDetailedTimingData
-                        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                        MultUBackend(nYaSize, nBottomSize, pnYa, pnBottom, pnTop, pnWorkspace, dwTimestamp, eTopLevel);
+                        dwTimestamp2                                    =  dwTimestamp;
+                        dwTimestamp                                     =  s_Timer.GetMicroseconds();
+                        g_nSquareRootTime[eSquareRootPartBProcessTime]  += (dwTimestamp - dwTimestamp2);
+                        dwTimestamp2                                    =  dwTimestamp;
+                        MultUBackend(nYaSize, nBottomSize, pnYa, pnBottom, pnTop, pnWorkspace, dwTimestamp);
+                        g_nSquareRootTime[eSquareRootPartBMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
                         MultUBackend(nYaSize, nBottomSize, pnYa, pnBottom, pnTop, pnWorkspace);
 #endif
@@ -14995,6 +14793,11 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
                 nBitSizeX2 = BitSize(nX2Size, pnX2);
             }
             while(nBitSizeX1 <= nBitSizeX2);
+#if _CollectDetailedTimingData
+            dwTimestamp2                                   =  dwTimestamp;
+            dwTimestamp                                    =  s_Timer.GetMicroseconds();
+            g_nSquareRootTime[eSquareRootPartBProcessTime] += (dwTimestamp - dwTimestamp2);
+#endif
         }
     }
 }
@@ -15014,12 +14817,18 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t nX1Size,
 // Note that we start with a value known to be ABOVE the actual square root.  Newton's method -- barring roundoff --
 // will always overestimate.  But integer truncation is a given here.  When we get below the actual square root,
 // Newton will move up again, or stay the same.  That is our signal to quit; no need to square our value to validate.
-void CUnsignedArithmeticHelper::SquareRootNewton(size_t nXSize,
-                                                 size_t &nRootSize,
-                                                 DIGIT  *pnX,
-                                                 DIGIT  *pnRoot,
-                                                 DIGIT  *pnWorkspace)
+void CUnsignedArithmeticHelper::SquareRootNewton(size_t  nXSize,
+                                                 size_t  &nRootSize,
+                                                 DIGIT   *pnX,
+                                                 DIGIT   *pnRoot,
+#if(_CollectDetailedTimingData)
+                                                 DWORD64 &dwTimestamp,
+#endif
+                                                 DIGIT   *pnWorkspace)
 {
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp2 = dwTimestamp;
+#endif
     if (nXSize <= 2)
     {
         // can do the problem directly with sqrt from math.h -- roughly 20x as fast as Newton, with the note that it doesn't
@@ -15041,6 +14850,11 @@ void CUnsignedArithmeticHelper::SquareRootNewton(size_t nXSize,
             *pnRoot = s;
         }
         nRootSize = 1;
+#if(_CollectDetailedTimingData)
+        dwTimestamp2                                    =  s_Timer.GetMicroseconds();
+        g_nSquareRootTime[eSquareRootNewtonProcessTime] += dwTimestamp2 - dwTimestamp;
+        dwTimestamp                                     =  dwTimestamp2;
+#endif
     }
     else
     {
@@ -15104,7 +14918,15 @@ void CUnsignedArithmeticHelper::SquareRootNewton(size_t nXSize,
             // pYCurr = x -- make a copy: divide is destructive
             memcpy(pYCurr, pnX, nXSize*sizeof(DIGIT));
             // pNum1 <- x/y
-            Divide(nXSize, nRootSize, nDivSize, nRemainderSize, pYCurr, pYPrev, pNum1, pnWorkspace);
+#if(_CollectDetailedTimingData)
+            dwTimestamp2                                     =  s_Timer.GetMicroseconds();
+            g_nSquareRootTime[eSquareRootNewtonProcessTime]  += (dwTimestamp2 - dwTimestamp);
+            dwTimestamp2                                     =  dwTimestamp;
+            DivideBackend(nXSize, nRootSize, nDivSize, nRemainderSize, pYCurr, pYPrev, pNum1, dwTimestamp, pnWorkspace);
+            g_nSquareRootTime[eSquareRootNewtonDivideTime]   += (dwTimestamp2 - dwTimestamp);
+#else
+            DivideBackend(nXSize, nRootSize, nDivSize, nRemainderSize, pYCurr, pYPrev, pNum1, pnWorkspace);
+#endif
             // pYCurr <- (y + x/y)/2
             // can speed this up a trifle by doing 2 digits at a time, thus saving a load/store for each digit -- todo xxx
             nCarry    = ((DOUBLEDIGIT) pYPrev[0]) + pNum1[0];
@@ -15140,6 +14962,11 @@ void CUnsignedArithmeticHelper::SquareRootNewton(size_t nXSize,
                 pnRoot[i] = pYCurr[i];
             }
         }
+#if(_CollectDetailedTimingData)
+        dwTimestamp2                                     =  s_Timer.GetMicroseconds();
+        g_nSquareRootTime[eSquareRootNewtonProcessTime]  += (dwTimestamp2 - dwTimestamp);
+        dwTimestamp                                      =  dwTimestamp2;
+#endif
     }
 }
 
@@ -15156,14 +14983,20 @@ void CUnsignedArithmeticHelper::SquareRootNewton(size_t nXSize,
   Note that a power of 2 bigger than x2/x1 is ALSO an upper bound for y -- so if this is smaller, pick it as a starting point instead.
   Assumes X2 is at least as large as X1
 */
-void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t nX1Size,
-                                                        size_t nX2Size,
-                                                        size_t &nRootSize,
-                                                        DIGIT  *pnX1,
-                                                        DIGIT  *pnX2,
-                                                        DIGIT  *pnRoot,
-                                                        DIGIT  *pnWorkspace)
+void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
+                                                        size_t  nX2Size,
+                                                        size_t  &nRootSize,
+                                                        DIGIT   *pnX1,
+                                                        DIGIT   *pnX2,
+                                                        DIGIT   *pnRoot,
+#if(_CollectDetailedTimingData)
+                                                        DWORD64 &dwTimestamp,
+#endif
+                                                        DIGIT   *pnWorkspace)
 {
+#if(_CollectDetailedTimingData)
+    DWORD64     dwTimestamp2 = dwTimestamp;
+#endif
     size_t      i, nDigitShift, nBitShift, nTopSize, nBottomSize;
     DOUBLEDIGIT nCarry;
     DIGIT       *pYPrev, *pYCurr, *pNum1, *pNum2, *pNum3, *pSwap;
@@ -15225,14 +15058,23 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t nX1Size,
     pNum1[i] = 1;
     nTopSize = i+1;
     // (y^2 + x2)/(x1 + 2y)
-    Divide(nTopSize, nBottomSize, nRootSize, nBottomSize, pNum1, pYCurr, pYPrev, pnWorkspace);
+#if(_CollectDetailedTimingData)
+    dwTimestamp2                                     =  s_Timer.GetMicroseconds();
+    g_nSquareRootTime[eSquareRootNewtonProcessTime]  += (dwTimestamp2 - dwTimestamp);
+    dwTimestamp                                      =  dwTimestamp2;
+    DivideBackend(nTopSize, nBottomSize, nRootSize, nBottomSize, pNum1, pYCurr, pYPrev, dwTimestamp, pnWorkspace);
+    g_nSquareRootTime[eSquareRootNewtonMultiplyTime] += (dwTimestamp2 - dwTimestamp);
+#else
+    DivideBackend(nTopSize, nBottomSize, nRootSize, nBottomSize, pNum1, pYCurr, pYPrev, pnWorkspace);
+#endif
     do
     {
         // Newton proper
         // pNum3 <- y^2
 #if(_CollectDetailedTimingData)
-        DWORD64 dwRecursiveTime = s_Timer.GetMicroseconds();
-        SquareUBackend(nRootSize, pYPrev, pNum3, pnWorkspace, dwRecursiveTime , eTopLevel, &nBottomSize);
+        dwTimestamp2                                     =  dwTimestamp;
+        SquareUBackend(nRootSize, pYPrev, pNum3, pnWorkspace, dwTimestamp, &nBottomSize);
+        g_nSquareRootTime[eSquareRootNewtonMultiplyTime] += (dwTimestamp - dwTimestamp2);
 #else
         SquareUBackend(nRootSize, pYPrev, pNum3, pnWorkspace, &nBottomSize);
 #endif
@@ -15306,7 +15148,15 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t nX1Size,
         nBottomSize = (nCarry) ? i+1 : i;
         // set i to hold old root size temporarily
         i = nRootSize;
-        Divide(nTopSize, nBottomSize, nRootSize, nTopSize, pNum1, pNum2, pYCurr, pnWorkspace);
+#if(_CollectDetailedTimingData)
+        dwTimestamp2                                     =  s_Timer.GetMicroseconds();
+        g_nSquareRootTime[eSquareRootNewtonProcessTime]  += (dwTimestamp2 - dwTimestamp);
+        dwTimestamp                                      =  dwTimestamp2;
+        DivideBackend(nTopSize, nBottomSize, nRootSize, nTopSize, pNum1, pNum2, pYCurr, dwTimestamp, pnWorkspace);
+        g_nSquareRootTime[eSquareRootNewtonDivideTime]   += (dwTimestamp - dwTimestamp2);
+#else
+        DivideBackend(nTopSize, nBottomSize, nRootSize, nTopSize, pNum1, pNum2, pYCurr, pnWorkspace);
+#endif
         pSwap  = pYCurr;
         pYCurr = pYPrev;
         pYPrev = pSwap;
@@ -15320,4 +15170,9 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t nX1Size,
             pnRoot[i] = pYCurr[i];
         }
     }
+#if(_CollectDetailedTimingData)
+    dwTimestamp2                                     =  s_Timer.GetMicroseconds();
+    g_nSquareRootTime[eSquareRootNewtonProcessTime]  += (dwTimestamp2 - dwTimestamp);
+    dwTimestamp                                      =  dwTimestamp2;
+#endif
 }

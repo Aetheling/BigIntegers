@@ -12,50 +12,6 @@ public:  // functions
     void ResetThresholdsForTest(bool bForceNo2NByN=false);  // correctness testing
 	void ResetThresholdsForOptimization(); // good parameter values for performance
 	// wrappers for the basic multiply for the 6 allowed register block sizes
-#if(_CollectDetailedTimingData)
-    static void BasicMultiplyReg1(size_t       nXSize,
-                                  size_t       nYSize,
-                                  const DIGIT  *pX,
-                                  const DIGIT  *pY,
-                                  DIGIT        *pZ,
-                                  bool         bAddInitialZValueToProduct,
-                                  DWORD64      &dwTimestamp);
-    static void BasicMultiplyReg2(size_t       nXSize,
-                                  size_t       nYSize,
-                                  const DIGIT  *pX,
-                                  const DIGIT  *pY,
-                                  DIGIT        *pZ,
-                                  bool         bAddInitialZValueToProduct,
-                                  DWORD64      &dwTimestamp);
-    static void BasicMultiplyReg3(size_t       nXSize,
-                                  size_t       nYSize,
-                                  const DIGIT  *pX,
-                                  const DIGIT  *pY,
-                                  DIGIT        *pZ,
-                                  bool         bAddInitialZValueToProduct,
-                                  DWORD64      &dwTimestamp);
-    static void BasicMultiplyReg4(size_t       nXSize,
-                                  size_t       nYSize,
-                                  const DIGIT  *pX,
-                                  const DIGIT  *pY,
-                                  DIGIT        *pZ,
-                                  bool         bAddInitialZValueToProduct,
-                                  DWORD64      &dwTimestamp);
-    static void BasicMultiplyReg5(size_t       nXSize,
-                                  size_t       nYSize,
-                                  const DIGIT  *pX,
-                                  const DIGIT  *pY,
-                                  DIGIT        *pZ,
-                                  bool         bAddInitialZValueToProduct,
-                                  DWORD64      &dwTimestamp);
-    static void BasicMultiplyReg6(size_t       nXSize,
-                                  size_t       nYSize,
-                                  const DIGIT  *pX,
-                                  const DIGIT  *pY,
-                                  DIGIT        *pZ,
-                                  bool         bAddInitialZValueToProduct,
-                                  DWORD64      &dwTimestamp);
-#else
     static void BasicMultiplyReg1(size_t       nXSize,
                                   size_t       nYSize,
                                   const DIGIT  *pX,
@@ -92,7 +48,6 @@ public:  // functions
                                   const DIGIT  *pY,
                                   DIGIT        *pZ,
                                   bool         bAddInitialZValueToProduct);
-#endif
 	bool TestBasicMultiplyReg1(bool bVerbose);
 	bool TestBasicMultiplyReg2(bool bVerbose);
 	bool TestBasicMultiplyReg3(bool bVerbose);

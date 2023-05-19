@@ -18,8 +18,7 @@ const char *c_szMultiplicationAlgorithmNames[eNumMultiplyAlgorithms] = { "eBasic
 																		 "e9By5",
 #endif
 																		 "e2NByN",
-																		 "eFFTMult",
-																		 "eTopLevel" };
+																		 "eFFTMult" };
 /*
 This test takes LOTS of time to do, since only very big problems are helped by the cache optimizations.
 Sample run:
@@ -181,7 +180,6 @@ void CArithmeticTuner::Test2NByNBlockSizes()
 														  pnY,
 														  pnOverflowDigits,
 														  pSystemToUse,
-														  eTopLevel,
 														  dwTimestamp,
 														  pnWorkspace);
 #else
@@ -216,7 +214,6 @@ void CArithmeticTuner::Test2NByNBlockSizes()
 															 ppnRi,
 															 pnZ,
 															 pSystemToUse,
-															 eTopLevel,
 															 dwTimestamp,
 															 pnWorkspace);
 #else
@@ -312,14 +309,11 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
 	CBigIntegerForTest nX, nY, nZ;
 	CWorkspace         cWork;
     DWORD              i;
-    DWORD64            dwFewPiecesTime, dwMorePiecesTime, dwStartTime;
+    DWORD64            dwFewPiecesTime, dwMorePiecesTime, dwStartTime, dwTimestamp;
     size_t             nSize, nSizeLow, nSizeHigh, nProdSize;
     DWORD              nIterations, nBaseIterations;
 	FILE               *pOutput;
 	fopen_s(&pOutput, "2NByNGrowthParameters", "w");
-#if _CollectDetailedTimingData
-	DWORD64            dwTimestamp;
-#endif
 #ifndef _USESMALLDIGITS
 	// set the starting size to the 7by4 threshold
 	nSize = c_pnMultiplicationThresholds[e7By4];
@@ -339,10 +333,11 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
     do
     {
         dwStartTime = s_Timer.GetMicroseconds();
+		dwTimestamp = dwStartTime;
         for(i=0;i<nIterations;i++)
         {
 #if _CollectDetailedTimingData
-			MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),cWork.GetSpace(),dwTimestamp,eTopLevel,&nProdSize);
+			MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),cWork.GetSpace(),dwTimestamp,&nProdSize);
 #else
 			MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),cWork.GetSpace(),&nProdSize);
 #endif
@@ -371,6 +366,7 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
 			nY.SetRandom(nSize*sizeof(DIGIT)<<3); // random number on nSize digits
 			nZ.Reserve(nSize<<1);
 			dwStartTime = s_Timer.GetMicroseconds();
+			dwTimestamp = dwStartTime;
 #ifndef _USESMALLDIGITS
 			c_pnMultiplicationThresholds[e9By5]  = nSize-1; // so we only use the 2nbyn algorithm for the top level
 #else
@@ -380,7 +376,7 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
             for(i=0;i<nIterations;i++)
             {
 #if _CollectDetailedTimingData
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), dwTimestamp, eTopLevel, cWork.GetSpace());
+				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), cWork.GetSpace(), dwTimestamp);
 #else
 				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), cWork.GetSpace());
 #endif
@@ -393,10 +389,11 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
                     nIterations,
                     dwFewPiecesTime);
             dwStartTime = s_Timer.GetMicroseconds();
+			dwTimestamp = dwStartTime;
             for(i=0;i<nIterations;i++)
             {
 #if _CollectDetailedTimingData
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), dwTimestamp, eTopLevel, cWork.GetSpace());
+				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), cWork.GetSpace(), dwTimestamp);
 #else
 				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), cWork.GetSpace());
 #endif
@@ -426,10 +423,11 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
         {
             nSize       = (nSizeLow+nSizeHigh)>>1;
 			dwStartTime = s_Timer.GetMicroseconds();
+			dwTimestamp = dwStartTime;
             for(i=0;i<nIterations;i++)
             {
 #if _CollectDetailedTimingData
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), dwTimestamp, eTopLevel, cWork.GetSpace());
+				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), cWork.GetSpace(), dwTimestamp);
 #else
 				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), cWork.GetSpace());
 #endif
@@ -445,7 +443,7 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
             for(i=0;i<nIterations;i++)
             {
 #if _CollectDetailedTimingData
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), dwTimestamp, eTopLevel, cWork.GetSpace());
+				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), cWork.GetSpace(), dwTimestamp);
 #else
 				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), cWork.GetSpace());
 #endif
@@ -533,7 +531,7 @@ void CArithmeticTuner::GetSimpleThreshold(EMultiplyAlgorithm eThresholdToTest, C
 			for(i=0;i<nIterates;i++)
 			{
 #if(_CollectDetailedTimingData)
-				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace(),dwLowThresholdTime,eTopLevel);
+				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace(),dwLowThresholdTime);
 #else
 				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace());
 #endif
@@ -551,7 +549,7 @@ void CArithmeticTuner::GetSimpleThreshold(EMultiplyAlgorithm eThresholdToTest, C
 		for(i=0;i<nIterates;i++)
 		{
 #if(_CollectDetailedTimingData)
-				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace(),dwHighThresholdTime,eTopLevel);
+				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace(),dwHighThresholdTime);
 #else
 				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace());
 #endif
@@ -712,7 +710,7 @@ void CArithmeticTuner::GetFFTThreshold()
 		{
 			dwStart = s_Timer.GetMicroseconds();
 #if(_CollectDetailedTimingData)
-			MultUBackend(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel, &nChunkSize);
+			MultUBackend(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp, &nChunkSize);
 #else
 			MultUBackend(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), &nChunkSize);
 #endif
@@ -731,7 +729,7 @@ void CArithmeticTuner::GetFFTThreshold()
 		{
 			dwStart = s_Timer.GetMicroseconds();
 #if(_CollectDetailedTimingData)
-			MultFFT(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel);
+			MultFFT(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp);
 #else
 			MultFFT(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace());
 #endif
@@ -767,7 +765,7 @@ void CArithmeticTuner::GetFFTThreshold()
 		{
 			dwStart = s_Timer.GetMicroseconds();
 #if(_CollectDetailedTimingData)
-			MultUBackend(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel, &nChunkSize);
+			MultUBackend(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp, &nChunkSize);
 #else
 			MultUBackend(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), &nChunkSize);
 #endif
@@ -785,7 +783,7 @@ void CArithmeticTuner::GetFFTThreshold()
 		{
 			dwStart = s_Timer.GetMicroseconds();
 #if(_CollectDetailedTimingData)
-			MultFFT(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp, eTopLevel);
+			MultFFT(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp);
 #else
 			MultFFT(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace());
 #endif
@@ -967,7 +965,7 @@ void CArithmeticTuner::FindBestThresholds()
 	fopen_s(&pOutput, "BestThresholds", "w");
 	CWorkspace cWork;
 	c_pnMultiplicationThresholds[eBasicMultiply] = 15; // likely lower than need be
-	for(DWORD i=e3By2;i<eTopLevel;i++) c_pnMultiplicationThresholds[i] = 1000000000; // make sure only testing expected algorithm
+	for(DWORD i=e3By2;i<eNumMultiplyAlgorithms;i++) c_pnMultiplicationThresholds[i] = 1000000000; // make sure only testing expected algorithm
 #if _USESMALLDIGITS
 	for(DWORD i=eBasicMultiply;i<e7By4;i++)
 #else
@@ -1054,6 +1052,7 @@ Recursive (upper threshold):
 void CArithmeticTuner::FindBestDivideThresholds()
 {
 	CRandomGenerator   cRandom;
+	DWORD64            dwTimestamp, dwTimestamp2;
 	CBigInteger        nX, nY, nXCopy, nYCopy, nXDivY;
 	unsigned int       nTime1, nTime2, nSize, nIterations;
 	const unsigned int c_nTenMILLION             = 10000000;
@@ -1073,6 +1072,9 @@ void CArithmeticTuner::FindBestDivideThresholds()
 	printf("Recursive (lower threshold):\n");
 	c_nDivideThresholdSmall = 4;
 	nIterations             = c_nSmallProblemIterations;
+#if _CollectDetailedTimingData
+	dwTimestamp = s_Timer.GetMicroseconds();
+#endif
 	do
 	{
 		nXCopy.SetSize(2*c_nDivideThresholdSmall);
@@ -1082,7 +1084,11 @@ void CArithmeticTuner::FindBestDivideThresholds()
 		{
 			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+#if _CollectDetailedTimingData
+			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+#else
 			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+#endif
 		}
 		nTime1 = ::GetTickCount() - nTime1;
 		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdSmall, nTime1, nIterations);
@@ -1092,7 +1098,11 @@ void CArithmeticTuner::FindBestDivideThresholds()
 		{
 			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+#if _CollectDetailedTimingData
+			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+#else
 			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+#endif
 		}
 		nTime2 = ::GetTickCount() - nTime2;
 		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdSmall, nTime2, nIterations);
@@ -1112,7 +1122,11 @@ void CArithmeticTuner::FindBestDivideThresholds()
 		{
 			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+#if _CollectDetailedTimingData
+			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+#else
 			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+#endif
 		}
 		nTime1 = ::GetTickCount() - nTime1;
 		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime1, nIterations);
@@ -1122,7 +1136,11 @@ void CArithmeticTuner::FindBestDivideThresholds()
 		{
 			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+#if _CollectDetailedTimingData
+			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+#else
 			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+#endif
 		}
 		nTime2 = ::GetTickCount() - nTime2;
 		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime2, nIterations);
@@ -1141,7 +1159,11 @@ void CArithmeticTuner::FindBestDivideThresholds()
 		{
 			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+#if _CollectDetailedTimingData
+			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+#else
 			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+#endif
 		}
 		nTime1 = ::GetTickCount() - nTime1;
 		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime1, nIterations);
@@ -1151,7 +1173,11 @@ void CArithmeticTuner::FindBestDivideThresholds()
 		{
 			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+#if _CollectDetailedTimingData
+			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+#else
 			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+#endif
 		}
 		nTime2 = ::GetTickCount() - nTime2;
 		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime2, nIterations);

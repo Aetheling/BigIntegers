@@ -190,24 +190,7 @@ EArithmeticOperationResult CArithmeticBox::Multiply(const CBigInteger &nX,
         else
         {
             DIGIT *pZValue = nXTimesY.GetValue();
-#if(_CollectDetailedTimingData)
-            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-            CUnsignedArithmeticHelper::MultUBackend(nXSize,
-                                                    nYSize,
-                                                    nX.GetValue(),
-                                                    nY.GetValue(),
-                                                    pZValue,
-                                                    m_Workspace.GetSpace(),
-                                                    dwTimestamp,
-                                                    eTopLevel);
-#else
-            CUnsignedArithmeticHelper::MultUBackend(nXSize,
-                                                    nYSize,
-                                                    nX.GetValue(),
-                                                    nY.GetValue(),
-                                                    pZValue,
-                                                    m_Workspace.GetSpace());
-#endif
+            CUnsignedArithmeticHelper::Multiply(nXSize, nYSize, nX.GetValue(), nY.GetValue(), pZValue, m_Workspace.GetSpace());
             nXTimesY.SetSize((0==pZValue[nXSize+nYSize-1]) ? nXSize+nYSize-1 : nXSize+nYSize);
             nXTimesY.SetNegative(nX.IsNegative()!=nY.IsNegative());
         }
@@ -255,20 +238,7 @@ EArithmeticOperationResult CArithmeticBox::Square(const CBigInteger &nX,
         else
         {
             DIGIT *pZValue = nSquare.GetValue();
-#if(_CollectDetailedTimingData)
-            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-            CUnsignedArithmeticHelper::SquareUBackend(nXSize,
-                                                      nX.GetValue(),
-                                                      pZValue,
-                                                      m_Workspace.GetSpace(),
-                                                      dwTimestamp,
-                                                      eTopLevel);
-#else
-            CUnsignedArithmeticHelper::SquareUBackend(nXSize,
-                                                      nX.GetValue(),
-                                                      pZValue,
-                                                      m_Workspace.GetSpace());
-#endif
+            CUnsignedArithmeticHelper::Square(nXSize, nX.GetValue(), pZValue, m_Workspace.GetSpace());
             nSquare.SetSize((0==pZValue[nXSize+nXSize-1]) ? nXSize+nXSize-1 : nXSize+nXSize);
             nSquare.SetNegative(false);
         }
@@ -336,44 +306,21 @@ EArithmeticOperationResult CArithmeticBox::MultiplyAdd(const CBigInteger &nX,
                 {
                     nRunningSum.GetValue()[i] = 0;
                 }
-#if(_CollectDetailedTimingData)
-                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-#endif
                 if(bDoingAdd)
                 {
-                    CUnsignedArithmeticHelper::MultAddUBackend(nXSize,
-                                                               nYSize,
-                                                               nSumSize,
-                                                               nX.GetValue(),
-                                                               nY.GetValue(),
-                                                               nRunningSum.GetValue(),
-#if(_CollectDetailedTimingData)
-                                                               dwTimestamp,
-                                                               eTopLevel,
-#endif
-                                                               m_Workspace.GetSpace());
+                    CUnsignedArithmeticHelper::MultiplyAdd(nXSize,
+                                                           nYSize,
+                                                           nSumSize,
+                                                           nX.GetValue(),
+                                                           nY.GetValue(),
+                                                           nRunningSum.GetValue(),
+                                                           m_Workspace.GetSpace());
                     nRunningSum.SetSize(nSumSize);
                 }
                 else
                 {
                     // actually doing z = x*y-z (in terms of absolute values)
-#if(_CollectDetailedTimingData)
-                    CUnsignedArithmeticHelper::MultUBackend(nXSize,
-                                                            nYSize,
-                                                            nX.GetValue(),
-                                                            nY.GetValue(),
-                                                            m_Workspace.GetSpace(),
-                                                            m_Workspace.GetSpace()+nProdSize,
-                                                            dwTimestamp,
-                                                            eTopLevel);
-#else
-                    CUnsignedArithmeticHelper::MultUBackend(nXSize,
-                                                            nYSize,
-                                                            nX.GetValue(),
-                                                            nY.GetValue(),
-                                                            m_Workspace.GetSpace(),
-                                                            m_Workspace.GetSpace()+nProdSize);
-#endif
+                    CUnsignedArithmeticHelper::Multiply(nXSize, nYSize, nX.GetValue(), nY.GetValue(), m_Workspace.GetSpace(), m_Workspace.GetSpace() + nProdSize);
                     if(0==m_Workspace.GetSpace()[nProdSize-1])
                     {
                         nProdSize--;

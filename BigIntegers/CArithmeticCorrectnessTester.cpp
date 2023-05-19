@@ -1006,128 +1006,62 @@ bool CArithmeticCorrectnessTester::TestBasicMultiply(bool bVerbose)
                         {
                         case 1:
                             {
-#if(_CollectDetailedTimingData)
-                                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                                BasicMultiplyReg1(nSmallSize,
-                                                  nLargeSize,
-                                                  pnSmaller,
-                                                  pnLarger,
-                                                  nTestProduct.GetValue(),
-                                                  (0 != (k&2)), // even iterations: mult-add; odd: simple mult
-                                                  dwTimestamp);
-#else
                                 BasicMultiplyReg1(nSmallSize,
                                                   nLargeSize,
                                                   pnSmaller,
                                                   pnLarger,
                                                   nTestProduct.GetValue(),
                                                   (0 != (k&2))); // even iterations: mult-add; odd: simple mult
-#endif
                                 break;
                             }
                         case 2:
                             {
-#if(_CollectDetailedTimingData)
-                                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                                BasicMultiplyReg2(nSmallSize,
-                                                  nLargeSize,
-                                                  pnSmaller,
-                                                  pnLarger,
-                                                  nTestProduct.GetValue(),
-                                                  (0 != (k&2)), // even iterations: mult-add; odd: simple mult
-                                                  dwTimestamp);
-#else
                                 BasicMultiplyReg2(nSmallSize,
                                                   nLargeSize,
                                                   pnSmaller,
                                                   pnLarger,
                                                   nTestProduct.GetValue(),
                                                   (0 != (k&2))); // even iterations: mult-add; odd: simple mult
-#endif
                                 break;
                             }
                         case 3:
                             {
-#if(_CollectDetailedTimingData)
-                                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                                BasicMultiplyReg3(nSmallSize,
-                                                  nLargeSize,
-                                                  pnSmaller,
-                                                  pnLarger,
-                                                  nTestProduct.GetValue(),
-                                                  (0 != (k&2)), // even iterations: mult-add; odd: simple mult
-                                                  dwTimestamp);
-#else
                                 BasicMultiplyReg3(nSmallSize,
                                                   nLargeSize,
                                                   pnSmaller,
                                                   pnLarger,
                                                   nTestProduct.GetValue(),
                                                   (0 != (k&2))); // even iterations: mult-add; odd: simple mult
-#endif
                                 break;
                             }
                         case 4:
                             {
-#if(_CollectDetailedTimingData)
-                                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                                BasicMultiplyReg4(nSmallSize,
-                                                  nLargeSize,
-                                                  pnSmaller,
-                                                  pnLarger,
-                                                  nTestProduct.GetValue(),
-                                                  (0 != (k&2)), // even iterations: mult-add; odd: simple mult
-                                                  dwTimestamp);
-#else
                                 BasicMultiplyReg4(nSmallSize,
                                                   nLargeSize,
                                                   pnSmaller,
                                                   pnLarger,
                                                   nTestProduct.GetValue(),
                                                   (0 != (k&2))); // even iterations: mult-add; odd: simple mult
-#endif
                                 break;
                             }
                         case 5:
                             {
-#if(_CollectDetailedTimingData)
-                                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                                BasicMultiplyReg5(nSmallSize,
-                                                  nLargeSize,
-                                                  pnSmaller,
-                                                  pnLarger,
-                                                  nTestProduct.GetValue(),
-                                                  (0 != (k&2)), // even iterations: mult-add; odd: simple mult
-                                                  dwTimestamp);
-#else
                                 BasicMultiplyReg5(nSmallSize,
                                                   nLargeSize,
                                                   pnSmaller,
                                                   pnLarger,
                                                   nTestProduct.GetValue(),
                                                   (0 != (k&2))); // even iterations: mult-add; odd: simple mult
-#endif
                                 break;
                             }
                         case 6:
                             {
-#if(_CollectDetailedTimingData)
-                                DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                                BasicMultiplyReg6(nSmallSize,
-                                                  nLargeSize,
-                                                  pnSmaller,
-                                                  pnLarger,
-                                                  nTestProduct.GetValue(),
-                                                  (0 != (k&2)), // even iterations: mult-add; odd: simple mult
-                                                  dwTimestamp);
-#else
                                 BasicMultiplyReg6(nSmallSize,
                                                   nLargeSize,
                                                   pnSmaller,
                                                   pnLarger,
                                                   nTestProduct.GetValue(),
                                                   (0 != (k&2))); // even iterations: mult-add; odd: simple mult
-#endif
                                 break;
                             }
                         default:
@@ -1327,8 +1261,7 @@ bool CArithmeticCorrectnessTester::TestRecursiveMultiply(bool bVerbose)
                                      pY->GetValue(),
                                      pTestProduct->GetValue(),
                                      pnWorkspace,
-                                     dwTimestamp,
-                                     eTopLevel);
+                                     dwTimestamp);
 #else
                         MultUBackend(nXSize,
                                      nYSize,
@@ -2064,8 +1997,7 @@ bool CArithmeticCorrectnessTester::TestBigGCD(bool bVerbose)
                                                         nXCoef.GetValue(),
                                                         pWorkspace,
                                                         pWorkspace + nXSize,
-                                                        dwTimestamp,
-                                                        eTopLevel);
+                                                        dwTimestamp);
 #else
                 CUnsignedArithmeticHelper::MultUBackend(nX.GetSize(),
                                                         nXCoef.GetSize(),
@@ -2094,8 +2026,7 @@ bool CArithmeticCorrectnessTester::TestBigGCD(bool bVerbose)
                                                         nYCoef.GetValue(),
                                                         pWorkspace + nXSize,
                                                         pWorkspace + nXSize + nYSize,
-                                                        dwTimestamp,
-                                                        eTopLevel);
+                                                        dwTimestamp);
 #else
                 CUnsignedArithmeticHelper::MultUBackend(nY.GetSize(),
                                                         nYCoef.GetSize(),
@@ -2665,6 +2596,9 @@ bool CArithmeticCorrectnessTester::Test2NByNMultiply(bool bVerbose)
     CBigIntegerForTest    *pValidatedProduct = new CBigIntegerForTest();
     CBigIntegerForTest    *pTestProduct      = new CBigIntegerForTest();
     DIGIT                 *pWorkspace        = (DIGIT *) malloc(sizeof(DIGIT)*2000000); // plenty for this test
+#if _CollectDetailedTimingData
+    DWORD64 dwTimestamp = 0;
+#endif
     ResetThresholdsForTest();
     // a specific multiplication that has had trouble in the past -- it's working now
     nX1.SetFromHexString("6C446964AC385291F8157DBB76ACE7E791E6E51D5320BD56207E7E068A7F75BE0D48FE8272C7508C71FAAECA1C40AAA8CE9BEF62455E673D47AAC34A68E8A6B193EA423AE6DBD7B8EE15608FAB651B8B9A880C5BC94099ABE355EA155690CEDF36CDD9E576E964519D1EA240831A40C5C653C2720417D098EEFB5B79EECDAE94");
@@ -2820,7 +2754,7 @@ bool CArithmeticCorrectnessTester::Test2NByNMultiply(bool bVerbose)
                             nMemoryNeeds                            = MultiplyMemoryNeeds(pX->GetSize(),pY->GetSize());
                             pWorkspace[nMemoryNeeds]                = TEST_BUFFERGUARD;
 #if _CollectDetailedTimingData
-                            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+                            dwTimestamp = s_Timer.GetMicroseconds();
                             MultUBackend(nXSize,
                                          nYSize,
                                          pX->GetValue(),
@@ -2828,7 +2762,6 @@ bool CArithmeticCorrectnessTester::Test2NByNMultiply(bool bVerbose)
                                          pTestProduct->GetValue(),
                                          pWorkspace,
                                          dwTimestamp,
-                                         eTopLevel,
                                          &nZSize);
 #else
                             MultUBackend(nXSize,
@@ -2908,10 +2841,17 @@ bool CArithmeticCorrectnessTester::Test2NByNMultiply(bool bVerbose)
     dwTime = ::GetTickCount();
     nProdOracle.SetSize(MultOracle(nX1.GetSize(), nX2.GetSize(), nX1.GetValue(), nX2.GetValue(), nProdOracle.GetValue()));
     printf("Time for oracle to do multiply (in milliseconds): %u\n",::GetTickCount()-dwTime);
+#if _CollectDetailedTimingData
+    dwTimestamp = s_Timer.GetMicroseconds();
+#endif
     for(int nPieces=5; nPieces<=c_nPiecesToTry; nPieces++)
     {
         dwTime = ::GetTickCount();
+#if _CollectDetailedTimingData
+        MultU2NByN(nX1.GetSize(), nX2.GetSize(), nX1.GetValue(), nX2.GetValue(), nProdMult.GetValue(), GenerateSystem(nPieces), pWorkspace, dwTimestamp);
+#else
         MultU2NByN(nX1.GetSize(), nX2.GetSize(), nX1.GetValue(), nX2.GetValue(), nProdMult.GetValue(), GenerateSystem(nPieces), pWorkspace);
+#endif
         dwTime = ::GetTickCount() - dwTime;
         printf("Time to multiply two %u-DIGIT numbers using general recursive algorithm with %u pieces: %u\n", c_nFinalTestDIGITs, nPieces, dwTime);
         nProdMult.SetSize(nX1.GetSize() + nX2.GetSize());
@@ -3009,8 +2949,7 @@ bool CArithmeticCorrectnessTester::TestModBy2NPlus1(bool bVerbose)
                              pOnePlusTwoToN->GetValue(),
                              nProd.GetValue(),
                              pWorkspace,
-                             dwTimestamp,
-                             eTopLevel);
+                             dwTimestamp);
 #else
                 MultUBackend(nX.GetSize(),
                              pOnePlusTwoToN->GetSize(),
@@ -3105,8 +3044,7 @@ bool CArithmeticCorrectnessTester::TestMult2toMmodOnePlus2toN(bool bVerbose)
                              pTwoToMBits->GetValue(),
                              nProd.GetValue(),
                              pWorkspace,
-                             dwTimestamp,
-                             eTopLevel);
+                             dwTimestamp);
 #else
                 MultUBackend(nSum.GetSize(),
                              pTwoToMBits->GetSize(),
@@ -3155,8 +3093,7 @@ bool CArithmeticCorrectnessTester::TestMult2toMmodOnePlus2toN(bool bVerbose)
                              nX.GetValue(),
                              nSum.GetValue(),
                              pWorkspace,
-                             dwTimestamp,
-                             eTopLevel);
+                             dwTimestamp);
 #else
                 MultUBackend(nProd.GetSize(),
                              nX.GetSize(),
@@ -3542,7 +3479,7 @@ bool CArithmeticCorrectnessTester::TestFFTMult(bool bVerbose)
                 nProdComputed.GetValue()[i+kk] = TEST_BUFFERGUARD;
 #if _CollectDetailedTimingData
                 DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                MultFFT(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProdComputed.GetValue(),pnWorkspace,dwTimestamp,eTopLevel);
+                MultFFT(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProdComputed.GetValue(),pnWorkspace,dwTimestamp);
 #else
                 MultFFT(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nProdComputed.GetValue(),pnWorkspace);
 #endif
@@ -3801,8 +3738,7 @@ bool CArithmeticCorrectnessTester::TestSquare()
                                        pX->GetValue(),
                                        pTestProduct->GetValue(),
                                        pnWorkspace,
-                                       dwTimestamp,
-                                       eTopLevel);
+                                       dwTimestamp);
 #else
                         SquareUBackend(nXSize,
                                        pX->GetValue(),
@@ -4169,6 +4105,9 @@ bool CArithmeticCorrectnessTester::TestModularBox()
 
 bool CArithmeticCorrectnessTester::TestMontgomeryFormat()
 {
+#if(_CollectDetailedTimingData)
+    DWORD64            dwTimestamp = s_Timer.GetMicroseconds();
+#endif
     CArithmeticBox     cBox;
     int                nNumBits;
     const unsigned int c_nNumTestModulusValues = 4;
@@ -4237,8 +4176,13 @@ bool CArithmeticCorrectnessTester::TestMontgomeryFormat()
         for(int i=0; i<c_nTests; i++)
         {
             nX.SetRandom(nNumBits);
+#if(_CollectDetailedTimingData)
+            ToMontgomeryForm(nX.GetSize(), nN.GetSize(), nMontSize, nX.GetValue(), nN.GetValue(), nMontgomeryX.GetValue(), dwTimestamp, pWorkspace);
+            FromMontgomeryForm(nMontSize, nN.GetSize(), nRPrimeSize, nConvertBackSize, nMontgomeryX.GetValue(), nN.GetValue(), nRPrime.GetValue(), nConvertedBack.GetValue(), dwTimestamp, pWorkspace);
+#else
             ToMontgomeryForm(nX.GetSize(), nN.GetSize(), nMontSize, nX.GetValue(), nN.GetValue(), nMontgomeryX.GetValue(), pWorkspace);
             FromMontgomeryForm(nMontSize, nN.GetSize(), nRPrimeSize, nConvertBackSize, nMontgomeryX.GetValue(), nN.GetValue(), nRPrime.GetValue(), nConvertedBack.GetValue(), pWorkspace);
+#endif
             nConvertedBack.SetSize(nConvertBackSize);
             if (nX != nConvertedBack)
             {
@@ -4258,6 +4202,9 @@ exit:
 
 bool CArithmeticCorrectnessTester::TestMontgomeryMultiply()
 {
+#if(_CollectDetailedTimingData)
+    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+#endif
     CArithmeticBox     cBox;
     int                nNumBits;
     const unsigned int c_nTests    = 1024;
@@ -4296,11 +4243,18 @@ bool CArithmeticCorrectnessTester::TestMontgomeryMultiply()
     for(int i=0; i<c_nTests; i++)
     {
         nX.SetRandom(nNumBits);
+        nY.SetRandom(nNumBits);
+#if(_CollectDetailedTimingData)
+        ToMontgomeryForm(nX.GetSize(), nN.GetSize(), nMontSize, nX.GetValue(), nN.GetValue(), nMontgomeryX.GetValue(), dwTimestamp, pWorkspace);
+        nMontgomeryX.SetSize(nMontSize);
+        ToMontgomeryForm(nY.GetSize(), nN.GetSize(), nMontSize, nY.GetValue(), nN.GetValue(), nMontgomeryY.GetValue(), dwTimestamp, pWorkspace);
+        nMontgomeryY.SetSize(nMontSize);
+#else
         ToMontgomeryForm(nX.GetSize(), nN.GetSize(), nMontSize, nX.GetValue(), nN.GetValue(), nMontgomeryX.GetValue(), pWorkspace);
         nMontgomeryX.SetSize(nMontSize);
-        nY.SetRandom(nNumBits);
         ToMontgomeryForm(nY.GetSize(), nN.GetSize(), nMontSize, nY.GetValue(), nN.GetValue(), nMontgomeryY.GetValue(), pWorkspace);
         nMontgomeryY.SetSize(nMontSize);
+#endif
         MontgomeryMultiply(nMontgomeryX.GetSize(),
                            nMontgomeryY.GetSize(),
                            nN.GetSize(),
@@ -4311,8 +4265,22 @@ bool CArithmeticCorrectnessTester::TestMontgomeryMultiply()
                            nN.GetValue(),
                            nNPrime.GetValue(),
                            nProduct.GetValue(),
+#if(_CollectDetailedTimingData)
+                           dwTimestamp,
+#endif
                            pWorkspace);
-        FromMontgomeryForm(nMontSize, nN.GetSize(), nRPrimeSize, nConvertBackSize, nProduct.GetValue(), nN.GetValue(), nRPrime.GetValue(), nConvertedBack.GetValue(), pWorkspace);
+        FromMontgomeryForm(nMontSize,
+                           nN.GetSize(),
+                           nRPrimeSize,
+                           nConvertBackSize,
+                           nProduct.GetValue(),
+                           nN.GetValue(),
+                           nRPrime.GetValue(),
+                           nConvertedBack.GetValue(),
+#if(_CollectDetailedTimingData)
+                           dwTimestamp,
+#endif
+                           pWorkspace);
         nConvertedBack.SetSize(nConvertBackSize);
         cBox.Multiply(nX, nY, nProduct);
         cBox.Divide(nProduct, nN, nDiv, nRemainder);
@@ -4710,6 +4678,9 @@ exit:
 
 bool CArithmeticCorrectnessTester::TestSquareRoot()
 {
+#if(_CollectDetailedTimingData)
+    DWORD64            dwTimestamp = s_Timer.GetMicroseconds();
+#endif
     size_t             nRootSize;
     DOUBLEDIGIT        nStep, nVal, nSqrt, nHold;
     CArithmeticBox     cBox;
@@ -4767,7 +4738,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
             nSquareRoot.Reserve(nX1.GetSize());
             nMemoryNeeds              = SquareRootNewtonMemoryNeeds(nX1.GetSize());
             pnWorkspace[nMemoryNeeds] = TEST_BUFFERGUARD;
+#if(_CollectDetailedTimingData)
+            SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
             SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
             nSquareRoot.SetSize(nRootSize);
             if (eOperationSucceeded != cBox.Square(nSquareRoot, nSquare))
             {
@@ -4839,7 +4814,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
             nSquareRoot.Reserve(nX1.GetSize());
             nMemoryNeeds              = SquareRootMemoryNeeds(nX1.GetSize());
             pnWorkspace[nMemoryNeeds] = TEST_BUFFERGUARD;
+#if(_CollectDetailedTimingData)
+            SquareRootRecursive(nX1.GetSize(), nRootSize, nX1.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
             SquareRootRecursive(nX1.GetSize(), nRootSize, nX1.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
             nSquareRoot.SetSize(nRootSize);
             if (eOperationSucceeded != cBox.Square(nSquareRoot, nSquare))
             {
@@ -4861,7 +4840,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
                 printf("Square: ");
                 nSquare.PrintHexToFile();
                 printf("actual: ");
+#if(_CollectDetailedTimingData)
+                SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
                 SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
                 nSquareRoot.PrintHexToFile();
                 goto exit;
             }
@@ -4881,7 +4864,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
                 printf("1 + Square: ");
                 nSquare.PrintHexToFile();
                 printf("actual: ");
+#if(_CollectDetailedTimingData)
+                SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
                 SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
                 nSquareRoot.PrintHexToFile();
                 goto exit;
             }
@@ -4947,7 +4934,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
             nSquareRoot.Reserve(nX2.GetSize()+1); // +1: intermediate values might be larger
             nMemoryNeeds              = GeneralSquareRootNewtonMemoryNeeds(nX1.GetSize(), nX2.GetSize());
             pnWorkspace[nMemoryNeeds] = TEST_BUFFERGUARD;
+#if(_CollectDetailedTimingData)
+            GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
             GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
             nSquareRoot.SetSize(nRootSize);
             if (eOperationSucceeded != cBox.Add(nX1, nSquareRoot, nSum))
             {
@@ -5069,7 +5060,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
             nSquareRoot.Reserve(nX2.GetSize()+1); // +1: intermediate values might be larger
             nMemoryNeeds              = GeneralSquareRootRecursiveMemoryNeeds(nX1.GetSize(), nX2.GetSize());
             pnWorkspace[nMemoryNeeds] = TEST_BUFFERGUARD;
+#if(_CollectDetailedTimingData)
+            GeneralSquareRootRecursive(nX1Copy.GetSize(), nX2Copy.GetSize(), nRootSize, nX1Copy.GetValue(), nX2Copy.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
             GeneralSquareRootRecursive(nX1Copy.GetSize(), nX2Copy.GetSize(), nRootSize, nX1Copy.GetValue(), nX2Copy.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
             nSquareRoot.SetSize(nRootSize);
             if (eOperationSucceeded != cBox.Add(nX1, nSquareRoot, nSum))
             {
@@ -5092,7 +5087,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
                 printf("X1:               "); nX1.PrintHexToScreen();
                 printf("X2:               "); nX2.PrintHexToScreen();
                 printf("(x1 + root)*root: "); nSquare.PrintHexToScreen();
+#if(_CollectDetailedTimingData)
+                GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nFoo.GetValue(), dwTimestamp, pnWorkspace);
+#else
                 GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nFoo.GetValue(), pnWorkspace);
+#endif
                 nFoo.SetSize(nRootSize);
                 printf("Root:             "); nSquareRoot.PrintHexToFile();
                 printf("Root (Newton):    "); nFoo.PrintHexToFile();
@@ -5117,7 +5116,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
                 printf("X2:                         "); nX2.PrintHexToScreen();
                 printf("(x1 + 1 + root)*(1 + root): "); nSquare.PrintHexToScreen();
                 printf("Root:                       "); nSquareRoot.PrintHexToFile();
+#if(_CollectDetailedTimingData)
+                GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nFoo.GetValue(), dwTimestamp, pnWorkspace);
+#else
                 GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nFoo.GetValue(), pnWorkspace);
+#endif
                 nFoo.SetSize(nRootSize);
                 printf("Root (Newton):              "); nFoo.PrintHexToFile();
                 goto exit;
@@ -5136,7 +5139,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
         nX1Copy.GetValue()[nX2.GetSize() + 1] = TEST_BUFFERGUARD;
         nX2Copy.GetValue()[nX2.GetSize() + 1] = TEST_BUFFERGUARD;
         nSquareRoot.Reserve(nX2Copy.GetSize() + 1); // +1: intermediate values might be larger
+#if(_CollectDetailedTimingData)
+        GeneralSquareRootRecursive(nX1Copy.GetSize(), nX2Copy.GetSize(), nRootSize, nX1Copy.GetValue(), nX2Copy.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
         GeneralSquareRootRecursive(nX1Copy.GetSize(), nX2Copy.GetSize(), nRootSize, nX1Copy.GetValue(), nX2Copy.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
         nSquareRoot.SetSize(nRootSize);
         if (TEST_BUFFERGUARD != nX2Copy.GetValue()[nX2.GetSize() + 1])
         {
@@ -5169,7 +5176,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
             printf("X2:         "); nX2.PrintHexToFile();
             printf("(X1+Y)Y:    "); nSquare.PrintHexToFile();
             printf("Y:          "); nSquareRoot.PrintHexToFile();
+#if(_CollectDetailedTimingData)
+            GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
             GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
             nSquareRoot.SetSize(nRootSize);
             printf("Y (Newton): "); nSquareRoot.PrintHexToFile();
             goto exit;
@@ -5192,7 +5203,11 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
             printf("X2:            "); nX2.PrintHexToFile();
             printf("(X1+1+Y)(1+Y): "); nSquare.PrintHexToFile();
             printf("1+Y:           "); nSquareRoot.PrintHexToFile();
+#if(_CollectDetailedTimingData)
+            GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nSquareRoot.GetValue(), dwTimestamp, pnWorkspace);
+#else
             GeneralSquareRootNewton(nX1.GetSize(), nX2.GetSize(), nRootSize, nX1.GetValue(), nX2.GetValue(), nSquareRoot.GetValue(), pnWorkspace);
+#endif
             nSquareRoot.SetSize(nRootSize);
             nSquareRoot += 1;
             printf("1+Y (Newton):  "); nSquareRoot.PrintHexToFile();

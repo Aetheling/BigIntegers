@@ -563,10 +563,10 @@
 // but with the larger less than twice the size of the smaller.  X is smaller,
 // Y is larger
 #if(_CollectDetailedTimingData)
-#define UNBALANCED_MULT(fAlgorithm,nXSize,nYSize,pX,pY,pProd,pnWorkspace,dwTimestamp,eCaller,pnZSize)\
+#define UNBALANCED_MULT(fAlgorithm,nXSize,nYSize,pX,pY,pProd,pnWorkspace,dwTimestamp,pnZSize)\
 {\
-	fAlgorithm(nXSize,nXSize,pX,pY+nYSize-nXSize,pProd+nYSize-nXSize,pnWorkspace,dwTimestamp,eCaller);\
-    FinishUnbalancedMult(nXSize,nYSize,pXValue,pYValue,pProd,dwTimestamp,e2NByN,pnWorkspace,pnZSize);\
+	fAlgorithm(nXSize,nXSize,pX,pY+nYSize-nXSize,pProd+nYSize-nXSize,pnWorkspace,dwTimestamp);\
+    FinishUnbalancedMult(nXSize,nYSize,pXValue,pYValue,pProd,dwTimestamp,pnWorkspace,pnZSize);\
 }
 #else
 #define UNBALANCED_MULT(fAlgorithm,nXSize,nYSize,pX,pY,pProd,pnWorkspace,pnZSize)\

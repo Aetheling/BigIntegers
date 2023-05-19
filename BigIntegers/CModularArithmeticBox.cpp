@@ -2,10 +2,6 @@
 #include "ArithmeticBox.h"
 #include "CUnsignedArithmeticHelper.h"
 
-#if(_CollectDetailedTimingData)
-CHighPerfTimer CModularArithmeticBox::s_Timer;
-#endif
-
 CModularArithmeticBox::CModularArithmeticBox(const CBigInteger &nModulus, bool bProtectAgainstTimingAttacks)
 {
     // copy N into the modulus
@@ -182,12 +178,7 @@ EArithmeticOperationResult CModularArithmeticBox::Multiply(const CBigInteger *pX
                 goto exit;
             }
             // multiply
-#if(_CollectDetailedTimingData)
-            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-            CUnsignedArithmeticHelper::MultUBackend(nXSize, nYSize, pX->GetValue(), pY->GetValue(), pXTimesY->GetValue(), m_Workspace.GetSpace(), dwTimestamp, eTopLevel);
-#else
-            CUnsignedArithmeticHelper::MultUBackend(nXSize, nYSize, pX->GetValue(), pY->GetValue(), pXTimesY->GetValue(), m_Workspace.GetSpace());
-#endif
+            CUnsignedArithmeticHelper::Multiply(nXSize, nYSize, pX->GetValue(), pY->GetValue(), pXTimesY->GetValue(), m_Workspace.GetSpace());
             // modulus
             nMultSize = nXSize + nYSize;
             if(0 == pXTimesY->GetValue()[nMultSize - 1]) nMultSize--;
@@ -222,13 +213,8 @@ EArithmeticOperationResult CModularArithmeticBox::Square(const CBigInteger *pX, 
                 eResult = eOutOfMemory;
                 goto exit;
             }
-            // multiply
-#if(_CollectDetailedTimingData)
-            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-            CUnsignedArithmeticHelper::SquareUBackend(nXSize, pX->GetValue(), pXSquared->GetValue(), m_Workspace.GetSpace(), dwTimestamp, eTopLevel);
-#else
-            CUnsignedArithmeticHelper::SquareUBackend(nXSize, pX->GetValue(), pXSquared->GetValue(), m_Workspace.GetSpace());
-#endif
+            // square
+            CUnsignedArithmeticHelper::Square(nXSize, pX->GetValue(), pXSquared->GetValue(), m_Workspace.GetSpace());
             nSquareSize = (nXSize<<1);
             if(0==pXSquared->GetValue()[nSquareSize-1]) nSquareSize--;
             // modulus
@@ -266,6 +252,7 @@ EArithmeticOperationResult CModularArithmeticBox::MultiplyAdd(const CBigInteger 
         eResult = eBadArgument;
         goto exit;
     }
+    else
     {
         size_t nXSize = pX->GetSize();
         size_t nYSize = pY->GetSize();
@@ -285,12 +272,7 @@ EArithmeticOperationResult CModularArithmeticBox::MultiplyAdd(const CBigInteger 
                 pRunningSum->m_pnValue[i] = 0;
             }
             // multiply/add
-#if(_CollectDetailedTimingData)
-            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-            CUnsignedArithmeticHelper::MultAddUBackend(nXSize, nYSize, nRunning, pX->GetValue(), pY->GetValue(), pRunningSum->GetValue(), dwTimestamp, eTopLevel, m_Workspace.GetSpace());
-#else
-            CUnsignedArithmeticHelper::MultAddUBackend(nXSize, nYSize, nRunning, pX->GetValue(), pY->GetValue(), pRunningSum->GetValue(), m_Workspace.GetSpace());
-#endif
+            CUnsignedArithmeticHelper::MultiplyAdd(nXSize, nYSize, nRunning, pX->GetValue(), pY->GetValue(), pRunningSum->GetValue(), m_Workspace.GetSpace());
             // modulus
             CUnsignedArithmeticHelper::Divide(nRunning, m_Modulus.GetSize(), nXDivYSize, nRemainderSize, pRunningSum->GetValue(), m_Modulus.GetValue(), m_Workspace.GetSpace(), m_Workspace.GetSpace() + m_Modulus.GetSize() + 2);
             pRunningSum->SetSize(nRemainderSize);
