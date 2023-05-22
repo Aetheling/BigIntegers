@@ -10,7 +10,7 @@ CHighPerfTimer CUnsignedArithmeticHelper::s_Timer;
 SSystemDataNode *g_pInversionStructures = NULL;
 // class variable definitions/initializations
 #ifndef _UsingVariableThresholdsForTest
-#ifdef _USESMALLDIGITS
+#if(32==_DIGIT_SIZE_IN_BITS)
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 16384;         // or whatever is found to be best in testing thresholds -- this is good
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                = 65536;         // or whatever is found to be best in testing thresholds -- this is good
 // note that the ABSOLUTE MINIMUM for c_pnMultiplicationThresholds[e2NByN] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
@@ -20,11 +20,11 @@ const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeB
 const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 16;       // at least 4 to insure correctness; 22 is heuristically good
 const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               =  4;       // at least 4 to insure correctness; 22 is heuristically good
 const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               =  3;       // 3 is the minimum for correctness -- and also seems to be the best
-#else
+#elif(16==_DIGIT_SIZE_IN_BITS)
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 8192;         // or whatever is found to be best in testing thresholds -- this is good
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                = 32768;         // or whatever is found to be best in testing thresholds -- this is good
 // note that the ABSOLUTE MINIMUM for c_pnMultiplicationThresholds[e2NByN] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
-const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 34, 68, 76, 161, 1990006, 12232, 0 };     // or whatever values the test deems Worthy
+const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 34, 68, 76, 161, 1990006, 12232 };     // or whatever values the test deems Worthy
 // note that the ABSOLUTE MINIMUM for c_pn2NByNBreakpoints[nPieces-5] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
 const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 14481, 34001, 135915, 543863, 779232, 1765454, 1917176 };     // or whatever values the test deems Worthy
 const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 12;       // at least 4 to insure correctness; 22 is heuristically good
@@ -32,17 +32,17 @@ const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff            
 const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               =  3;       // 3 is the minimum for correctness -- and also seems to be the best
 #endif
 #else
-#ifdef _USESMALLDIGITS
+#if(16==_DIGIT_SIZE_IN_BITS)
 unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 16384;         // or whatever is found to be best in testing thresholds -- this is good
 unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                = 65536;         // or whatever is found to be best in testing thresholds -- this is good
 // note that the ABSOLUTE MINIMUM for c_pnMultiplicationThresholds[e2NByN] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
-unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 15, 43, 58, 423327, 5633, 0, 0 };     // or whatever values the test deems Worthy
+unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 15, 43, 58, 423327, 5633, 0 };     // or whatever values the test deems Worthy
 // note that the ABSOLUTE MINIMUM for c_pn2NByNBreakpoints[nPieces-5] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
 unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 91, 2639, 4366, 6920, 18377, 26457, 239783 };     // or whatever values the test deems Worthy
 unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 16;       // at least 4 to insure correctness; 6 or 7 is heuristically good
 unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               = 4;        // at least 4 to insure correctness; 4 is heuristically good
 unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               = 3;        // 3 is the minimum for correctness -- and also seems to be the best
-#else
+#elif(32==_DIGIT_SIZE_IN_BITS)
 unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 8192;
 unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                = 32768; // ignored
 unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 34, 68, 76, 161, 1990006, 12232, 0 };
@@ -58,7 +58,7 @@ unsigned long long g_nDivideTime[eNumDivideComponents]             = {0, 0, 0, 0
 unsigned long long g_nSquareRootTime[eNumSquareRootComponents]     = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 unsigned long long g_nPowerModulusTime[eNumPowerModulusComponents] = {0, 0, 0, 0, 0};
 unsigned long long g_nGCDTime[eNumGCDComponents]                   = {0, 0, 0, 0, 0};
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 unsigned long long g_nBuildTimes[eNumMultiplyAlgorithms]           = {0, 0, 0, 0, 0, 0, 0};
 unsigned long long g_nProcessTimes[eNumMultiplyAlgorithms+1]       = {0, 0, 0, 0, 0, 0, 0, 0};
 unsigned long      g_nMultiplyCalls[eNumMultiplyAlgorithms+1]      = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -72,7 +72,7 @@ const char *c_szMultiplyFunctionNames[eNumMultiplyAlgorithms] = { "Basic multipl
                                                                   "3 by 2 multiply",
                                                                   "5 by 3 multiply",
                                                                   "7 by 4 multiply",
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
                                                                   "9 by 5 multiply",
 #endif
                                                                   "2n by n multiply",
@@ -220,13 +220,13 @@ size_t CUnsignedArithmeticHelper::Add(size_t      nXSize,
     for(i=0;i<nSmallSize;i++)
     {
         nSum       = (nCarry + pSmall[i]) + pLarge[i];
-        nCarry     = nSum>>c_nDigitSize;
+        nCarry     = nSum>>_DIGIT_SIZE_IN_BITS;
         pXPlusY[i] = (DIGIT) nSum;
     }
     for(;i<nLargeSize;i++)
     {
         nSum       = nCarry + pLarge[i];
-        nCarry     = nSum>>c_nDigitSize;
+        nCarry     = nSum>>_DIGIT_SIZE_IN_BITS;
         pXPlusY[i] = (DIGIT) nSum;
     }
     pXPlusY[i] = (DIGIT) nCarry;
@@ -244,13 +244,13 @@ void CUnsignedArithmeticHelper::AddXToYInPlace(size_t      nXSize,
     for(i=0; i<nXSize; i++)
     {
         nSum   = (nCarry + pX[i]) + pY[i];
-        nCarry = nSum>>c_nDigitSize;
+        nCarry = nSum>>_DIGIT_SIZE_IN_BITS;
         pY[i]  = (DIGIT) nSum;
     }
     while(nCarry)
     {
         nSum    = nCarry + pY[i];
-        nCarry  = nSum>>c_nDigitSize;
+        nCarry  = nSum>>_DIGIT_SIZE_IN_BITS;
         pY[i++] = (DIGIT) nSum;
     }
     if(nYSize<i) nYSize = i;
@@ -327,7 +327,7 @@ size_t CUnsignedArithmeticHelper::MultOracle(size_t      nXSize,
             {
                 nProduct = nX*pY[j];
                 nSum     = (nProduct&c_nClearHigh) + nCarry + pZ[i+j];
-                nCarry   = (nProduct>>c_nDigitSize)+(nSum>>c_nDigitSize);
+                nCarry   = (nProduct>>_DIGIT_SIZE_IN_BITS)+(nSum>>_DIGIT_SIZE_IN_BITS);
                 pZ[i+j]  = (DIGIT) nSum;
             }
             pZ[i+j] = (DIGIT) nCarry;
@@ -378,7 +378,7 @@ size_t CUnsignedArithmeticHelper::MultiplyMemoryNeedsBackend(size_t nXSize, size
         }
         return nNeeds + (nXSize<<1) + (nYSize%nXSize); // nXSize + nXSize + (nLarge%nXSize) to hold intermediate value for mult/add
     }
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
     else if (nXSize < c_pnMultiplicationThresholds[e9By5] && nXSize < c_pnMultiplicationThresholds[e2NByN])
 #else
     else if (nXSize < c_pnMultiplicationThresholds[e7By4] && nXSize < c_pnMultiplicationThresholds[e2NByN])
@@ -455,7 +455,7 @@ size_t CUnsignedArithmeticHelper::GCDMemoryNeeds(size_t n1, size_t n2, bool bCom
         if(sizeof(DIGIT)*nSmall<=c_nMaxBYTESizeForRecursiveGCD)
         {
             // this is an overestimate!  Tighter bounds exist.
-            nNeeds = 4*nLarge + nSmall*((1+nSmall)/2)*c_nDigitSize;
+            nNeeds = 4*nLarge + nSmall*((1+nSmall)/2)*_DIGIT_SIZE_IN_BITS;
         }
         else
         {
@@ -719,7 +719,7 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultUBackend(size_t             nX
 #endif
         eAlg = e5By3;
     }
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
     else if (nSmallSize < c_pnMultiplicationThresholds[e7By4])
     {
 #if(_CollectDetailedTimingData)
@@ -864,7 +864,7 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t             
                     pnWorkspace);
         eAlg = e5By3;
     }
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
     else if (nXSize < c_pnMultiplicationThresholds[e7By4])
     {
         SquareU7by4(nXSize,
@@ -1062,7 +1062,7 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultAddUBackend(size_t            
             eAlg = e5By3;
 #endif
         }
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
         else if (nSmallSize < c_pnMultiplicationThresholds[e7By4])
         {
             MultU7by4(nSmallSize,
@@ -1247,7 +1247,7 @@ void CUnsignedArithmeticHelper::FinishUnbalancedMult(size_t             nXSize,
     for(i=nYSize-nXSize;i<nYSize;i++)
     {
         nSum   = (nCarry + pnZ[i]) + pnWorkspace[i];
-        nCarry = (nSum>>c_nDigitSize);
+        nCarry = (nSum>>_DIGIT_SIZE_IN_BITS);
         pnZ[i] = (DIGIT) nSum;
     }
     if(0<nCarry)
@@ -1255,7 +1255,7 @@ void CUnsignedArithmeticHelper::FinishUnbalancedMult(size_t             nXSize,
         do
         {
             nSum     = nCarry + pnZ[i];
-            nCarry   = (nSum>>c_nDigitSize);
+            nCarry   = (nSum>>_DIGIT_SIZE_IN_BITS);
             pnZ[i++] = (DIGIT) nSum;
         }
         while(0<nCarry);
@@ -1299,7 +1299,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                 nY0        = *pYValue++;
                 nProd      = nY0*nX0;
                 nSum       = nProd+nCarry;
-                nCarry     = nSum>>c_nDigitSize;
+                nCarry     = nSum>>_DIGIT_SIZE_IN_BITS;
                 *pZValue++ = (DIGIT) nSum;
             }
             while(pYValue<pTop);
@@ -1316,7 +1316,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY1        = *pYValue++;
             nProd      = nX0*nY1;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY1,nCarry,nSum,nProd,pZValue);
             if(nYSize>=4)
@@ -1336,7 +1336,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                 nProd      = nX1*nY0;
                 nSum       = (nProd&c_nClearHigh)+nCarry;
                 *pZValue++ = (DIGIT) nSum;
-                *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
             else  // i = 1
             {
@@ -1345,7 +1345,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                 nProd      = nX1*nY1;
                 nSum       = (nProd&c_nClearHigh)+nCarry;
                 *pZValue++ = (DIGIT) nSum;
-                *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
 #endif
         }
@@ -1360,7 +1360,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY2        = *pYValue++;
             nProd      = nX0*nY2;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY2,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -1387,7 +1387,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX2*nY1;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else  // i = 1
                 {
@@ -1397,7 +1397,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX2*nY2;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
             else // i = 2
@@ -1410,7 +1410,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                 nProd      = nX2*nY0;
                 nSum       = (nProd&c_nClearHigh)+nCarry;
                 *pZValue++ = (DIGIT) nSum;
-                *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
 #endif
         }
@@ -1426,7 +1426,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY3        = *pYValue++;
             nProd      = nX0*nY3;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY3,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -1458,7 +1458,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX3*nY2;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else  // i = 1
                 {
@@ -1469,7 +1469,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX3*nY3;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
             else
@@ -1485,7 +1485,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX3*nY0;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else  // i = 3
                 {
@@ -1500,7 +1500,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX3*nY1;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
 #endif
@@ -1518,7 +1518,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY4        = *pYValue++;
             nProd      = nX0*nY4;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY4,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -1557,7 +1557,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX4*nY3;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 1
                     {
@@ -1569,7 +1569,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX4*nY4;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -1586,7 +1586,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX4*nY0;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 3
                     {
@@ -1602,7 +1602,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX4*nY1;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -1622,7 +1622,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                 nProd      = nX4*nY2;
                 nSum       = (nProd&c_nClearHigh)+nCarry;
                 *pZValue++ = (DIGIT) nSum;
-                *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
 
 #endif
@@ -1641,7 +1641,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY5        = *pYValue++;
             nProd      = nX0*nY5;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY5,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -1685,7 +1685,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX5*nY4;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 1
                     {
@@ -1698,7 +1698,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX5*nY5;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -1716,7 +1716,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX5*nY0;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 3
                     {
@@ -1733,7 +1733,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX5*nY1;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -1756,7 +1756,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX5*nY2;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else // i = 5
                 {
@@ -1777,7 +1777,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX5*nY3;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 } 
             }
 
@@ -1798,7 +1798,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY6        = *pYValue++;
             nProd      = nX0*nY6;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY6,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -1847,7 +1847,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX6*nY5;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 1
                     {
@@ -1861,7 +1861,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX6*nY6;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -1880,7 +1880,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX6*nY0;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 3
                     {
@@ -1898,7 +1898,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX6*nY1;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -1924,7 +1924,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX6*nY2;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 5
                     {
@@ -1946,7 +1946,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX6*nY3;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else // i = 6
@@ -1971,7 +1971,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX6*nY4;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
 
@@ -1993,7 +1993,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY7        = *pYValue++;
             nProd      = nX0*nY7;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY7,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -2047,7 +2047,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX7*nY6;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 1
                     {
@@ -2062,7 +2062,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX7*nY7;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -2082,7 +2082,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX7*nY0;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 3
                     {
@@ -2101,7 +2101,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX7*nY1;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -2128,7 +2128,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX7*nY2;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 5
                     {
@@ -2151,7 +2151,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX7*nY3;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -2179,7 +2179,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX7*nY4;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 7
                     {
@@ -2206,7 +2206,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX7*nY5;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -2230,7 +2230,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY8        = *pYValue++;
             nProd      = nX0*nY8;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY8,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -2291,7 +2291,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX8*nY7;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 1
                         {
@@ -2307,7 +2307,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX8*nY8;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -2328,7 +2328,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX8*nY0;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 3
                         {
@@ -2348,7 +2348,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX8*nY1;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -2376,7 +2376,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX8*nY2;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else // i = 5
                         {
@@ -2400,7 +2400,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX8*nY3;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -2429,7 +2429,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX8*nY4;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 7
                         {
@@ -2457,7 +2457,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX8*nY5;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -2490,7 +2490,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                 nProd      = nX8*nY6;
                 nSum       = (nProd&c_nClearHigh)+nCarry;
                 *pZValue++ = (DIGIT) nSum;
-                *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
 #endif
         }
@@ -2512,7 +2512,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY9        = *pYValue++;
             nProd      = nX0*nY9;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY9,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -2578,7 +2578,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX9*nY8;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 1
                         {
@@ -2595,7 +2595,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX9*nY9;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -2617,7 +2617,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX9*nY0;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 3
                         {
@@ -2638,7 +2638,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX9*nY1;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -2667,7 +2667,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX9*nY2;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else // i = 5
                         {
@@ -2692,7 +2692,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX9*nY3;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -2722,7 +2722,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX9*nY4;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 7
                         {
@@ -2751,7 +2751,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX9*nY5;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -2787,7 +2787,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX9*nY6;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else // i = 9
                 {
@@ -2820,7 +2820,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX9*nY7;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
 #endif
@@ -2844,7 +2844,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY10       = *pYValue++;
             nProd      = nX0*nY10;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY10,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -2915,7 +2915,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX10*nY9;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 1
                         {
@@ -2933,7 +2933,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX10*nY10;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -2956,7 +2956,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX10*nY0;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 3
                         {
@@ -2978,7 +2978,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX10*nY1;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -3008,7 +3008,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX10*nY2;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else // i = 5
                         {
@@ -3034,7 +3034,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX10*nY3;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -3065,7 +3065,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX10*nY4;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 7
                         {
@@ -3095,7 +3095,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX10*nY5;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -3134,7 +3134,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX10*nY6;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 9
                     {
@@ -3168,7 +3168,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX10*nY7;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else // i = 10
@@ -3205,7 +3205,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                     nProd      = nX10*nY8;
                     nSum       = (nProd&c_nClearHigh)+nCarry;
                     *pZValue++ = (DIGIT) nSum;
-                    *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
 #endif
@@ -3230,7 +3230,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             nY11       = *pYValue++;
             nProd      = nX0*nY11;
             *pZValue++ = (DIGIT) nProd;
-            nCarry     = nProd>>c_nDigitSize;
+            nCarry     = nProd>>_DIGIT_SIZE_IN_BITS;
             nY0        = *pYValue++;
             DotMult2(nX0,nX1,nY0,nY11,nCarry,nSum,nProd,pZValue);
             nY1        = *pYValue++;
@@ -3306,7 +3306,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX11*nY10;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 1
                         {
@@ -3325,7 +3325,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX11*nY11;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -3349,7 +3349,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX11*nY0;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 3
                         {
@@ -3372,7 +3372,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX11*nY1;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -3403,7 +3403,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX11*nY2;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else // i = 5
                         {
@@ -3430,7 +3430,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX11*nY3;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -3462,7 +3462,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX11*nY4;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 7
                         {
@@ -3493,7 +3493,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                             nProd      = nX11*nY5;
                             nSum       = (nProd&c_nClearHigh)+nCarry;
                             *pZValue++ = (DIGIT) nSum;
-                            *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -3533,7 +3533,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX11*nY6;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 9
                     {
@@ -3568,7 +3568,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX11*nY7;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -3608,7 +3608,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX11*nY8;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 11
                     {
@@ -3647,7 +3647,7 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
                         nProd      = nX11*nY9;
                         nSum       = (nProd&c_nClearHigh)+nCarry;
                         *pZValue++ = (DIGIT) nSum;
-                        *pZValue   = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        *pZValue   = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -3692,7 +3692,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                 nY0        = *pYValue++;
                 nProd      = nY0*nX0;
                 nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
-                nCarry     = (DIGIT) ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                nCarry     = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 *pZValue++ = (DIGIT) nSum;
             }
             while(pYValue<pTop);
@@ -3708,7 +3708,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY1        = *pYValue++;
             nProd      = nX0*nY1;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY1,nCarry,nSum,nProd,pZValue);
@@ -3729,7 +3729,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                 nProd      = nX1*nY0;
                 nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                 *pZValue++ = (DIGIT) nSum;
-                nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
             else  // i = 1
             {
@@ -3738,7 +3738,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                 nProd      = nX1*nY1;
                 nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                 *pZValue++ = (DIGIT) nSum;
-                nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
 #endif
         }
@@ -3753,7 +3753,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY2        = *pYValue++;
             nProd      = nX0*nY2;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY2,nCarry,nSum,nProd,pZValue);
@@ -3781,7 +3781,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX2*nY1;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else  // i = 1
                 {
@@ -3791,7 +3791,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX2*nY2;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
             else // i = 2
@@ -3804,7 +3804,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                 nProd      = nX2*nY0;
                 nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                 *pZValue++ = (DIGIT) nSum;
-                nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
 #endif
         }
@@ -3820,7 +3820,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY3        = *pYValue++;
             nProd      = nX0*nY3;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY3,nCarry,nSum,nProd,pZValue);
@@ -3853,7 +3853,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX3*nY2;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else  // i = 1
                 {
@@ -3864,7 +3864,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX3*nY3;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
             else
@@ -3880,7 +3880,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX3*nY0;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else  // i = 3
                 {
@@ -3895,7 +3895,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX3*nY1;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
 #endif
@@ -3913,7 +3913,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY4        = *pYValue++;
             nProd      = nX0*nY4;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY4,nCarry,nSum,nProd,pZValue);
@@ -3953,7 +3953,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX4*nY3;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 1
                     {
@@ -3965,7 +3965,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX4*nY4;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -3982,7 +3982,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX4*nY0;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 3
                     {
@@ -3998,7 +3998,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX4*nY1;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -4018,7 +4018,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                 nProd      = nX4*nY2;
                 nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                 *pZValue++ = (DIGIT) nSum;
-                nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
 
 #endif
@@ -4037,7 +4037,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY5        = *pYValue++;
             nProd      = nX0*nY5;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY5,nCarry,nSum,nProd,pZValue);
@@ -4082,7 +4082,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX5*nY4;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 1
                     {
@@ -4095,7 +4095,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX5*nY5;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -4113,7 +4113,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX5*nY0;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 3
                     {
@@ -4130,7 +4130,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX5*nY1;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -4153,7 +4153,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX5*nY2;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else // i = 5
                 {
@@ -4174,7 +4174,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX5*nY3;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 } 
             }
 
@@ -4195,7 +4195,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY6        = *pYValue++;
             nProd      = nX0*nY6;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY6,nCarry,nSum,nProd,pZValue);
@@ -4245,7 +4245,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX6*nY5;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 1
                     {
@@ -4259,7 +4259,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX6*nY6;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -4278,7 +4278,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX6*nY0;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 3
                     {
@@ -4296,7 +4296,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX6*nY1;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -4322,7 +4322,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX6*nY2;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 5
                     {
@@ -4344,7 +4344,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX6*nY3;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else // i = 6
@@ -4369,7 +4369,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX6*nY4;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
 
@@ -4391,7 +4391,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY7        = *pYValue++;
             nProd      = nX0*nY7;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY7,nCarry,nSum,nProd,pZValue);
@@ -4446,7 +4446,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX7*nY6;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 1
                     {
@@ -4461,7 +4461,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX7*nY7;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -4481,7 +4481,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX7*nY0;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 3
                     {
@@ -4500,7 +4500,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX7*nY1;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -4527,7 +4527,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX7*nY2;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 5
                     {
@@ -4550,7 +4550,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX7*nY3;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -4578,7 +4578,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX7*nY4;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else  // i = 7
                     {
@@ -4605,7 +4605,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX7*nY5;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -4629,7 +4629,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY8        = *pYValue++;
             nProd      = nX0*nY8;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY8,nCarry,nSum,nProd,pZValue);
@@ -4691,7 +4691,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX8*nY7;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 1
                         {
@@ -4707,7 +4707,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX8*nY8;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -4728,7 +4728,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX8*nY0;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 3
                         {
@@ -4748,7 +4748,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX8*nY1;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -4776,7 +4776,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX8*nY2;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else // i = 5
                         {
@@ -4800,7 +4800,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX8*nY3;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -4829,7 +4829,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX8*nY4;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 7
                         {
@@ -4857,7 +4857,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX8*nY5;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -4890,7 +4890,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                 nProd      = nX8*nY6;
                 nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                 *pZValue++ = (DIGIT) nSum;
-                nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             }
 #endif
         }
@@ -4912,7 +4912,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY9        = *pYValue++;
             nProd      = nX0*nY9;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY9,nCarry,nSum,nProd,pZValue);
@@ -4979,7 +4979,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX9*nY8;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 1
                         {
@@ -4996,7 +4996,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX9*nY9;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -5018,7 +5018,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX9*nY0;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 3
                         {
@@ -5039,7 +5039,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX9*nY1;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -5068,7 +5068,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX9*nY2;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else // i = 5
                         {
@@ -5093,7 +5093,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX9*nY3;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -5123,7 +5123,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX9*nY4;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 7
                         {
@@ -5152,7 +5152,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX9*nY5;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -5188,7 +5188,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX9*nY6;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
                 else // i = 9
                 {
@@ -5221,7 +5221,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX9*nY7;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
 #endif
@@ -5245,7 +5245,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY10       = *pYValue++;
             nProd      = nX0*nY10;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY10,nCarry,nSum,nProd,pZValue);
@@ -5317,7 +5317,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX10*nY9;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 1
                         {
@@ -5335,7 +5335,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX10*nY10;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -5358,7 +5358,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX10*nY0;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 3
                         {
@@ -5380,7 +5380,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX10*nY1;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -5410,7 +5410,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX10*nY2;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else // i = 5
                         {
@@ -5436,7 +5436,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX10*nY3;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -5467,7 +5467,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX10*nY4;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 7
                         {
@@ -5497,7 +5497,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX10*nY5;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -5536,7 +5536,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX10*nY6;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 9
                     {
@@ -5570,7 +5570,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX10*nY7;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else // i = 10
@@ -5607,7 +5607,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                     nProd      = nX10*nY8;
                     nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                     *pZValue++ = (DIGIT) nSum;
-                    nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                    nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                 }
             }
 #endif
@@ -5632,7 +5632,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
             nY11       = *pYValue++;
             nProd      = nX0*nY11;
             nSum       = (nProd&c_nClearHigh) + *pZValue;
-            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
             *pZValue++ = (DIGIT) nSum;
             nY0        = *pYValue++;
             DotMultAdd2(nX0,nX1,nY0,nY11,nCarry,nSum,nProd,pZValue);
@@ -5709,7 +5709,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX11*nY10;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 1
                         {
@@ -5728,7 +5728,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX11*nY11;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -5752,7 +5752,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX11*nY0;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 3
                         {
@@ -5775,7 +5775,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX11*nY1;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -5806,7 +5806,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX11*nY2;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else // i = 5
                         {
@@ -5833,7 +5833,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX11*nY3;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                     else
@@ -5865,7 +5865,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX11*nY4;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                         else  // i = 7
                         {
@@ -5896,7 +5896,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                             nProd      = nX11*nY5;
                             nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                             *pZValue++ = (DIGIT) nSum;
-                            nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                            nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                         }
                     }
                 }
@@ -5936,7 +5936,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX11*nY6;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 9
                     {
@@ -5971,7 +5971,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX11*nY7;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
                 else
@@ -6011,7 +6011,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX11*nY8;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                     else // i = 11
                     {
@@ -6050,7 +6050,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
                         nProd      = nX11*nY9;
                         nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
                         *pZValue++ = (DIGIT) nSum;
-                        nCarry     = ((nSum>>c_nDigitSize) + (nProd>>c_nDigitSize));
+                        nCarry     = ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
                     }
                 }
             }
@@ -6064,7 +6064,7 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
         do
         {
             nSum       = *pZValue+nCarry;
-            nCarry     = nSum>>c_nDigitSize;
+            nCarry     = nSum>>_DIGIT_SIZE_IN_BITS;
             *pZValue++ = (DIGIT) nSum;
         }
         while(nCarry);
@@ -6185,8 +6185,8 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
             nSum2   = nCarry2 + pYValue[i] + pYValue[nHalf+i];
             pD1[i]  = (DIGIT) nSum1;
             pD2[i]  = (DIGIT) nSum2;
-            nCarry1 = nSum1>>c_nDigitSize;
-            nCarry2 = nSum2>>c_nDigitSize;
+            nCarry1 = nSum1>>_DIGIT_SIZE_IN_BITS;
+            nCarry2 = nSum2>>_DIGIT_SIZE_IN_BITS;
         }
         for(;i<nYSize-nHalf;i++)
         {
@@ -6194,8 +6194,8 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
             nSum2    = nCarry2 + pYValue[i] + pYValue[nHalf+i];
             pD1[i]   = (DIGIT) nSum1;
             pD2[i]   = (DIGIT) nSum2;
-            nCarry1  = nSum1>>c_nDigitSize;
-            nCarry2  = nSum2>>c_nDigitSize;
+            nCarry1  = nSum1>>_DIGIT_SIZE_IN_BITS;
+            nCarry2  = nSum2>>_DIGIT_SIZE_IN_BITS;
         }
         if(i<nHalf)  // one more DIGIT to take care of
         {
@@ -6203,8 +6203,8 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
             nSum2    = nCarry2 + pYValue[i];
             pD1[i]   = (DIGIT) nSum1;
             pD2[i]   = (DIGIT) nSum2;
-            nCarry1  = nSum1>>c_nDigitSize;
-            nCarry2  = nSum2>>c_nDigitSize;
+            nCarry1  = nSum1>>_DIGIT_SIZE_IN_BITS;
+            nCarry2  = nSum2>>_DIGIT_SIZE_IN_BITS;
             i++;
         }
         // final carry-out
@@ -6251,7 +6251,7 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
         for(i=0;i<nUpper;i++)
         {
             nSum1          =  (nBorrow+pD1[i])+pD2[i];
-            nBorrow        =  nSum1>>c_nDigitSize;
+            nBorrow        =  nSum1>>_DIGIT_SIZE_IN_BITS;
             nSum1          =  nSum1&c_nClearHigh;
             nCarry1        =  pnWorkspace[i];
             nBorrow        += (nSum1>nCarry1);
@@ -6260,7 +6260,7 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
         for(;i<nHalf+nHalf;i++)
         {
             nSum1          =  nBorrow+pD1[i];
-            nBorrow        =  nSum1>>c_nDigitSize;
+            nBorrow        =  nSum1>>_DIGIT_SIZE_IN_BITS;
             nSum1          =  nSum1&c_nClearHigh;
             nCarry1        =  pnWorkspace[i];
             nBorrow        += (nSum1>nCarry1);
@@ -6275,7 +6275,7 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
         for(i=0;i<nUpper;i++)
         {
             nSum1   = nCarry1 + pnWorkspace[i] + pD1[i];
-            nCarry1 = nSum1>>c_nDigitSize;
+            nCarry1 = nSum1>>_DIGIT_SIZE_IN_BITS;
             pD1[i]  = (DIGIT) nSum1;
         }
         if(nCarry1)
@@ -6283,7 +6283,7 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
             do
             {
                 nSum1    = nCarry1 + pD1[i];
-                nCarry1  = nSum1>>c_nDigitSize;
+                nCarry1  = nSum1>>_DIGIT_SIZE_IN_BITS;
                 pD1[i++] = (DIGIT) nSum1;
             }
             while(nCarry1);
@@ -6331,7 +6331,7 @@ void CUnsignedArithmeticHelper::SquareU3by2(size_t             nXSize,
     for(i=0;i<nXSize;i++)
     {
         nSum   = nCarry + (((DOUBLEDIGIT) pnWorkspace[i])<<1) + pD1[i];
-        nCarry = nSum>>c_nDigitSize;
+        nCarry = nSum>>_DIGIT_SIZE_IN_BITS;
         pD1[i] = (DIGIT) nSum;
     }
     if(nCarry)
@@ -6339,7 +6339,7 @@ void CUnsignedArithmeticHelper::SquareU3by2(size_t             nXSize,
         do
         {
             nSum     = nCarry + pD1[i];
-            nCarry   = nSum>>c_nDigitSize;
+            nCarry   = nSum>>_DIGIT_SIZE_IN_BITS;
             pD1[i++] = (DIGIT) nSum;
         }
         while(nCarry);
@@ -6475,13 +6475,13 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
             nE2     = pX2[i];
             nSum1   = nE0+nE1+nE2+nCarry1; // R(1) arg
             pR3[i]  = (DIGIT) nSum1;
-            nCarry1 = nSum1>>c_nDigitSize;
+            nCarry1 = nSum1>>_DIGIT_SIZE_IN_BITS;
             nSum2   = nE0+(nE1<<1)+(nE2<<2)+nCarry2; // R(2) arg
             pR1[i]  = (DIGIT) nSum2;
-            nCarry2 = nSum2>>c_nDigitSize;
+            nCarry2 = nSum2>>_DIGIT_SIZE_IN_BITS;
             nSum3   = nE0+(nE1<<2)+(nE2<<4)+nCarry3; // R(3) arg
             pR0[i]  = (DIGIT) nSum3;
-            nCarry3 = nSum3>>c_nDigitSize;
+            nCarry3 = nSum3>>_DIGIT_SIZE_IN_BITS;
         }
         for(;i<nThird;i++)
         {
@@ -6489,13 +6489,13 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
             nE2     = pX2[i];
             nSum1   = nE1+nE2+nCarry1;
             pR3[i]  = (DIGIT) nSum1;
-            nCarry1 = nSum1>>c_nDigitSize;
+            nCarry1 = nSum1>>_DIGIT_SIZE_IN_BITS;
             nSum2   = (nE1<<1)+(nE2<<2)+nCarry2;
             pR1[i]  = (DIGIT) nSum2;
-            nCarry2 = nSum2>>c_nDigitSize;
+            nCarry2 = nSum2>>_DIGIT_SIZE_IN_BITS;
             nSum3   = (nE1<<2)+(nE2<<4)+nCarry3;
             pR0[i]  = (DIGIT) nSum3;
-            nCarry3 = nSum3>>c_nDigitSize;
+            nCarry3 = nSum3>>_DIGIT_SIZE_IN_BITS;
         }
         pR3[i]   =  (DIGIT) nCarry1;
         pR1[i]   =  (DIGIT) nCarry2;
@@ -6512,13 +6512,13 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
             nE2     = pY2[i];
             nSum1   = nE0+nE1+nE2+nCarry1;
             pR3[i]  = (DIGIT) nSum1;
-            nCarry1 = nSum1>>c_nDigitSize;
+            nCarry1 = nSum1>>_DIGIT_SIZE_IN_BITS;
             nSum2   = nE0+(nE1<<1)+(nE2<<2)+nCarry2;
             pR1[i]  = (DIGIT) nSum2;
-            nCarry2 = nSum2>>c_nDigitSize;
+            nCarry2 = nSum2>>_DIGIT_SIZE_IN_BITS;
             nSum3   = nE0+(nE1<<2)+(nE2<<4)+nCarry3;
             pR4[i]  = (DIGIT) nSum3;
-            nCarry3 = nSum3>>c_nDigitSize;
+            nCarry3 = nSum3>>_DIGIT_SIZE_IN_BITS;
         }
         for(;i<nThird;i++)
         {
@@ -6526,13 +6526,13 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
             nE2     = pY2[i];
             nSum1   = nE1+nE2+nCarry1;
             pR3[i]  = (DIGIT) nSum1;
-            nCarry1 = nSum1>>c_nDigitSize;
+            nCarry1 = nSum1>>_DIGIT_SIZE_IN_BITS;
             nSum2   = (nE1<<1)+(nE2<<2)+nCarry2;
             pR1[i]  = (DIGIT) nSum2;
-            nCarry2 = nSum2>>c_nDigitSize;
+            nCarry2 = nSum2>>_DIGIT_SIZE_IN_BITS;
             nSum3   = (nE1<<2)+(nE2<<4)+nCarry3;
             pR4[i]  = (DIGIT) nSum3;
-            nCarry3 = nSum3>>c_nDigitSize;
+            nCarry3 = nSum3>>_DIGIT_SIZE_IN_BITS;
         }
         // R(1) args in R(3)
         // R(2) args in R(1)
@@ -6583,38 +6583,38 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
             nE4      = pR4[i];
             nSum0    = (nE1<<6) + (nE3<<1) + nCarry1;
             nSum4    = 42*nE0 + 24*nE2 + 192*nE4 + nBorrow1;
-            nBorrow1 = nSum4>>c_nDigitSize;
+            nBorrow1 = nSum4>>_DIGIT_SIZE_IN_BITS;
             nSum4    = nSum4&c_nClearHigh;
-            nCarry1  = nSum0>>c_nDigitSize;
+            nCarry1  = nSum0>>_DIGIT_SIZE_IN_BITS;
             nSum0    = nSum0&c_nClearHigh;
             if(nSum4>nSum0)
             {
                 nBorrow1++;
-                nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+                nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
             }
             nSum1    = nSum0-nSum4;
             nSum0    = 7*nE0 + 10*nE2 + 112*nE4 + nCarry2;
             nSum4    = (nE1<<4) + nE3 + nBorrow2;
-            nBorrow2 = nSum4>>c_nDigitSize;
+            nBorrow2 = nSum4>>_DIGIT_SIZE_IN_BITS;
             nSum4    = nSum4&c_nClearHigh;
-            nCarry2  = nSum0>>c_nDigitSize;
+            nCarry2  = nSum0>>_DIGIT_SIZE_IN_BITS;
             nSum0    = nSum0&c_nClearHigh;
             if(nSum4>nSum0)
             {
                 nBorrow2++;
-                nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+                nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
             }
             nSum2    = nSum0-nSum4;
             nSum0    = (nE1<<3) + nE3 + nCarry3;
             nSum4    = 3*nE0 + 6*nE2 + 168*nE4 + nBorrow3;
-            nBorrow3 = nSum4>>c_nDigitSize;
+            nBorrow3 = nSum4>>_DIGIT_SIZE_IN_BITS;
             nSum4    = nSum4&c_nClearHigh;
-            nCarry3  = nSum0>>c_nDigitSize;
+            nCarry3  = nSum0>>_DIGIT_SIZE_IN_BITS;
             nSum0    = nSum0&c_nClearHigh;
             if(nSum4>nSum0)
             {
                 nBorrow3++;
-                nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+                nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
             }
             nSum3    = nSum0-nSum4;
             pR1[i]   = (DIGIT) nSum1;
@@ -6629,38 +6629,38 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
             nE4      = pR4[i];
             nSum0    = (nE1<<6) + (nE3<<1) + nCarry1;
             nSum4    = 24*nE2 + 192*nE4 + nBorrow1;
-            nBorrow1 = nSum4>>c_nDigitSize;
+            nBorrow1 = nSum4>>_DIGIT_SIZE_IN_BITS;
             nSum4    = nSum4&c_nClearHigh;
-            nCarry1  = nSum0>>c_nDigitSize;
+            nCarry1  = nSum0>>_DIGIT_SIZE_IN_BITS;
             nSum0    = nSum0&c_nClearHigh;
             if(nSum4>nSum0)
             {
                 nBorrow1++;
-                nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+                nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
             }
             nSum1    = nSum0-nSum4;
             nSum0    = 10*nE2 + 112*nE4 + nCarry2;
             nSum4    = (nE1<<4) + nE3 + nBorrow2;
-            nBorrow2 = nSum4>>c_nDigitSize;
+            nBorrow2 = nSum4>>_DIGIT_SIZE_IN_BITS;
             nSum4    = nSum4&c_nClearHigh;
-            nCarry2  = nSum0>>c_nDigitSize;
+            nCarry2  = nSum0>>_DIGIT_SIZE_IN_BITS;
             nSum0    = nSum0&c_nClearHigh;
             if(nSum4>nSum0)
             {
                 nBorrow2++;
-                nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+                nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
             }
             nSum2    = nSum0-nSum4;
             nSum0    = (nE1<<3) + nE3 + nCarry3;
             nSum4    = 6*nE2 + 168*nE4 + nBorrow3;
-            nBorrow3 = nSum4>>c_nDigitSize;
+            nBorrow3 = nSum4>>_DIGIT_SIZE_IN_BITS;
             nSum4    = nSum4&c_nClearHigh;
-            nCarry3  = nSum0>>c_nDigitSize;
+            nCarry3  = nSum0>>_DIGIT_SIZE_IN_BITS;
             nSum0    = nSum0&c_nClearHigh;
             if(nSum4>nSum0)
             {
                 nBorrow3++;
-                nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+                nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
             }
             nSum3    = nSum0-nSum4;
             pR1[i]   = (DIGIT) nSum1;
@@ -6688,9 +6688,9 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
         pR3[i--]       = nSum3/24;
         for(; 0<=i; i--)
         {
-            nSum1    = pR1[i] + (nCarry1<<c_nDigitSize);
-            nSum2    = pR2[i] + (nCarry2<<c_nDigitSize);
-            nSum3    = pR3[i] + (nCarry3<<c_nDigitSize);
+            nSum1    = pR1[i] + (nCarry1<<_DIGIT_SIZE_IN_BITS);
+            nSum2    = pR2[i] + (nCarry2<<_DIGIT_SIZE_IN_BITS);
+            nSum3    = pR3[i] + (nCarry3<<_DIGIT_SIZE_IN_BITS);
             nE1      = nSum1/24;
             nE2      = nSum2>>3;
             nE3      = nSum3/24;
@@ -6709,7 +6709,7 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
         for(i=0;i<(nThird<<1);i++)
         {
             nSum1      = (nCarry1 + pZValue[i]) + pR3[i];
-            nCarry1    = nSum1>>c_nDigitSize;
+            nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
             pZValue[i] = (DIGIT) nSum1;
         }
         nCarry1 += pR3[i];
@@ -6718,14 +6718,14 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
         for(i=0;i<nThird;i++)
         {
             nSum1      = (nCarry1 + pZValue[i]) + pR1[i];
-            nCarry1    = nSum1>>c_nDigitSize;
+            nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
             pZValue[i] = (DIGIT) nSum1;
         }
         nCarry1 += nR0_R2_Overlap;
         for(;i<=(nThird<<1);i++)
         {
             nSum1      = (nCarry1 + pZValue[i]) + pR1[i];
-            nCarry1    = nSum1>>c_nDigitSize;
+            nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
             pZValue[i] = (DIGIT) nSum1;
         }
         // note we are guaranteed carry-out won't go past the end of Z, so no need to enforce
@@ -6734,7 +6734,7 @@ void CUnsignedArithmeticHelper::MultU5by3(size_t             nXSize,
             do
             {
                 nSum1        = nCarry1 + pZValue[i];
-                nCarry1      = nSum1>>c_nDigitSize;
+                nCarry1      = nSum1>>_DIGIT_SIZE_IN_BITS;
                 pZValue[i++] = (DIGIT) nSum1;
             }
             while(nCarry1);
@@ -6796,13 +6796,13 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
         nE2     = pX2[i];
         nSum1   = nE0+nE1+nE2+nCarry1; // R(1) arg
         pR3[i]  = (DIGIT) nSum1;
-        nCarry1 = nSum1>>c_nDigitSize;
+        nCarry1 = nSum1>>_DIGIT_SIZE_IN_BITS;
         nSum2   = nE0+(nE1<<1)+(nE2<<2)+nCarry2; // R(2) arg
         pR1[i]  = (DIGIT) nSum2;
-        nCarry2 = nSum2>>c_nDigitSize;
+        nCarry2 = nSum2>>_DIGIT_SIZE_IN_BITS;
         nSum3   = nE0+(nE1<<2)+(nE2<<4)+nCarry3; // R(3) arg
         pR4[i]  = (DIGIT) nSum3;
-        nCarry3 = nSum3>>c_nDigitSize;
+        nCarry3 = nSum3>>_DIGIT_SIZE_IN_BITS;
     }
     for(;i<nThird;i++)
     {
@@ -6810,13 +6810,13 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
         nE2     = pX2[i];
         nSum1   = nE1+nE2+nCarry1;
         pR3[i]  = (DIGIT) nSum1;
-        nCarry1 = nSum1>>c_nDigitSize;
+        nCarry1 = nSum1>>_DIGIT_SIZE_IN_BITS;
         nSum2   = (nE1<<1)+(nE2<<2)+nCarry2;
         pR1[i]  = (DIGIT) nSum2;
-        nCarry2 = nSum2>>c_nDigitSize;
+        nCarry2 = nSum2>>_DIGIT_SIZE_IN_BITS;
         nSum3   = (nE1<<2)+(nE2<<4)+nCarry3;
         pR4[i]  = (DIGIT) nSum3;
-        nCarry3 = nSum3>>c_nDigitSize;
+        nCarry3 = nSum3>>_DIGIT_SIZE_IN_BITS;
     }
     pR3[i]   =  (DIGIT) nCarry1;
     pR1[i]   =  (DIGIT) nCarry2;
@@ -6862,38 +6862,38 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
         nE4      = pR4[i];
         nSum0    = (nE1<<6) + (nE3<<1) + nCarry1;
         nSum4    = 42*nE0 + 24*nE2 + 192*nE4 + nBorrow1;
-        nBorrow1 = nSum4>>c_nDigitSize;
+        nBorrow1 = nSum4>>_DIGIT_SIZE_IN_BITS;
         nSum4    = nSum4&c_nClearHigh;
-        nCarry1  = nSum0>>c_nDigitSize;
+        nCarry1  = nSum0>>_DIGIT_SIZE_IN_BITS;
         nSum0    = nSum0&c_nClearHigh;
         if(nSum4>nSum0)
         {
             nBorrow1++;
-            nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+            nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
         }
         nSum1    = nSum0-nSum4;
         nSum0    = 7*nE0 + 10*nE2 + 112*nE4 + nCarry2;
         nSum4    = (nE1<<4) + nE3 + nBorrow2;
-        nBorrow2 = nSum4>>c_nDigitSize;
+        nBorrow2 = nSum4>>_DIGIT_SIZE_IN_BITS;
         nSum4    = nSum4&c_nClearHigh;
-        nCarry2  = nSum0>>c_nDigitSize;
+        nCarry2  = nSum0>>_DIGIT_SIZE_IN_BITS;
         nSum0    = nSum0&c_nClearHigh;
         if(nSum4>nSum0)
         {
             nBorrow2++;
-            nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+            nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
         }
         nSum2    = nSum0-nSum4;
         nSum0    = (nE1<<3) + nE3 + nCarry3;
         nSum4    = 3*nE0 + 6*nE2 + 168*nE4 + nBorrow3;
-        nBorrow3 = nSum4>>c_nDigitSize;
+        nBorrow3 = nSum4>>_DIGIT_SIZE_IN_BITS;
         nSum4    = nSum4&c_nClearHigh;
-        nCarry3  = nSum0>>c_nDigitSize;
+        nCarry3  = nSum0>>_DIGIT_SIZE_IN_BITS;
         nSum0    = nSum0&c_nClearHigh;
         if(nSum4>nSum0)
         {
             nBorrow3++;
-            nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+            nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
         }
         nSum3    = nSum0-nSum4;
         pR1[i]   = (DIGIT) nSum1;
@@ -6908,38 +6908,38 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
         nE4      = pR4[i];
         nSum0    = (nE1<<6) + (nE3<<1) + nCarry1;
         nSum4    = 24*nE2 + 192*nE4 + nBorrow1;
-        nBorrow1 = nSum4>>c_nDigitSize;
+        nBorrow1 = nSum4>>_DIGIT_SIZE_IN_BITS;
         nSum4    = nSum4&c_nClearHigh;
-        nCarry1  = nSum0>>c_nDigitSize;
+        nCarry1  = nSum0>>_DIGIT_SIZE_IN_BITS;
         nSum0    = nSum0&c_nClearHigh;
         if(nSum4>nSum0)
         {
             nBorrow1++;
-            nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+            nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
         }
         nSum1    = nSum0-nSum4;
         nSum0    = 10*nE2 + 112*nE4 + nCarry2;
         nSum4    = (nE1<<4) + nE3 + nBorrow2;
-        nBorrow2 = nSum4>>c_nDigitSize;
+        nBorrow2 = nSum4>>_DIGIT_SIZE_IN_BITS;
         nSum4    = nSum4&c_nClearHigh;
-        nCarry2  = nSum0>>c_nDigitSize;
+        nCarry2  = nSum0>>_DIGIT_SIZE_IN_BITS;
         nSum0    = nSum0&c_nClearHigh;
         if(nSum4>nSum0)
         {
             nBorrow2++;
-            nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+            nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
         }
         nSum2    = nSum0-nSum4;
         nSum0    = (nE1<<3) + nE3 + nCarry3;
         nSum4    = 6*nE2 + 168*nE4 + nBorrow3;
-        nBorrow3 = nSum4>>c_nDigitSize;
+        nBorrow3 = nSum4>>_DIGIT_SIZE_IN_BITS;
         nSum4    = nSum4&c_nClearHigh;
-        nCarry3  = nSum0>>c_nDigitSize;
+        nCarry3  = nSum0>>_DIGIT_SIZE_IN_BITS;
         nSum0    = nSum0&c_nClearHigh;
         if(nSum4>nSum0)
         {
             nBorrow3++;
-            nSum0 += ((DOUBLEDIGIT) 1)<<c_nDigitSize;
+            nSum0 += ((DOUBLEDIGIT) 1)<<_DIGIT_SIZE_IN_BITS;
         }
         nSum3    = nSum0-nSum4;
         pR1[i]   = (DIGIT) nSum1;
@@ -6967,9 +6967,9 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
     pR3[i--]       = nSum3/24;
     for(; 0<=i; i--)
     {
-        nSum1    = pR1[i] + (nCarry1<<c_nDigitSize);
-        nSum2    = pR2[i] + (nCarry2<<c_nDigitSize);
-        nSum3    = pR3[i] + (nCarry3<<c_nDigitSize);
+        nSum1    = pR1[i] + (nCarry1<<_DIGIT_SIZE_IN_BITS);
+        nSum2    = pR2[i] + (nCarry2<<_DIGIT_SIZE_IN_BITS);
+        nSum3    = pR3[i] + (nCarry3<<_DIGIT_SIZE_IN_BITS);
         nE1      = nSum1/24;
         nE2      = nSum2>>3;
         nE3      = nSum3/24;
@@ -6988,7 +6988,7 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
     for(i=0;i<(nThird<<1);i++)
     {
         nSum1      = (nCarry1 + pZValue[i]) + pR3[i];
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
         pZValue[i] = (DIGIT) nSum1;
     }
     nCarry1 += pR3[i];
@@ -6997,14 +6997,14 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
     for(i=0;i<nThird;i++)
     {
         nSum1      = (nCarry1 + pZValue[i]) + pR1[i];
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
         pZValue[i] = (DIGIT) nSum1;
     }
     nCarry1 += nR0_R2_Overlap;
     for(;i<=(nThird<<1);i++)
     {
         nSum1      = (nCarry1 + pZValue[i]) + pR1[i];
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
         pZValue[i] = (DIGIT) nSum1;
     }
     // note we are guaranteed carry-out won't go past the end of Z, so no need to enforce
@@ -7013,7 +7013,7 @@ void CUnsignedArithmeticHelper::SquareU5by3(size_t             nXSize,
         do
         {
             nSum1        = nCarry1 + pZValue[i];
-            nCarry1      = nSum1>>c_nDigitSize;
+            nCarry1      = nSum1>>_DIGIT_SIZE_IN_BITS;
             pZValue[i++] = (DIGIT) nSum1;
         }
         while(nCarry1);
@@ -7182,11 +7182,11 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         pR2[i]   =  (DIGIT) nCarry3;
         pR3[i]   =  (DIGIT) nCarry4;
         pR0[i]   =  (DIGIT) nCarry5;
-        nCarry1  =  nCarry1>>c_nDigitSize;
-        nCarry2  =  nCarry2>>c_nDigitSize;
-        nCarry3  =  nCarry3>>c_nDigitSize;
-        nCarry4  =  nCarry4>>c_nDigitSize;
-        nCarry5  =  nCarry5>>c_nDigitSize;
+        nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
+        nCarry2  =  nCarry2>>_DIGIT_SIZE_IN_BITS;
+        nCarry3  =  nCarry3>>_DIGIT_SIZE_IN_BITS;
+        nCarry4  =  nCarry4>>_DIGIT_SIZE_IN_BITS;
+        nCarry5  =  nCarry5>>_DIGIT_SIZE_IN_BITS;
     }
     for(;i<nFourth;i++)
     {
@@ -7203,11 +7203,11 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         pR2[i]   =  (DIGIT) nCarry3;
         pR3[i]   =  (DIGIT) nCarry4;
         pR0[i]   =  (DIGIT) nCarry5;
-        nCarry1  =  nCarry1>>c_nDigitSize;
-        nCarry2  =  nCarry2>>c_nDigitSize;
-        nCarry3  =  nCarry3>>c_nDigitSize;
-        nCarry4  =  nCarry4>>c_nDigitSize;
-        nCarry5  =  nCarry5>>c_nDigitSize;
+        nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
+        nCarry2  =  nCarry2>>_DIGIT_SIZE_IN_BITS;
+        nCarry3  =  nCarry3>>_DIGIT_SIZE_IN_BITS;
+        nCarry4  =  nCarry4>>_DIGIT_SIZE_IN_BITS;
+        nCarry5  =  nCarry5>>_DIGIT_SIZE_IN_BITS;
     }
     pR5[i]   =  (DIGIT) nCarry1;
     pR1[i]   =  (DIGIT) nCarry2;
@@ -7234,11 +7234,11 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         pR2[i] =  (DIGIT) nSum3;
         pR3[i] =  (DIGIT) nSum4;
         pR6[i] =  (DIGIT) nSum5;
-        nSum1  =  nSum1>>c_nDigitSize;
-        nSum2  =  nSum2>>c_nDigitSize;
-        nSum3  =  nSum3>>c_nDigitSize;
-        nSum4  =  nSum4>>c_nDigitSize;
-        nSum5  =  nSum5>>c_nDigitSize;
+        nSum1  =  nSum1>>_DIGIT_SIZE_IN_BITS;
+        nSum2  =  nSum2>>_DIGIT_SIZE_IN_BITS;
+        nSum3  =  nSum3>>_DIGIT_SIZE_IN_BITS;
+        nSum4  =  nSum4>>_DIGIT_SIZE_IN_BITS;
+        nSum5  =  nSum5>>_DIGIT_SIZE_IN_BITS;
     }
     for(;i<nFourth;i++)
     {
@@ -7255,11 +7255,11 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         pR2[i] =  (DIGIT) nSum3;
         pR3[i] =  (DIGIT) nSum4;
         pR6[i] =  (DIGIT) nSum5;
-        nSum1  =  nSum1>>c_nDigitSize;
-        nSum2  =  nSum2>>c_nDigitSize;
-        nSum3  =  nSum3>>c_nDigitSize;
-        nSum4  =  nSum4>>c_nDigitSize;
-        nSum5  =  nSum5>>c_nDigitSize;
+        nSum1  =  nSum1>>_DIGIT_SIZE_IN_BITS;
+        nSum2  =  nSum2>>_DIGIT_SIZE_IN_BITS;
+        nSum3  =  nSum3>>_DIGIT_SIZE_IN_BITS;
+        nSum4  =  nSum4>>_DIGIT_SIZE_IN_BITS;
+        nSum5  =  nSum5>>_DIGIT_SIZE_IN_BITS;
     }
     pR5[i]   =  (DIGIT) nSum1;
     pR1[i]   =  (DIGIT) nSum2;
@@ -7358,33 +7358,33 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         nSum5    =  nCarry5  + 5*nS1   + 10*nS3  + nS5;
         nBorrow5 =  nBorrow5 + nS0     + 10*nS2  + 5*nS4  + 1800*nS6;
         nS0      =  nSum1&c_nClearHigh;
-        nCarry1  =  nSum1>>c_nDigitSize;
+        nCarry1  =  nSum1>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow1&c_nClearHigh;
-        nBorrow1 =  nBorrow1>>c_nDigitSize;
+        nBorrow1 =  nBorrow1>>_DIGIT_SIZE_IN_BITS;
         nBorrow1 += (nS0<nS1);
         pR1[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum2&c_nClearHigh;
-        nCarry2  =  nSum2>>c_nDigitSize;
+        nCarry2  =  nSum2>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow2&c_nClearHigh;
-        nBorrow2 =  nBorrow2>>c_nDigitSize;
+        nBorrow2 =  nBorrow2>>_DIGIT_SIZE_IN_BITS;
         nBorrow2 += (nS0 < nS1);
         pR2[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum3&c_nClearHigh;
-        nCarry3  =  nSum3>>c_nDigitSize;
+        nCarry3  =  nSum3>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow3&c_nClearHigh;
-        nBorrow3 =  nBorrow3>>c_nDigitSize;
+        nBorrow3 =  nBorrow3>>_DIGIT_SIZE_IN_BITS;
         nBorrow3 += (nS0 < nS1);
         pR3[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum4&c_nClearHigh;
-        nCarry4  =  nSum4>>c_nDigitSize;
+        nCarry4  =  nSum4>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow4&c_nClearHigh;
-        nBorrow4 =  nBorrow4>>c_nDigitSize;
+        nBorrow4 =  nBorrow4>>_DIGIT_SIZE_IN_BITS;
         nBorrow4 += (nS0 < nS1);
         pR4[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum5&c_nClearHigh;
-        nCarry5  =  nSum5>>c_nDigitSize;
+        nCarry5  =  nSum5>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow5&c_nClearHigh;
-        nBorrow5 =  nBorrow5>>c_nDigitSize;
+        nBorrow5 =  nBorrow5>>_DIGIT_SIZE_IN_BITS;
         nBorrow5 += (nS0 < nS1);
         pR5[i]   =  (DIGIT) (nS0-nS1);
     }
@@ -7412,33 +7412,33 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         nSum5    =  nCarry5  + 5*nS1   + 10*nS3  + nS5;
         nBorrow5 =  nBorrow5 + 10*nS2  + 5*nS4   + 1800*nS6;
         nS0      =  nSum1&c_nClearHigh;
-        nCarry1  =  nSum1>>c_nDigitSize;
+        nCarry1  =  nSum1>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow1&c_nClearHigh;
-        nBorrow1 =  nBorrow1>>c_nDigitSize;
+        nBorrow1 =  nBorrow1>>_DIGIT_SIZE_IN_BITS;
         nBorrow1 += (nS0 < nS1);
         pR1[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum2&c_nClearHigh;
-        nCarry2  =  nSum2>>c_nDigitSize;
+        nCarry2  =  nSum2>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow2&c_nClearHigh;
-        nBorrow2 =  nBorrow2>>c_nDigitSize;
+        nBorrow2 =  nBorrow2>>_DIGIT_SIZE_IN_BITS;
         nBorrow2 += (nS0 < nS1);
         pR2[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum3&c_nClearHigh;
-        nCarry3  =  nSum3>>c_nDigitSize;
+        nCarry3  =  nSum3>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow3&c_nClearHigh;
-        nBorrow3 =  nBorrow3>>c_nDigitSize;
+        nBorrow3 =  nBorrow3>>_DIGIT_SIZE_IN_BITS;
         nBorrow3 += (nS0 < nS1);
         pR3[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum4&c_nClearHigh;
-        nCarry4  =  nSum4>>c_nDigitSize;
+        nCarry4  =  nSum4>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow4&c_nClearHigh;
-        nBorrow4 =  nBorrow4>>c_nDigitSize;
+        nBorrow4 =  nBorrow4>>_DIGIT_SIZE_IN_BITS;
         nBorrow4 += (nS0 < nS1);
         pR4[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum5&c_nClearHigh;
-        nCarry5  =  nSum5>>c_nDigitSize;
+        nCarry5  =  nSum5>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow5&c_nClearHigh;
-        nBorrow5 =  nBorrow5>>c_nDigitSize;
+        nBorrow5 =  nBorrow5>>_DIGIT_SIZE_IN_BITS;
         nBorrow5 += (nS0 < nS1);
         pR5[i]   =  (DIGIT) (nS0-nS1);
     }
@@ -7480,19 +7480,19 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
     // Now: do the final divides, and we will have all the p's
     do
     {
-        nS0     = pR1[i] + (nCarry1<<c_nDigitSize);
+        nS0     = pR1[i] + (nCarry1<<_DIGIT_SIZE_IN_BITS);
         pR1[i]  = nS0/60;
         nCarry1 = nS0%60;
-        nS0     = pR2[i] + (nCarry2<<c_nDigitSize);
+        nS0     = pR2[i] + (nCarry2<<_DIGIT_SIZE_IN_BITS);
         pR2[i]  = nS0/24;
         nCarry2 = nS0%24;
-        nS0     = pR3[i] + (nCarry3<<c_nDigitSize);
+        nS0     = pR3[i] + (nCarry3<<_DIGIT_SIZE_IN_BITS);
         pR3[i]  = nS0/24;
         nCarry3 = nS0%24;
-        nS0     = pR4[i] + (nCarry4<<c_nDigitSize);
+        nS0     = pR4[i] + (nCarry4<<_DIGIT_SIZE_IN_BITS);
         pR4[i]  = nS0/24;
         nCarry4 = nS0%24;
-        nS0     = pR5[i] + (nCarry5<<c_nDigitSize);
+        nS0     = pR5[i] + (nCarry5<<_DIGIT_SIZE_IN_BITS);
         pR5[i]  = nS0/120;
         nCarry5 = nS0%120;
     }
@@ -7506,7 +7506,7 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
     {
         nSum1      = pZValue[i] + (pR5[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     nCarry1 += pR5[i];
     pZValue += i;
@@ -7515,14 +7515,14 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
     {
         nSum1      = pZValue[i] + (pR3[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     nCarry1 += nP2_P4_Overlap;
     for(;i<(nFourth<<1);i++)
     {
         nSum1      = pZValue[i] + (pR3[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     nCarry1 += pR3[i];
     pZValue += i;
@@ -7531,14 +7531,14 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
     {
         nSum1      = pZValue[i] + (pR1[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     nCarry1 += nP0_P2_Overlap;
     for(;i<(nFourth<<1)+1;i++)
     {
         nSum1      = pZValue[i] + (pR1[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     // note we are guaranteed no carry past Z, so no need to check
     if(nCarry1)
@@ -7547,7 +7547,7 @@ void CUnsignedArithmeticHelper::MultU7by4(size_t             nXSize,
         {
             nSum1        = nCarry1 + pZValue[i];
             pZValue[i++] = (DIGIT) nSum1;
-            nCarry1      = nSum1>>c_nDigitSize;
+            nCarry1      = nSum1>>_DIGIT_SIZE_IN_BITS;
         }
         while(nCarry1);
     }
@@ -7624,11 +7624,11 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
         pR2[i]   =  (DIGIT) nCarry3;
         pR3[i]   =  (DIGIT) nCarry4;
         pR6[i]   =  (DIGIT) nCarry5;
-        nCarry1  =  nCarry1>>c_nDigitSize;
-        nCarry2  =  nCarry2>>c_nDigitSize;
-        nCarry3  =  nCarry3>>c_nDigitSize;
-        nCarry4  =  nCarry4>>c_nDigitSize;
-        nCarry5  =  nCarry5>>c_nDigitSize;
+        nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
+        nCarry2  =  nCarry2>>_DIGIT_SIZE_IN_BITS;
+        nCarry3  =  nCarry3>>_DIGIT_SIZE_IN_BITS;
+        nCarry4  =  nCarry4>>_DIGIT_SIZE_IN_BITS;
+        nCarry5  =  nCarry5>>_DIGIT_SIZE_IN_BITS;
     }
     for(;i<nFourth;i++)
     {
@@ -7645,11 +7645,11 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
         pR2[i]   =  (DIGIT) nCarry3;
         pR3[i]   =  (DIGIT) nCarry4;
         pR6[i]   =  (DIGIT) nCarry5;
-        nCarry1  =  nCarry1>>c_nDigitSize;
-        nCarry2  =  nCarry2>>c_nDigitSize;
-        nCarry3  =  nCarry3>>c_nDigitSize;
-        nCarry4  =  nCarry4>>c_nDigitSize;
-        nCarry5  =  nCarry5>>c_nDigitSize;
+        nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
+        nCarry2  =  nCarry2>>_DIGIT_SIZE_IN_BITS;
+        nCarry3  =  nCarry3>>_DIGIT_SIZE_IN_BITS;
+        nCarry4  =  nCarry4>>_DIGIT_SIZE_IN_BITS;
+        nCarry5  =  nCarry5>>_DIGIT_SIZE_IN_BITS;
     }
     pR5[i]   =  (DIGIT) nCarry1;
     pR1[i]   =  (DIGIT) nCarry2;
@@ -7740,33 +7740,33 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
         nSum5    =  nCarry5  + 5*nS1   + 10*nS3  + nS5;
         nBorrow5 =  nBorrow5 + nS0     + 10*nS2  + 5*nS4  + 1800*nS6;
         nS0      =  nSum1&c_nClearHigh;
-        nCarry1  =  nSum1>>c_nDigitSize;
+        nCarry1  =  nSum1>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow1&c_nClearHigh;
-        nBorrow1 =  nBorrow1>>c_nDigitSize;
+        nBorrow1 =  nBorrow1>>_DIGIT_SIZE_IN_BITS;
         nBorrow1 += (nS0<nS1);
         pR1[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum2&c_nClearHigh;
-        nCarry2  =  nSum2>>c_nDigitSize;
+        nCarry2  =  nSum2>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow2&c_nClearHigh;
-        nBorrow2 =  nBorrow2>>c_nDigitSize;
+        nBorrow2 =  nBorrow2>>_DIGIT_SIZE_IN_BITS;
         nBorrow2 += (nS0 < nS1);
         pR2[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum3&c_nClearHigh;
-        nCarry3  =  nSum3>>c_nDigitSize;
+        nCarry3  =  nSum3>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow3&c_nClearHigh;
-        nBorrow3 =  nBorrow3>>c_nDigitSize;
+        nBorrow3 =  nBorrow3>>_DIGIT_SIZE_IN_BITS;
         nBorrow3 += (nS0 < nS1);
         pR3[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum4&c_nClearHigh;
-        nCarry4  =  nSum4>>c_nDigitSize;
+        nCarry4  =  nSum4>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow4&c_nClearHigh;
-        nBorrow4 =  nBorrow4>>c_nDigitSize;
+        nBorrow4 =  nBorrow4>>_DIGIT_SIZE_IN_BITS;
         nBorrow4 += (nS0 < nS1);
         pR4[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum5&c_nClearHigh;
-        nCarry5  =  nSum5>>c_nDigitSize;
+        nCarry5  =  nSum5>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow5&c_nClearHigh;
-        nBorrow5 =  nBorrow5>>c_nDigitSize;
+        nBorrow5 =  nBorrow5>>_DIGIT_SIZE_IN_BITS;
         nBorrow5 += (nS0 < nS1);
         pR5[i]   =  (DIGIT) (nS0-nS1);
     }
@@ -7794,33 +7794,33 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
         nSum5    =  nCarry5  + 5*nS1   + 10*nS3  + nS5;
         nBorrow5 =  nBorrow5 + 10*nS2  + 5*nS4   + 1800*nS6;
         nS0      =  nSum1&c_nClearHigh;
-        nCarry1  =  nSum1>>c_nDigitSize;
+        nCarry1  =  nSum1>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow1&c_nClearHigh;
-        nBorrow1 =  nBorrow1>>c_nDigitSize;
+        nBorrow1 =  nBorrow1>>_DIGIT_SIZE_IN_BITS;
         nBorrow1 += (nS0 < nS1);
         pR1[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum2&c_nClearHigh;
-        nCarry2  =  nSum2>>c_nDigitSize;
+        nCarry2  =  nSum2>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow2&c_nClearHigh;
-        nBorrow2 =  nBorrow2>>c_nDigitSize;
+        nBorrow2 =  nBorrow2>>_DIGIT_SIZE_IN_BITS;
         nBorrow2 += (nS0 < nS1);
         pR2[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum3&c_nClearHigh;
-        nCarry3  =  nSum3>>c_nDigitSize;
+        nCarry3  =  nSum3>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow3&c_nClearHigh;
-        nBorrow3 =  nBorrow3>>c_nDigitSize;
+        nBorrow3 =  nBorrow3>>_DIGIT_SIZE_IN_BITS;
         nBorrow3 += (nS0 < nS1);
         pR3[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum4&c_nClearHigh;
-        nCarry4  =  nSum4>>c_nDigitSize;
+        nCarry4  =  nSum4>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow4&c_nClearHigh;
-        nBorrow4 =  nBorrow4>>c_nDigitSize;
+        nBorrow4 =  nBorrow4>>_DIGIT_SIZE_IN_BITS;
         nBorrow4 += (nS0 < nS1);
         pR4[i]   =  (DIGIT) (nS0-nS1);
         nS0      =  nSum5&c_nClearHigh;
-        nCarry5  =  nSum5>>c_nDigitSize;
+        nCarry5  =  nSum5>>_DIGIT_SIZE_IN_BITS;
         nS1      =  nBorrow5&c_nClearHigh;
-        nBorrow5 =  nBorrow5>>c_nDigitSize;
+        nBorrow5 =  nBorrow5>>_DIGIT_SIZE_IN_BITS;
         nBorrow5 += (nS0 < nS1);
         pR5[i]   =  (DIGIT) (nS0-nS1);
     }
@@ -7862,19 +7862,19 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
     // Now: do the final divides, and we will have all the p's
     do
     {
-        nS0     = pR1[i] + (nCarry1<<c_nDigitSize);
+        nS0     = pR1[i] + (nCarry1<<_DIGIT_SIZE_IN_BITS);
         pR1[i]  = nS0/60;
         nCarry1 = nS0%60;
-        nS0     = pR2[i] + (nCarry2<<c_nDigitSize);
+        nS0     = pR2[i] + (nCarry2<<_DIGIT_SIZE_IN_BITS);
         pR2[i]  = nS0/24;
         nCarry2 = nS0%24;
-        nS0     = pR3[i] + (nCarry3<<c_nDigitSize);
+        nS0     = pR3[i] + (nCarry3<<_DIGIT_SIZE_IN_BITS);
         pR3[i]  = nS0/24;
         nCarry3 = nS0%24;
-        nS0     = pR4[i] + (nCarry4<<c_nDigitSize);
+        nS0     = pR4[i] + (nCarry4<<_DIGIT_SIZE_IN_BITS);
         pR4[i]  = nS0/24;
         nCarry4 = nS0%24;
-        nS0     = pR5[i] + (nCarry5<<c_nDigitSize);
+        nS0     = pR5[i] + (nCarry5<<_DIGIT_SIZE_IN_BITS);
         pR5[i]  = nS0/120;
         nCarry5 = nS0%120;
     }
@@ -7888,7 +7888,7 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
     {
         nSum1      = pZValue[i] + (pR5[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     nCarry1 += pR5[i];
     pZValue += i;
@@ -7897,14 +7897,14 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
     {
         nSum1      = pZValue[i] + (pR3[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     nCarry1 += nP2_P4_Overlap;
     for(;i<(nFourth<<1);i++)
     {
         nSum1      = pZValue[i] + (pR3[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     nCarry1 += pR3[i];
     pZValue += i;
@@ -7913,14 +7913,14 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
     {
         nSum1      = pZValue[i] + (pR1[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     nCarry1 += nP0_P2_Overlap;
     for(;i<(nFourth<<1)+1;i++)
     {
         nSum1      = pZValue[i] + (pR1[i] + nCarry1);
         pZValue[i] = (DIGIT) nSum1;
-        nCarry1    = nSum1>>c_nDigitSize;
+        nCarry1    = nSum1>>_DIGIT_SIZE_IN_BITS;
     }
     // note we are guaranteed no carry past Z, so no need to check
     if(nCarry1)
@@ -7929,7 +7929,7 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
         {
             nSum1        = nCarry1 + pZValue[i];
             pZValue[i++] = (DIGIT) nSum1;
-            nCarry1      = nSum1>>c_nDigitSize;
+            nCarry1      = nSum1>>_DIGIT_SIZE_IN_BITS;
         }
         while(nCarry1);
     }
@@ -7940,7 +7940,7 @@ void CUnsignedArithmeticHelper::SquareU7by4(size_t             nXSize,
 #endif
 }
 
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 // For 9 by 5, the system of equations for multiplying (x0, x1, x2, x3, x4) by (y0, y1, y2, y3, y4) is
 // R0 =  x0                               * y0
 // R1 = (x0 +  x1 +   x2 +    x3 +     x4)*(y0 +  y1 +   y2 +    y3 +     y4)
@@ -8095,25 +8095,25 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         DOUBLEDIGIT n3   = pX3[i];
         DOUBLEDIGIT n4   = pX4[i];
         DOUBLEDIGIT nAdd = n0 + n1 + n2 + n3 + n4 + nCarry1; // R1
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
         nAdd      = n0 + (n1<<1) + (n2<<2) + (n3<<3) + (n4<<4) + nCarry2; // R2
-        nCarry2   = (nAdd>>c_nDigitSize);
+        nCarry2   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR2[i] = (DIGIT) nAdd;
         nAdd      = n0 + 3*n1 + 9*n2 + 27*n3 + 81*n4 + nCarry3; // R3
-        nCarry3   = (nAdd>>c_nDigitSize);
+        nCarry3   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR3[i] = (DIGIT) nAdd;
         nAdd      = n0 + (n1<<2) + (n2<<4) + (n3<<6) + (n4<<8) + nCarry4; // R4
-        nCarry4   = (nAdd>>c_nDigitSize);
+        nCarry4   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR4[i] = (DIGIT) nAdd;
         nAdd      = n0 + 5*n1 + 25*n2 + 125*n3 + 625*n4 + nCarry5; // R5
-        nCarry5   = (nAdd>>c_nDigitSize);
+        nCarry5   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR5[i] = (DIGIT) nAdd;
         nAdd      = n0 + 6*n1 + 36*n2 + 216*n3 + 1296*n4 + nCarry6; // R6
-        nCarry6   = (nAdd>>c_nDigitSize);
+        nCarry6   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR6[i] = (DIGIT) nAdd;
         nAdd      = n0 + 7*n1 + 49*n2 + 343*n3 + 2401*n4 + nCarry7; // R7
-        nCarry7   = (nAdd>>c_nDigitSize);
+        nCarry7   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR7[i] = (DIGIT) nAdd;
     }
     for(; i<nFifth; i++)
@@ -8123,25 +8123,25 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         DOUBLEDIGIT n3   = pX3[i];
         DOUBLEDIGIT n4   = pX4[i];
         DOUBLEDIGIT nAdd = n1 + n2 + n3 + n4 + nCarry1; // R1
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
         nAdd      = (n1<<1) + (n2<<2) + (n3<<3) + (n4<<4) + nCarry2; // R2
-        nCarry2   = (nAdd>>c_nDigitSize);
+        nCarry2   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR2[i] = (DIGIT) nAdd;
         nAdd      = 3*n1 + 9*n2 + 27*n3 + 81*n4 + nCarry3; // R3
-        nCarry3   = (nAdd>>c_nDigitSize);
+        nCarry3   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR3[i] = (DIGIT) nAdd;
         nAdd      = (n1<<2) + (n2<<4) + (n3<<6) + (n4<<8) + nCarry4; // R4
-        nCarry4   = (nAdd>>c_nDigitSize);
+        nCarry4   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR4[i] = (DIGIT) nAdd;
         nAdd      = 5*n1 + 25*n2 + 125*n3 + 625*n4 + nCarry5; // R5
-        nCarry5   = (nAdd>>c_nDigitSize);
+        nCarry5   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR5[i] = (DIGIT) nAdd;
         nAdd      = 6*n1 + 36*n2 + 216*n3 + 1296*n4 + nCarry6; // R6
-        nCarry6   = (nAdd>>c_nDigitSize);
+        nCarry6   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR6[i] = (DIGIT) nAdd;
         nAdd      = 7*n1 + 49*n2 + 343*n3 + 2401*n4 + nCarry7; // R7
-        nCarry7   = (nAdd>>c_nDigitSize);
+        nCarry7   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR7[i] = (DIGIT) nAdd;
     }
     pArgR1[i] =  nCarry1;
@@ -8174,25 +8174,25 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         DOUBLEDIGIT n3   = pY3[i];
         DOUBLEDIGIT n4   = pY4[i];
         DOUBLEDIGIT nAdd = n0 + n1 + n2 + n3 + n4 + nCarry1; // R1
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
         nAdd      = n0 + (n1<<1) + (n2<<2) + (n3<<3) + (n4<<4) + nCarry2; // R2
-        nCarry2   = (nAdd>>c_nDigitSize);
+        nCarry2   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR2[i] = (DIGIT) nAdd;
         nAdd      = n0 + 3*n1 + 9*n2 + 27*n3 + 81*n4 + nCarry3; // R3
-        nCarry3   = (nAdd>>c_nDigitSize);
+        nCarry3   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR3[i] = (DIGIT) nAdd;
         nAdd      = n0 + (n1<<2) + (n2<<4) + (n3<<6) + (n4<<8) + nCarry4; // R4
-        nCarry4   = (nAdd>>c_nDigitSize);
+        nCarry4   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR4[i] = (DIGIT) nAdd;
         nAdd      = n0 + 5*n1 + 25*n2 + 125*n3 + 625*n4 + nCarry5; // R5
-        nCarry5   = (nAdd>>c_nDigitSize);
+        nCarry5   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR5[i] = (DIGIT) nAdd;
         nAdd      = n0 + 6*n1 + 36*n2 + 216*n3 + 1296*n4 + nCarry6; // R6
-        nCarry6   = (nAdd>>c_nDigitSize);
+        nCarry6   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR6[i] = (DIGIT) nAdd;
         nAdd      = n0 + 7*n1 + 49*n2 + 343*n3 + 2401*n4 + nCarry7; // R7
-        nCarry7   = (nAdd>>c_nDigitSize);
+        nCarry7   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR7[i] = (DIGIT) nAdd;
     }
     for(; i<nFifth; i++)
@@ -8202,25 +8202,25 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         DOUBLEDIGIT n3   = pY3[i];
         DOUBLEDIGIT n4   = pY4[i];
         DOUBLEDIGIT nAdd = n1 + n2 + n3 + n4 + nCarry1; // R1
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
         nAdd      = (n1<<1) + (n2<<2) + (n3<<3) + (n4<<4) + nCarry2; // R2
-        nCarry2   = (nAdd>>c_nDigitSize);
+        nCarry2   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR2[i] = (DIGIT) nAdd;
         nAdd      = 3*n1 + 9*n2 + 27*n3 + 81*n4 + nCarry3; // R3
-        nCarry3   = (nAdd>>c_nDigitSize);
+        nCarry3   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR3[i] = (DIGIT) nAdd;
         nAdd      = (n1<<2) + (n2<<4) + (n3<<6) + (n4<<8) + nCarry4; // R4
-        nCarry4   = (nAdd>>c_nDigitSize);
+        nCarry4   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR4[i] = (DIGIT) nAdd;
         nAdd      = 5*n1 + 25*n2 + 125*n3 + 625*n4 + nCarry5; // R5
-        nCarry5   = (nAdd>>c_nDigitSize);
+        nCarry5   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR5[i] = (DIGIT) nAdd;
         nAdd      = 6*n1 + 36*n2 + 216*n3 + 1296*n4 + nCarry6; // R6
-        nCarry6   = (nAdd>>c_nDigitSize);
+        nCarry6   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR6[i] = (DIGIT) nAdd;
         nAdd      = 7*n1 + 49*n2 + 343*n3 + 2401*n4 + nCarry7; // R7
-        nCarry7   = (nAdd>>c_nDigitSize);
+        nCarry7   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR7[i] = (DIGIT) nAdd;
     }
     pArgR1[i]   = nCarry1;
@@ -8302,8 +8302,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P1 = (-1089R0 + 2940R1 -  4410R2 +  4900R3 -  3675R4 + 1764R5 -  490R6 +  60R7 - 2116800R8)/420
         nAdd     =  2940*nR1 + 4900*nR3 + 1764*nR5 + 60*nR7 + nCarry1;
         nSub     =  1089*nR0 + 4410*nR2 + 3675*nR4 + 490*nR6 + 2116800*nR8 + nBorrow1;
-        nCarry1  =  nAdd>>c_nDigitSize;
-        nBorrow1 =  nSub>>c_nDigitSize;
+        nCarry1  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow1 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow1 += (nAdd < nSub);
@@ -8311,8 +8311,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P2 = (  938R0 - 4014R1 +  7911R2 -  9490R3 +  7380R4 - 3618R5 + 1019R6 - 126R7 + 4704480R8)/360
         nAdd     =  938*nR0 + 7911*nR2 + 7380*nR4 + 1019*nR6 + 4704480*nR8 + nCarry2;
         nSub     =  4014*nR1 + 9490*nR3 + 3618*nR5 + 126*nR7 + nBorrow2;
-        nCarry2  =  nAdd>>c_nDigitSize;
-        nBorrow2 =  nSub>>c_nDigitSize;
+        nCarry2  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow2 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow2 += (nAdd < nSub);
@@ -8320,8 +8320,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P3 = ( -967R0 + 5104R1 - 11787R2 + 15560R3 - 12725R4 + 6432R5 - 1849R6 + 232R7 - 9455040R8)/720
         nAdd     =  5104*nR1 + 15560*nR3 + 6432*nR5 + 232*nR7 + nCarry3;
         nSub     =  967*nR0 + 11787*nR2 + 12725*nR4 + 1849*nR6 + 9455040*nR8 + nBorrow3;
-        nCarry3  =  nAdd>>c_nDigitSize;
-        nBorrow3 =  nSub>>c_nDigitSize;
+        nCarry3  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow3 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow3 += (nAdd < nSub);
@@ -8329,8 +8329,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P4 = (   56R0 -  333R1 +   852R2 -  1219R3 +  1056R4 -  555R5 +  164R6 -  21R7 +  974736R8)/144
         nAdd     =  56*nR0 + 852*nR2 + 1056*nR4 + 164*nR6 + 974736*nR8 + nCarry4;
         nSub     =  333*nR1 + 1219*nR3 + 555*nR5 + 21*nR7 + nBorrow4;
-        nCarry4  =  nAdd>>c_nDigitSize;
-        nBorrow4 =  nSub>>c_nDigitSize;
+        nCarry4  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow4 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow4 += (nAdd < nSub);
@@ -8338,8 +8338,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P5 = (  -46R0 +  295R1 -   810R2 +  1235R3 -  1130R4 +  621R5 -  190R6 +  25R7 - 1411200R8)/720
         nAdd     =  295*nR1 + 1235*nR3 + 621*nR5 + 25*nR7 + nCarry5;
         nSub     =  46*nR0 + 810*nR2 + 1130*nR4 + 190*nR6 + 1411200*nR8 + nBorrow5;
-        nCarry5  =  nAdd>>c_nDigitSize;
-        nBorrow5 =  nSub>>c_nDigitSize;
+        nCarry5  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow5 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow5 += (nAdd < nSub);
@@ -8347,8 +8347,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P6 = (    4R0 -   27R1 +    78R2 -   125R3 +   120R4 -   69R5 +   22R6 -   3R7 +  231840R8)/720
         nAdd     =  4*nR0 + 78*nR2 + 120*nR4 + 22*nR6 + 231840*nR8 + nCarry6;
         nSub     =  27*nR1 + 125*nR3 + 69*nR5 + 3*nR7 + nBorrow6;
-        nCarry6  =  nAdd>>c_nDigitSize;
-        nBorrow6 =  nSub>>c_nDigitSize;
+        nCarry6  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow6 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow6 += (nAdd < nSub);
@@ -8356,8 +8356,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P7 = (    -R0 +    7R1 -    21R2 +    35R3 -    35R4 +   21R5 -    7R6 +    R7 -  141120R8)/5040
         nAdd     =  7*nR1 + 35*nR3 + 21*nR5 + nR7 + nCarry7;
         nSub     =  nR0 + 21*nR2 + 35*nR4 + 7*nR6 + 141120*nR8 + nBorrow7;
-        nCarry7  =  nAdd>>c_nDigitSize;
-        nBorrow7 =  nSub>>c_nDigitSize;
+        nCarry7  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow7 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow7 += (nAdd < nSub);
@@ -8377,8 +8377,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P1 = (-1089R0 + 2940R1 -  4410R2 +  4900R3 -  3675R4 + 1764R5 -  490R6 +  60R7 - 2116800R8)/420
         nAdd     = 2940*nR1 + 4900*nR3 + 1764*nR5 + 60*nR7 + nCarry1;
         nSub     = 4410*nR2 + 3675*nR4 + 490*nR6 + 2116800*nR8 + nBorrow1;
-        nCarry1  =  nAdd>>c_nDigitSize;
-        nBorrow1 =  nSub>>c_nDigitSize;
+        nCarry1  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow1 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow1 += (nAdd < nSub);
@@ -8386,8 +8386,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P2 = (  938R0 - 4014R1 +  7911R2 -  9490R3 +  7380R4 - 3618R5 + 1019R6 - 126R7 + 4704480R8)/360
         nAdd     =  7911*nR2 + 7380*nR4 + 1019*nR6 + 4704480*nR8 + nCarry2;
         nSub     =  4014*nR1 + 9490*nR3 + 3618*nR5 + 126*nR7 + nBorrow2;
-        nCarry2  =  nAdd>>c_nDigitSize;
-        nBorrow2 =  nSub>>c_nDigitSize;
+        nCarry2  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow2 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow2 += (nAdd < nSub);
@@ -8395,8 +8395,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P3 = ( -967R0 + 5104R1 - 11787R2 + 15560R3 - 12725R4 + 6432R5 - 1849R6 + 232R7 - 9455040R8)/720
         nAdd     =  5104*nR1 + 15560*nR3 + 6432*nR5 + 232*nR7 + nCarry3;
         nSub     =  11787*nR2 + 12725*nR4 + 1849*nR6 + 9455040*nR8 + nBorrow3;
-        nCarry3  =  nAdd>>c_nDigitSize;
-        nBorrow3 =  nSub>>c_nDigitSize;
+        nCarry3  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow3 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow3 += (nAdd < nSub);
@@ -8404,8 +8404,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P4 = (   56R0 -  333R1 +   852R2 -  1219R3 +  1056R4 -  555R5 +  164R6 -  21R7 +  974736R8)/144
         nAdd     =  852*nR2 + 1056*nR4 + 164*nR6 + 974736*nR8 + nCarry4;
         nSub     =  333*nR1 + 1219*nR3 + 555*nR5 + 21*nR7 + nBorrow4;
-        nCarry4  =  nAdd>>c_nDigitSize;
-        nBorrow4 =  nSub>>c_nDigitSize;
+        nCarry4  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow4 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow4 += (nAdd < nSub);
@@ -8413,8 +8413,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P5 = (  -46R0 +  295R1 -   810R2 +  1235R3 -  1130R4 +  621R5 -  190R6 +  25R7 - 1411200R8)/720
         nAdd     =  295*nR1 + 1235*nR3 + 621*nR5 + 25*nR7 + nCarry5;
         nSub     =  810*nR2 + 1130*nR4 + 190*nR6 + 1411200*nR8 + nBorrow5;
-        nCarry5  =  nAdd>>c_nDigitSize;
-        nBorrow5 =  nSub>>c_nDigitSize;
+        nCarry5  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow5 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow5 += (nAdd < nSub);
@@ -8422,8 +8422,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P6 = (    4R0 -   27R1 +    78R2 -   125R3 +   120R4 -   69R5 +   22R6 -   3R7 +  231840R8)/720
         nAdd     =  78*nR2 + 120*nR4 + 22*nR6 + 231840*nR8 + nCarry6;
         nSub     =  27*nR1 + 125*nR3 + 69*nR5 + 3*nR7 + nBorrow6;
-        nCarry6  =  nAdd>>c_nDigitSize;
-        nBorrow6 =  nSub>>c_nDigitSize;
+        nCarry6  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow6 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow6 += (nAdd < nSub);
@@ -8431,8 +8431,8 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         // P7 = (    -R0 +    7R1 -    21R2 +    35R3 -    35R4 +   21R5 -    7R6 +    R7 -  141120R8)/5040
         nAdd     =  7*nR1 + 35*nR3 + 21*nR5 + nR7 + nCarry7;
         nSub     =  21*nR2 + 35*nR4 + 7*nR6 + 141120*nR8 + nBorrow7;
-        nCarry7  =  nAdd>>c_nDigitSize;
-        nBorrow7 =  nSub>>c_nDigitSize;
+        nCarry7  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow7 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow7 += (nAdd < nSub);
@@ -8483,45 +8483,45 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
     i              = nFifth<<1;
     nAdd           = pR1[i];
     pR1[i]         = nAdd/420;
-    nCarry1        = (nAdd%420)<<c_nDigitSize;
-    nCarry2        = (nP0_P2_overlap%360)<<c_nDigitSize;
+    nCarry1        = (nAdd%420)<<_DIGIT_SIZE_IN_BITS;
+    nCarry2        = (nP0_P2_overlap%360)<<_DIGIT_SIZE_IN_BITS;
     nP0_P2_overlap = nP0_P2_overlap/360;
     nAdd           = pR3[i];
     pR3[i]         = nAdd/720;
-    nCarry3        = (nAdd%720)<<c_nDigitSize;
-    nCarry4        = (nP2_P4_overlap%144)<<c_nDigitSize;
+    nCarry3        = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
+    nCarry4        = (nP2_P4_overlap%144)<<_DIGIT_SIZE_IN_BITS;
     nP2_P4_overlap = nP2_P4_overlap/144;
     nAdd           = pR5[i];
     pR5[i]         = nAdd/720;
-    nCarry5        = (nAdd%720)<<c_nDigitSize;
-    nCarry6        = (nP4_P6_overlap%720)<<c_nDigitSize;
+    nCarry5        = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
+    nCarry6        = (nP4_P6_overlap%720)<<_DIGIT_SIZE_IN_BITS;
     nP4_P6_overlap = nP4_P6_overlap /720;
     nAdd           = pR7[i];
     pR7[i--]       = nAdd/5040;
-    nCarry7        = (nAdd%5040)<<c_nDigitSize;
+    nCarry7        = (nAdd%5040)<<_DIGIT_SIZE_IN_BITS;
     do
     {
         nAdd    = pR1[i] | nCarry1;
         pR1[i]  = nAdd/420;
-        nCarry1 = (nAdd%420)<<c_nDigitSize;
+        nCarry1 = (nAdd%420)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR2[i] | nCarry2;
         pR2[i]  = nAdd/360;
-        nCarry2 = (nAdd%360)<<c_nDigitSize;
+        nCarry2 = (nAdd%360)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR3[i] | nCarry3;
         pR3[i]  = nAdd/720;
-        nCarry3 = (nAdd%720)<<c_nDigitSize;
+        nCarry3 = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR4[i] | nCarry4;
         pR4[i]  = nAdd/144;
-        nCarry4 = (nAdd%144)<<c_nDigitSize;
+        nCarry4 = (nAdd%144)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR5[i] | nCarry5;
         pR5[i]  = nAdd/720;
-        nCarry5 = (nAdd%720)<<c_nDigitSize;
+        nCarry5 = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR6[i] | nCarry6;
         pR6[i]  = nAdd/720;
-        nCarry6 = (nAdd%720)<<c_nDigitSize;
+        nCarry6 = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR7[i] | nCarry7;
         pR7[i]  = nAdd/5040;
-        nCarry7 = (nAdd%5040)<<c_nDigitSize;
+        nCarry7 = (nAdd%5040)<<_DIGIT_SIZE_IN_BITS;
     }
     while(0 != i--);
     // at this point, P0, P2, P4, P6, and P8 are (mostly) in place; add in the odd Ps (and the overlap digits for the even)
@@ -8531,7 +8531,7 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
     for(i=0; i<(nFifth<<1); i++)
     {
         nAdd      = (nCarry1 + pArgR1[i]) + pR7[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += pR7[i];
@@ -8540,14 +8540,14 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
     for(i=0; i<nFifth; i++)
     {
         nAdd      = (nCarry1 + pArgR1[i]) + pR5[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += nP4_P6_overlap;
     for(; i<(nFifth<<1); i++)
     {
         nAdd      = (nCarry1 + pArgR1[i]) + pR5[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += pR5[i];
@@ -8556,14 +8556,14 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
     for(i=0; i<nFifth; i++)
     {
         nAdd      = (nCarry1 + pArgR1[i]) + pR3[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += nP2_P4_overlap;
     for(; i<(nFifth<<1); i++)
     {
         nAdd      = (nCarry1 + pArgR1[i]) + pR3[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += pR3[i];
@@ -8572,14 +8572,14 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
     for(i=0; i<nFifth; i++)
     {
         nAdd      = (nCarry1 + pArgR1[i]) + pR1[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += nP0_P2_overlap;
     for(; i<1+(nFifth<<1); i++)
     {
         nAdd      = (nCarry1 + pArgR1[i]) + pR1[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     // note we are guaranteed no carry past the end of Z
@@ -8588,7 +8588,7 @@ void CUnsignedArithmeticHelper::MultU9by5(size_t             nXSize,
         do
         {
             nAdd        = nCarry1 + pArgR1[i];
-            nCarry1     = (nAdd>>c_nDigitSize);
+            nCarry1     = (nAdd>>_DIGIT_SIZE_IN_BITS);
             pArgR1[i++] = (DIGIT) nAdd;
         }
         while(nCarry1);
@@ -8669,25 +8669,25 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         DOUBLEDIGIT n3   = pX3[i];
         DOUBLEDIGIT n4   = pX4[i];
         DOUBLEDIGIT nAdd = n0 + n1 + n2 + n3 + n4 + nCarry1; // R1
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
         nAdd      = n0 + (n1<<1) + (n2<<2) + (n3<<3) + (n4<<4) + nCarry2; // R2
-        nCarry2   = (nAdd>>c_nDigitSize);
+        nCarry2   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR2[i] = (DIGIT) nAdd;
         nAdd      = n0 + 3*n1 + 9*n2 + 27*n3 + 81*n4 + nCarry3; // R3
-        nCarry3   = (nAdd>>c_nDigitSize);
+        nCarry3   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR3[i] = (DIGIT) nAdd;
         nAdd      = n0 + (n1<<2) + (n2<<4) + (n3<<6) + (n4<<8) + nCarry4; // R4
-        nCarry4   = (nAdd>>c_nDigitSize);
+        nCarry4   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR4[i] = (DIGIT) nAdd;
         nAdd      = n0 + 5*n1 + 25*n2 + 125*n3 + 625*n4 + nCarry5; // R5
-        nCarry5   = (nAdd>>c_nDigitSize);
+        nCarry5   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR5[i] = (DIGIT) nAdd;
         nAdd      = n0 + 6*n1 + 36*n2 + 216*n3 + 1296*n4 + nCarry6; // R6
-        nCarry6   = (nAdd>>c_nDigitSize);
+        nCarry6   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR6[i] = (DIGIT) nAdd;
         nAdd      = n0 + 7*n1 + 49*n2 + 343*n3 + 2401*n4 + nCarry7; // R7
-        nCarry7   = (nAdd>>c_nDigitSize);
+        nCarry7   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR7[i] = (DIGIT) nAdd;
     }
     for(; i<nFifth; i++)
@@ -8697,25 +8697,25 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         DOUBLEDIGIT n3   = pX3[i];
         DOUBLEDIGIT n4   = pX4[i];
         DOUBLEDIGIT nAdd = n1 + n2 + n3 + n4 + nCarry1; // R1
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
         nAdd      = (n1<<1) + (n2<<2) + (n3<<3) + (n4<<4) + nCarry2; // R2
-        nCarry2   = (nAdd>>c_nDigitSize);
+        nCarry2   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR2[i] = (DIGIT) nAdd;
         nAdd      = 3*n1 + 9*n2 + 27*n3 + 81*n4 + nCarry3; // R3
-        nCarry3   = (nAdd>>c_nDigitSize);
+        nCarry3   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR3[i] = (DIGIT) nAdd;
         nAdd      = (n1<<2) + (n2<<4) + (n3<<6) + (n4<<8) + nCarry4; // R4
-        nCarry4   = (nAdd>>c_nDigitSize);
+        nCarry4   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR4[i] = (DIGIT) nAdd;
         nAdd      = 5*n1 + 25*n2 + 125*n3 + 625*n4 + nCarry5; // R5
-        nCarry5   = (nAdd>>c_nDigitSize);
+        nCarry5   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR5[i] = (DIGIT) nAdd;
         nAdd      = 6*n1 + 36*n2 + 216*n3 + 1296*n4 + nCarry6; // R6
-        nCarry6   = (nAdd>>c_nDigitSize);
+        nCarry6   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR6[i] = (DIGIT) nAdd;
         nAdd      = 7*n1 + 49*n2 + 343*n3 + 2401*n4 + nCarry7; // R7
-        nCarry7   = (nAdd>>c_nDigitSize);
+        nCarry7   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR7[i] = (DIGIT) nAdd;
     }
     pArgR1[i]   = nCarry1;
@@ -8797,8 +8797,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P1 = (-1089R0 + 2940R1 -  4410R2 +  4900R3 -  3675R4 + 1764R5 -  490R6 +  60R7 - 2116800R8)/420
         nAdd     =  2940*nR1 + 4900*nR3 + 1764*nR5 + 60*nR7 + nCarry1;
         nSub     =  1089*nR0 + 4410*nR2 + 3675*nR4 + 490*nR6 + 2116800*nR8 + nBorrow1;
-        nCarry1  =  nAdd>>c_nDigitSize;
-        nBorrow1 =  nSub>>c_nDigitSize;
+        nCarry1  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow1 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow1 += (nAdd < nSub);
@@ -8806,8 +8806,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P2 = (  938R0 - 4014R1 +  7911R2 -  9490R3 +  7380R4 - 3618R5 + 1019R6 - 126R7 + 4704480R8)/360
         nAdd     =  938*nR0 + 7911*nR2 + 7380*nR4 + 1019*nR6 + 4704480*nR8 + nCarry2;
         nSub     =  4014*nR1 + 9490*nR3 + 3618*nR5 + 126*nR7 + nBorrow2;
-        nCarry2  =  nAdd>>c_nDigitSize;
-        nBorrow2 =  nSub>>c_nDigitSize;
+        nCarry2  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow2 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow2 += (nAdd < nSub);
@@ -8815,8 +8815,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P3 = ( -967R0 + 5104R1 - 11787R2 + 15560R3 - 12725R4 + 6432R5 - 1849R6 + 232R7 - 9455040R8)/720
         nAdd     =  5104*nR1 + 15560*nR3 + 6432*nR5 + 232*nR7 + nCarry3;
         nSub     =  967*nR0 + 11787*nR2 + 12725*nR4 + 1849*nR6 + 9455040*nR8 + nBorrow3;
-        nCarry3  =  nAdd>>c_nDigitSize;
-        nBorrow3 =  nSub>>c_nDigitSize;
+        nCarry3  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow3 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow3 += (nAdd < nSub);
@@ -8824,8 +8824,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P4 = (   56R0 -  333R1 +   852R2 -  1219R3 +  1056R4 -  555R5 +  164R6 -  21R7 +  974736R8)/144
         nAdd     =  56*nR0 + 852*nR2 + 1056*nR4 + 164*nR6 + 974736*nR8 + nCarry4;
         nSub     =  333*nR1 + 1219*nR3 + 555*nR5 + 21*nR7 + nBorrow4;
-        nCarry4  =  nAdd>>c_nDigitSize;
-        nBorrow4 =  nSub>>c_nDigitSize;
+        nCarry4  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow4 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow4 += (nAdd < nSub);
@@ -8833,8 +8833,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P5 = (  -46R0 +  295R1 -   810R2 +  1235R3 -  1130R4 +  621R5 -  190R6 +  25R7 - 1411200R8)/720
         nAdd     =  295*nR1 + 1235*nR3 + 621*nR5 + 25*nR7 + nCarry5;
         nSub     =  46*nR0 + 810*nR2 + 1130*nR4 + 190*nR6 + 1411200*nR8 + nBorrow5;
-        nCarry5  =  nAdd>>c_nDigitSize;
-        nBorrow5 =  nSub>>c_nDigitSize;
+        nCarry5  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow5 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow5 += (nAdd < nSub);
@@ -8842,8 +8842,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P6 = (    4R0 -   27R1 +    78R2 -   125R3 +   120R4 -   69R5 +   22R6 -   3R7 +  231840R8)/720
         nAdd     =  4*nR0 + 78*nR2 + 120*nR4 + 22*nR6 + 231840*nR8 + nCarry6;
         nSub     =  27*nR1 + 125*nR3 + 69*nR5 + 3*nR7 + nBorrow6;
-        nCarry6  =  nAdd>>c_nDigitSize;
-        nBorrow6 =  nSub>>c_nDigitSize;
+        nCarry6  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow6 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow6 += (nAdd < nSub);
@@ -8851,8 +8851,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P7 = (    -R0 +    7R1 -    21R2 +    35R3 -    35R4 +   21R5 -    7R6 +    R7 -  141120R8)/5040
         nAdd     =  7*nR1 + 35*nR3 + 21*nR5 + nR7 + nCarry7;
         nSub     =  nR0 + 21*nR2 + 35*nR4 + 7*nR6 + 141120*nR8 + nBorrow7;
-        nCarry7  =  nAdd>>c_nDigitSize;
-        nBorrow7 =  nSub>>c_nDigitSize;
+        nCarry7  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow7 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow7 += (nAdd < nSub);
@@ -8872,8 +8872,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P1 = (-1089R0 + 2940R1 -  4410R2 +  4900R3 -  3675R4 + 1764R5 -  490R6 +  60R7 - 2116800R8)/420
         nAdd     = 2940*nR1 + 4900*nR3 + 1764*nR5 + 60*nR7 + nCarry1;
         nSub     = 4410*nR2 + 3675*nR4 + 490*nR6 + 2116800*nR8 + nBorrow1;
-        nCarry1  =  nAdd>>c_nDigitSize;
-        nBorrow1 =  nSub>>c_nDigitSize;
+        nCarry1  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow1 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow1 += (nAdd < nSub);
@@ -8881,8 +8881,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P2 = (  938R0 - 4014R1 +  7911R2 -  9490R3 +  7380R4 - 3618R5 + 1019R6 - 126R7 + 4704480R8)/360
         nAdd     =  7911*nR2 + 7380*nR4 + 1019*nR6 + 4704480*nR8 + nCarry2;
         nSub     =  4014*nR1 + 9490*nR3 + 3618*nR5 + 126*nR7 + nBorrow2;
-        nCarry2  =  nAdd>>c_nDigitSize;
-        nBorrow2 =  nSub>>c_nDigitSize;
+        nCarry2  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow2 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow2 += (nAdd < nSub);
@@ -8890,8 +8890,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P3 = ( -967R0 + 5104R1 - 11787R2 + 15560R3 - 12725R4 + 6432R5 - 1849R6 + 232R7 - 9455040R8)/720
         nAdd     =  5104*nR1 + 15560*nR3 + 6432*nR5 + 232*nR7 + nCarry3;
         nSub     =  11787*nR2 + 12725*nR4 + 1849*nR6 + 9455040*nR8 + nBorrow3;
-        nCarry3  =  nAdd>>c_nDigitSize;
-        nBorrow3 =  nSub>>c_nDigitSize;
+        nCarry3  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow3 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow3 += (nAdd < nSub);
@@ -8899,8 +8899,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P4 = (   56R0 -  333R1 +   852R2 -  1219R3 +  1056R4 -  555R5 +  164R6 -  21R7 +  974736R8)/144
         nAdd     =  852*nR2 + 1056*nR4 + 164*nR6 + 974736*nR8 + nCarry4;
         nSub     =  333*nR1 + 1219*nR3 + 555*nR5 + 21*nR7 + nBorrow4;
-        nCarry4  =  nAdd>>c_nDigitSize;
-        nBorrow4 =  nSub>>c_nDigitSize;
+        nCarry4  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow4 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow4 += (nAdd < nSub);
@@ -8908,8 +8908,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P5 = (  -46R0 +  295R1 -   810R2 +  1235R3 -  1130R4 +  621R5 -  190R6 +  25R7 - 1411200R8)/720
         nAdd     =  295*nR1 + 1235*nR3 + 621*nR5 + 25*nR7 + nCarry5;
         nSub     =  810*nR2 + 1130*nR4 + 190*nR6 + 1411200*nR8 + nBorrow5;
-        nCarry5  =  nAdd>>c_nDigitSize;
-        nBorrow5 =  nSub>>c_nDigitSize;
+        nCarry5  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow5 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow5 += (nAdd < nSub);
@@ -8917,8 +8917,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P6 = (    4R0 -   27R1 +    78R2 -   125R3 +   120R4 -   69R5 +   22R6 -   3R7 +  231840R8)/720
         nAdd     =  78*nR2 + 120*nR4 + 22*nR6 + 231840*nR8 + nCarry6;
         nSub     =  27*nR1 + 125*nR3 + 69*nR5 + 3*nR7 + nBorrow6;
-        nCarry6  =  nAdd>>c_nDigitSize;
-        nBorrow6 =  nSub>>c_nDigitSize;
+        nCarry6  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow6 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow6 += (nAdd < nSub);
@@ -8926,8 +8926,8 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         // P7 = (    -R0 +    7R1 -    21R2 +    35R3 -    35R4 +   21R5 -    7R6 +    R7 -  141120R8)/5040
         nAdd     =  7*nR1 + 35*nR3 + 21*nR5 + nR7 + nCarry7;
         nSub     =  21*nR2 + 35*nR4 + 7*nR6 + 141120*nR8 + nBorrow7;
-        nCarry7  =  nAdd>>c_nDigitSize;
-        nBorrow7 =  nSub>>c_nDigitSize;
+        nCarry7  =  nAdd>>_DIGIT_SIZE_IN_BITS;
+        nBorrow7 =  nSub>>_DIGIT_SIZE_IN_BITS;
         nAdd     &= c_nClearHigh;
         nSub     &= c_nClearHigh;
         nBorrow7 += (nAdd < nSub);
@@ -8978,45 +8978,45 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
     i              = nFifth<<1;
     nAdd           = pR1[i];
     pR1[i]         = nAdd/420;
-    nCarry1        = (nAdd%420)<<c_nDigitSize;
-    nCarry2        = (nP0_P2_overlap%360)<<c_nDigitSize;
+    nCarry1        = (nAdd%420)<<_DIGIT_SIZE_IN_BITS;
+    nCarry2        = (nP0_P2_overlap%360)<<_DIGIT_SIZE_IN_BITS;
     nP0_P2_overlap = nP0_P2_overlap/360;
     nAdd           = pR3[i];
     pR3[i]         = nAdd/720;
-    nCarry3        = (nAdd%720)<<c_nDigitSize;
-    nCarry4        = (nP2_P4_overlap%144)<<c_nDigitSize;
+    nCarry3        = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
+    nCarry4        = (nP2_P4_overlap%144)<<_DIGIT_SIZE_IN_BITS;
     nP2_P4_overlap = nP2_P4_overlap/144;
     nAdd           = pR5[i];
     pR5[i]         = nAdd/720;
-    nCarry5        = (nAdd%720)<<c_nDigitSize;
-    nCarry6        = (nP4_P6_overlap%720)<<c_nDigitSize;
+    nCarry5        = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
+    nCarry6        = (nP4_P6_overlap%720)<<_DIGIT_SIZE_IN_BITS;
     nP4_P6_overlap = nP4_P6_overlap /720;
     nAdd           = pR7[i];
     pR7[i--]       = nAdd/5040;
-    nCarry7        = (nAdd%5040)<<c_nDigitSize;
+    nCarry7        = (nAdd%5040)<<_DIGIT_SIZE_IN_BITS;
     do
     {
         nAdd    = pR1[i] | nCarry1;
         pR1[i]  = nAdd/420;
-        nCarry1 = (nAdd%420)<<c_nDigitSize;
+        nCarry1 = (nAdd%420)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR2[i] | nCarry2;
         pR2[i]  = nAdd/360;
-        nCarry2 = (nAdd%360)<<c_nDigitSize;
+        nCarry2 = (nAdd%360)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR3[i] | nCarry3;
         pR3[i]  = nAdd/720;
-        nCarry3 = (nAdd%720)<<c_nDigitSize;
+        nCarry3 = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR4[i] | nCarry4;
         pR4[i]  = nAdd/144;
-        nCarry4 = (nAdd%144)<<c_nDigitSize;
+        nCarry4 = (nAdd%144)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR5[i] | nCarry5;
         pR5[i]  = nAdd/720;
-        nCarry5 = (nAdd%720)<<c_nDigitSize;
+        nCarry5 = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR6[i] | nCarry6;
         pR6[i]  = nAdd/720;
-        nCarry6 = (nAdd%720)<<c_nDigitSize;
+        nCarry6 = (nAdd%720)<<_DIGIT_SIZE_IN_BITS;
         nAdd    = pR7[i] | nCarry7;
         pR7[i]  = nAdd/5040;
-        nCarry7 = (nAdd%5040)<<c_nDigitSize;
+        nCarry7 = (nAdd%5040)<<_DIGIT_SIZE_IN_BITS;
     }
     while(0 != i--);
     // at this point, P0, P2, P4, P6, and P8 are (mostly) in place; add in the odd Ps (and the overlap digits for the even)
@@ -9026,7 +9026,7 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
     for(i=0; i<(nFifth<<1); i++)
     {
         nAdd      = nCarry1 + pArgR1[i] + pR7[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += pR7[i];
@@ -9035,14 +9035,14 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
     for(i=0; i<nFifth; i++)
     {
         nAdd      = nCarry1 + pArgR1[i] + pR5[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += nP4_P6_overlap;
     for(; i<(nFifth<<1); i++)
     {
         nAdd      = nCarry1 + pArgR1[i] + pR5[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += pR5[i];
@@ -9051,14 +9051,14 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
     for(i=0; i<nFifth; i++)
     {
         nAdd      = nCarry1 + pArgR1[i] + pR3[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += nP2_P4_overlap;
     for(; i<(nFifth<<1); i++)
     {
         nAdd      = nCarry1 + pArgR1[i] + pR3[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += pR3[i];
@@ -9067,14 +9067,14 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
     for(i=0; i<nFifth; i++)
     {
         nAdd      = nCarry1 + pArgR1[i] + pR1[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     nCarry1 += nP0_P2_overlap;
     for(; i<1+(nFifth<<1); i++)
     {
         nAdd      = nCarry1 + pArgR1[i] + pR1[i];
-        nCarry1   = (nAdd>>c_nDigitSize);
+        nCarry1   = (nAdd>>_DIGIT_SIZE_IN_BITS);
         pArgR1[i] = (DIGIT) nAdd;
     }
     // note we are guaranteed no carry past the end of Z
@@ -9083,7 +9083,7 @@ void CUnsignedArithmeticHelper::SquareU9by5(size_t             nXSize,
         do
         {
             nAdd        = nCarry1 + pArgR1[i];
-            nCarry1     = (nAdd>>c_nDigitSize);
+            nCarry1     = (nAdd>>_DIGIT_SIZE_IN_BITS);
             pArgR1[i++] = (DIGIT) nAdd;
         }
         while(nCarry1);
@@ -9232,7 +9232,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
         nCarry = 0;
         do
         {
-            nProd               = pXValue[--nXSize] | (nCarry<<c_nDigitSize);
+            nProd               = pXValue[--nXSize] | (nCarry<<_DIGIT_SIZE_IN_BITS);
             pXDivYValue[nXSize] = (DIGIT) (nProd/nD1);
             nCarry              = nProd%nD1;
         }
@@ -9246,19 +9246,19 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
             pXDivYValue[i] = 0;
         }
         nD1 = pYValue[nYSize-1];
-        nD2 = ((nD1<<c_nDigitSize) + pYValue[nYSize-2]) + 1;
+        nD2 = ((nD1<<_DIGIT_SIZE_IN_BITS) + pYValue[nYSize-2]) + 1;
         nD1++;
         if(nXSize>nYSize)
         {
             do
             {
                 nD3 = pXValue[nXSize-1];
-                nD4 = (nD3<<c_nDigitSize) + pXValue[nXSize-2];
+                nD4 = (nD3<<_DIGIT_SIZE_IN_BITS) + pXValue[nXSize-2];
                 if(nD2>nD4 || nD2==0) // nD2==0: first two digits are FFFFFFFF
                 {
                     nMult  = nD4/nD1;
                     nProd  = pXDivYValue[nXSize-nYSize-1] + nMult;
-                    nCarry = nProd>>c_nDigitSize;
+                    nCarry = nProd>>_DIGIT_SIZE_IN_BITS;
                     if(nCarry)
                     {
                         pXDivYValue[nXSize-nYSize-1] = (DIGIT) nProd;
@@ -9267,7 +9267,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                         {
                             nProd                         = pXDivYValue[nXSize-nYSize+ii] + (DOUBLEDIGIT) 1;
                             pXDivYValue[nXSize-nYSize+ii] = (DIGIT) nProd;
-                            nCarry                        = (nProd>>c_nDigitSize);
+                            nCarry                        = (nProd>>_DIGIT_SIZE_IN_BITS);
                             ii++;
                         }
                         while(nCarry);
@@ -9282,7 +9282,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                     {
                         nProd                    =  nMult*pYValue[i];
                         nBorrow                  =  (nProd&c_nClearHigh) + nCarry;
-                        nCarry                   =  (nProd>>c_nDigitSize) + (nBorrow>>c_nDigitSize);
+                        nCarry                   =  (nProd>>_DIGIT_SIZE_IN_BITS) + (nBorrow>>_DIGIT_SIZE_IN_BITS);
                         nBorrow                  =  nBorrow&c_nClearHigh;
                         if(nBorrow>pXValue[nXSize-nYSize+i])
                         {
@@ -9297,7 +9297,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                 {
                     nMult               = nD4/nD2;
                     nProd               = pXDivYValue[nXSize-nYSize] + nMult;
-                    nCarry              = (nProd>>c_nDigitSize);
+                    nCarry              = (nProd>>_DIGIT_SIZE_IN_BITS);
                     if(nCarry)
                     {
                         pXDivYValue[nXSize-nYSize] = (DIGIT) nProd;
@@ -9320,7 +9320,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                     {
                         nProd                    =  nMult*pYValue[i];
                         nBorrow                  =  (nProd&c_nClearHigh) + nCarry;
-                        nCarry                   =  (nProd>>c_nDigitSize) + (nBorrow>>c_nDigitSize);
+                        nCarry                   =  (nProd>>_DIGIT_SIZE_IN_BITS) + (nBorrow>>_DIGIT_SIZE_IN_BITS);
                         nBorrow                  =  nBorrow&c_nClearHigh;
                         if(nBorrow>pXValue[nXSize-nYSize+i])
                         {
@@ -9346,7 +9346,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                     if(pXValue[nXSize-i]>=pYValue[nYSize-i]) // can subtract
                     {
                         nProd  = pXDivYValue[nXSize-nYSize] + (DOUBLEDIGIT) 1;
-                        nCarry = (nProd>>c_nDigitSize);
+                        nCarry = (nProd>>_DIGIT_SIZE_IN_BITS);
                         if(nCarry)
                         {
                             pXDivYValue[nXSize-nYSize] = (DIGIT) nProd;
@@ -9383,7 +9383,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
         if(nXSize==nYSize)  // might be able to stuff in a *little* more
         {
             nD3 = pXValue[nXSize-1];
-            nD4 = pXValue[nXSize-2] + (nD3<<c_nDigitSize);
+            nD4 = pXValue[nXSize-2] + (nD3<<_DIGIT_SIZE_IN_BITS);
             if(nD2<=nD4 && 0<nD2)
             {
                 nMult  = nD4/nD2;
@@ -9411,7 +9411,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                 {
                     nProd   = nMult*pYValue[i];
                     nBorrow = (nProd&c_nClearHigh) + nCarry;
-                    nCarry  = (nProd>>c_nDigitSize) + (nBorrow>>c_nDigitSize);
+                    nCarry  = (nProd>>_DIGIT_SIZE_IN_BITS) + (nBorrow>>_DIGIT_SIZE_IN_BITS);
                     if((DIGIT) nBorrow>pXValue[i])
                     {
                         nCarry++;
@@ -9437,7 +9437,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                 if(pXValue[nXSize-i]>=pYValue[nYSize-i]) // can subtract
                 {
                     nProd  = pXDivYValue[nXSize-nYSize] + (DOUBLEDIGIT) 1;
-                    nCarry = (nProd>>c_nDigitSize);
+                    nCarry = (nProd>>_DIGIT_SIZE_IN_BITS);
                     if(nCarry)
                     {
                         pXDivYValue[0] = (DIGIT) nProd;
@@ -9486,7 +9486,7 @@ size_t AddDivBackIn(size_t nXSize, size_t nYSize, DIGIT *pX, DIGIT *pDiv)
     {
         nCarry = (nCarry + pX[i]) + pDiv[i];
         pX[i]  = nCarry;
-        nCarry = nCarry>>c_nDigitSize;
+        nCarry = nCarry>>_DIGIT_SIZE_IN_BITS;
     }
     pX[i] = nCarry;
     while ((size_t) -1 != i && 0 == pX[i]) i--;
@@ -9654,13 +9654,13 @@ void CUnsignedArithmeticHelper::DivideRecursive(size_t  nXSize,
         {
             nCarry                      = (nCarry + pXDivYValue[nLowestAdded+i]) + pWorkspace[i];
             pXDivYValue[nLowestAdded+i] = nCarry;
-            nCarry                      = nCarry>>c_nDigitSize;
+            nCarry                      = nCarry>>_DIGIT_SIZE_IN_BITS;
         }
         while(nCarry)
         {
             nCarry                        = nCarry + pXDivYValue[nLowestAdded+i];
             pXDivYValue[nLowestAdded+i++] = nCarry;
-            nCarry                        = nCarry>>c_nDigitSize;
+            nCarry                        = nCarry>>_DIGIT_SIZE_IN_BITS;
         }
     }
 #if(_CollectDetailedTimingData)
@@ -11040,7 +11040,7 @@ void CUnsignedArithmeticHelper::ComputeProductFrom2NByNSubproblemResults(size_t 
             for (k=0; k<nPiComponentSize; k++)
             {
                 nSum     = (pOp2[k] + nCarry) + pDest[k];
-                nCarry   = nSum>>c_nDigitSize;
+                nCarry   = nSum>>_DIGIT_SIZE_IN_BITS;
                 pDest[k] = (DIGIT) nSum;
             }
             while (nCarry && k < nXSize + nYSize - nOffset)
@@ -11086,7 +11086,7 @@ void CUnsignedArithmeticHelper::MultU2NByN(size_t             nXSize,
         if(nXSize == nYSize)
         {
             // can't use this algorithm at all
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 #if(_CollectDetailedTimingData)
             MultU9by5(nXSize, nYSize, pXValue, pYValue, pZValue, pWorkspace, dwTimestamp);
 #else
@@ -11289,7 +11289,7 @@ void CUnsignedArithmeticHelper::SquareU2NByN(size_t             nXSize,
         // x - ((x+n-1)/n)n
         // to avoid dangerous overlap in computation, this must be at least 2 + <max coef for computing the p(i)s>
         // which boils down to the size must be greater than (<max coef> + nPieces)*nPieces + 1
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 #if(_CollectDetailedTimingData)
         SquareU9by5(nXSize, pXValue, pZValue, dwTimestamp, pWorkspace);
 #else
@@ -11523,7 +11523,7 @@ void CUnsignedArithmeticHelper::ModBy2nPlus1(const DIGIT *pXData,
     nAdd            = ((DOUBLEDIGIT) pXData[0])+pHigh[n];
     nSub            = pHigh[0];
     nBorrow         = (nAdd<nSub) ? 1 : 0;
-    pDestination[0] = (DIGIT) (nAdd-nSub); //((nBorrow<<c_nDigitSize) + nAdd - nSub);
+    pDestination[0] = (DIGIT) (nAdd-nSub); //((nBorrow<<_DIGIT_SIZE_IN_BITS) + nAdd - nSub);
     // Note that while it might LOOK like we might have a carry -- the sum of two digits, minus
     // a third digit, could overflow in general -- we can't in this case due to the range
     // assumption: the only number in the range with non-zero most-significant digit is 2^(2n);
@@ -11543,7 +11543,7 @@ void CUnsignedArithmeticHelper::ModBy2nPlus1(const DIGIT *pXData,
         // done by allowing the "borrow" from nowhere
         nAdd            =  ((DOUBLEDIGIT) 1)+pDestination[0];
         pDestination[0] =  (DIGIT) nAdd;
-        nBorrow         =  (nAdd>>c_nDigitSize);
+        nBorrow         =  (nAdd>>_DIGIT_SIZE_IN_BITS);
         if(0<nBorrow)
         {
             i = 1;
@@ -11551,7 +11551,7 @@ void CUnsignedArithmeticHelper::ModBy2nPlus1(const DIGIT *pXData,
             {
                 nAdd              = ((DOUBLEDIGIT) pDestination[i])+nBorrow;
                 pDestination[i++] = (DIGIT) nAdd;
-                nBorrow           = (nAdd>>c_nDigitSize);
+                nBorrow           = (nAdd>>_DIGIT_SIZE_IN_BITS);
             }
             while(0<nBorrow);
         }
@@ -11596,7 +11596,7 @@ void CUnsignedArithmeticHelper::Mult2toMmodOnePlus2toN(const DIGIT *pXData,
         }
         else
         {
-            int nRightBitShift = c_nDigitSize - nShiftBits;
+            int nRightBitShift = _DIGIT_SIZE_IN_BITS - nShiftBits;
             // a bit more complicated -- have a bit-shift as well as a digit-shift to
             // deal with
             // need to deal with bit shift as well as digit shift
@@ -11662,7 +11662,7 @@ void CUnsignedArithmeticHelper::Mult2toMmodOnePlus2toN(const DIGIT *pXData,
         else
         {
             // need to deal with bit shift as well as digit shift
-            int nRightBitShift = c_nDigitSize - nShiftBits;
+            int nRightBitShift = _DIGIT_SIZE_IN_BITS - nShiftBits;
             nBorrow   = 0;
             nShiftSub = pHigh[-1]>>nRightBitShift;
             for(i=0;i<nShiftDigits;i++)
@@ -11706,7 +11706,7 @@ void CUnsignedArithmeticHelper::Mult2toMmodOnePlus2toN(const DIGIT *pXData,
         // done by allowing the "borrow" from nowhere
         nAdd            =  ((DOUBLEDIGIT) 1)+pDestination[0];
         pDestination[0] =  (DIGIT) nAdd;
-        nBorrow         =  (nAdd>>c_nDigitSize);
+        nBorrow         =  (nAdd>>_DIGIT_SIZE_IN_BITS);
         if(0<nBorrow)
         {
             i = 1;
@@ -11714,7 +11714,7 @@ void CUnsignedArithmeticHelper::Mult2toMmodOnePlus2toN(const DIGIT *pXData,
             {
                 nAdd              = pDestination[i]+nBorrow;
                 pDestination[i++] = (DIGIT) nAdd;
-                nBorrow           = (nAdd>>c_nDigitSize);
+                nBorrow           = (nAdd>>_DIGIT_SIZE_IN_BITS);
             }
             while(0<nBorrow);
         }
@@ -11735,7 +11735,7 @@ bool CUnsignedArithmeticHelper::SBitShift::Halve()
     }
     if(0!=(m_nDigitShift&1))
     {
-        m_nBitShift += c_nDigitSize;
+        m_nBitShift += _DIGIT_SIZE_IN_BITS;
     }
     m_nBitShift   = m_nBitShift>>1;
     m_nDigitShift = m_nDigitShift>>1;
@@ -11746,9 +11746,9 @@ void CUnsignedArithmeticHelper::SBitShift::Double()
 {
     m_nBitShift   = m_nBitShift<<1;
     m_nDigitShift = m_nDigitShift<<1;
-    if(c_nDigitSize<=m_nBitShift)
+    if(_DIGIT_SIZE_IN_BITS<=m_nBitShift)
     {
-        m_nBitShift -= c_nDigitSize;
+        m_nBitShift -= _DIGIT_SIZE_IN_BITS;
         m_nDigitShift++;
     }
 }
@@ -11757,9 +11757,9 @@ void CUnsignedArithmeticHelper::SBitShift::Add(SBitShift &nAddend)
 {
     m_nBitShift   += nAddend.m_nBitShift;
     m_nDigitShift += nAddend.m_nDigitShift;
-    if(c_nDigitSize<=m_nBitShift)
+    if(_DIGIT_SIZE_IN_BITS<=m_nBitShift)
     {
-        m_nBitShift -= c_nDigitSize;
+        m_nBitShift -= _DIGIT_SIZE_IN_BITS;
         m_nDigitShift++;
     }
 }
@@ -11774,7 +11774,7 @@ bool CUnsignedArithmeticHelper::SBitShift::Sub(SBitShift &nSub)
     m_nDigitShift -= nSub.m_nDigitShift;
     if(m_nBitShift<nSub.m_nBitShift)
     {
-        m_nBitShift += c_nDigitSize;
+        m_nBitShift += _DIGIT_SIZE_IN_BITS;
         m_nDigitShift--;
     }
     m_nBitShift -= nSub.m_nBitShift;
@@ -11895,7 +11895,7 @@ void CUnsignedArithmeticHelper::FFT_basic(const DIGIT *pBase,
                 pFFT[j+i]             = (DIGIT) nSum;
                 nDifference           = nOdd+nBorrow;
                 pFFT[nSubFFTSize+j+i] = (DIGIT) (nEven-nDifference);
-                nCarry                = nSum>>c_nDigitSize;
+                nCarry                = nSum>>_DIGIT_SIZE_IN_BITS;
                 nBorrow               = (nEven<nDifference) ? 1 : 0;
             }
             // check for overflow on the add
@@ -11998,7 +11998,7 @@ void CUnsignedArithmeticHelper::FFT(const DIGIT *pBase,    // the number whose F
             pFFT[i]             = (DIGIT) nSum;
             nDifference         = nOdd+nBorrow;
             pFFT[nSubFFTSize+i] = (DIGIT) (nEven-nDifference);
-            nCarry              = nSum>>c_nDigitSize;
+            nCarry              = nSum>>_DIGIT_SIZE_IN_BITS;
             nBorrow             = (nEven<nDifference) ? 1 : 0;
         }
         for(;i<nEvenSize;i++)
@@ -12008,7 +12008,7 @@ void CUnsignedArithmeticHelper::FFT(const DIGIT *pBase,    // the number whose F
             pFFT[i]             = (DIGIT) nSum;
             nDifference         = nBorrow;
             pFFT[nSubFFTSize+i] = (DIGIT) (nEven-nDifference);
-            nCarry              = nSum>>c_nDigitSize;
+            nCarry              = nSum>>_DIGIT_SIZE_IN_BITS;
             nBorrow             = (nEven<nDifference) ? 1 : 0;
         }
         // check for overflow on the subtract
@@ -12069,7 +12069,7 @@ void CUnsignedArithmeticHelper::FFT(const DIGIT *pBase,    // the number whose F
                 pFFT[j+i]             = (DIGIT) nSum;
                 nDifference           = nOdd+nBorrow;
                 pFFT[nSubFFTSize+j+i] = (DIGIT) (nEven-nDifference);
-                nCarry                = nSum>>c_nDigitSize;
+                nCarry                = nSum>>_DIGIT_SIZE_IN_BITS;
                 nBorrow               = (nEven<nDifference) ? 1 : 0;
             }
             // check for overflow on the add
@@ -12169,7 +12169,7 @@ void CUnsignedArithmeticHelper::FFTInverse(const DIGIT *pFFT,
             pFFTInverse[j+i]             = (DIGIT) nSum;
             nDifference                  = nOdd+nBorrow;
             pFFTInverse[nSubFFTSize+j+i] = (DIGIT) (nEven-nDifference);
-            nCarry                       = nSum>>c_nDigitSize;
+            nCarry                       = nSum>>_DIGIT_SIZE_IN_BITS;
             nBorrow                      = (nEven<nDifference) ? 1 : 0;
         }
         // check for overflow on the add
@@ -12275,7 +12275,7 @@ void CUnsignedArithmeticHelper::FFT_opt_wrapper(DIGIT       *pFFT,
                 pFFT[j+i]             = (DIGIT) nSum;
                 nDifference           = nOdd+nBorrow;
                 pFFT[nSubFFTSize+j+i] = (DIGIT) (nEven-nDifference);
-                nCarry                = nSum>>c_nDigitSize;
+                nCarry                = nSum>>_DIGIT_SIZE_IN_BITS;
                 nBorrow               = (nEven<nDifference) ? 1 : 0;
             }
             // check for overflow on the add
@@ -12441,7 +12441,7 @@ void CUnsignedArithmeticHelper::FFT_opt(DIGIT       *pFFT,
             // V[j]      = V_0[j] + w^j*V_1[j] + w^{2j}*V_2[j] + w^{3j}*V_3[j]
             nSum         = n0+n1+n2+n3+nCarry0;
             pFFT_0[j+i]  = (DIGIT) nSum;
-            nCarry0      = nSum>>c_nDigitSize;
+            nCarry0      = nSum>>_DIGIT_SIZE_IN_BITS;
             // V[j+m/4]  = V_0[j] + w^j*V_1[j] - w^{2j}*V_2[j] - w^{3j}*V_3[j]
             nSum         = n0+n1+nCarry1;
             nDifference  = n2+n3+nBorrow1;
@@ -12449,11 +12449,11 @@ void CUnsignedArithmeticHelper::FFT_opt(DIGIT       *pFFT,
             if(nSum<nDifference)
             {
                 nCarry1  = 0;
-                nBorrow1 = (nDifference-nSum)>>c_nDigitSize;
+                nBorrow1 = (nDifference-nSum)>>_DIGIT_SIZE_IN_BITS;
             }
             else
             {
-                nCarry1  = (nSum-nDifference)>>c_nDigitSize;
+                nCarry1  = (nSum-nDifference)>>_DIGIT_SIZE_IN_BITS;
                 nBorrow1 = 0;
             }
             // V[j+m/2]  = V_0[j] - w^j*V_1[j] + w^{2j}*V_2[j] - w^{3j}*V_3[j]
@@ -12463,11 +12463,11 @@ void CUnsignedArithmeticHelper::FFT_opt(DIGIT       *pFFT,
             if(nSum<nDifference)
             {
                 nCarry2  = 0;
-                nBorrow2 = (nDifference-nSum)>>c_nDigitSize;
+                nBorrow2 = (nDifference-nSum)>>_DIGIT_SIZE_IN_BITS;
             }
             else
             {
-                nCarry2  = (nSum-nDifference)>>c_nDigitSize;
+                nCarry2  = (nSum-nDifference)>>_DIGIT_SIZE_IN_BITS;
                 nBorrow2 = 0;
             }
             // V[j+3m/4] = V_0[j] - w^j*V_1[j] - w^{2j}*V_2[j] + w^{3j}*V_3[j]
@@ -12477,11 +12477,11 @@ void CUnsignedArithmeticHelper::FFT_opt(DIGIT       *pFFT,
             if(nSum<nDifference)
             {
                 nCarry3  = 0;
-                nBorrow3 = (nDifference-nSum)>>c_nDigitSize;
+                nBorrow3 = (nDifference-nSum)>>_DIGIT_SIZE_IN_BITS;
             }
             else
             {
-                nCarry3  = (nSum-nDifference)>>c_nDigitSize;
+                nCarry3  = (nSum-nDifference)>>_DIGIT_SIZE_IN_BITS;
                 nBorrow3 = 0;
             }
         }
@@ -12673,12 +12673,12 @@ void CUnsignedArithmeticHelper::FFT_Inverse_basic(const DIGIT *pToCompute,
         }
         while(1 != (nLength>>m));
     }
-    nTwoNMinusM.m_nBitShift   = m%c_nDigitSize;
-    nTwoNMinusM.m_nDigitShift = m/c_nDigitSize;
+    nTwoNMinusM.m_nBitShift   = m%_DIGIT_SIZE_IN_BITS;
+    nTwoNMinusM.m_nDigitShift = m/_DIGIT_SIZE_IN_BITS;
     nTwoNMinusM.m_nDigitShift = (nFieldSize-nTwoNMinusM.m_nDigitShift)+nFieldSize;
     if(0 != nTwoNMinusM.m_nBitShift)
     {
-        nTwoNMinusM.m_nBitShift = c_nDigitSize-nTwoNMinusM.m_nBitShift;
+        nTwoNMinusM.m_nBitShift = _DIGIT_SIZE_IN_BITS-nTwoNMinusM.m_nBitShift;
         nTwoNMinusM.m_nDigitShift--;
     }
     for(size_t i=0;i<nLength;i++)
@@ -12711,12 +12711,12 @@ void CUnsignedArithmeticHelper::FFT_Inverse(const DIGIT *pFFT,
         }
         while(1 != (nLength>>m));
     }
-    nTwoNMinusM.m_nBitShift   = m%c_nDigitSize;
-    nTwoNMinusM.m_nDigitShift = m/c_nDigitSize;
+    nTwoNMinusM.m_nBitShift   = m%_DIGIT_SIZE_IN_BITS;
+    nTwoNMinusM.m_nDigitShift = m/_DIGIT_SIZE_IN_BITS;
     nTwoNMinusM.m_nDigitShift = (nFieldSize-nTwoNMinusM.m_nDigitShift)+nFieldSize;
     if(0 != nTwoNMinusM.m_nBitShift)
     {
-        nTwoNMinusM.m_nBitShift = c_nDigitSize-nTwoNMinusM.m_nBitShift;
+        nTwoNMinusM.m_nBitShift = _DIGIT_SIZE_IN_BITS-nTwoNMinusM.m_nBitShift;
         nTwoNMinusM.m_nDigitShift--;
     }
     for(size_t i=0;i<nLength;i++)
@@ -12770,7 +12770,7 @@ void CUnsignedArithmeticHelper::GetFFTSize(size_t nXSize, size_t nYSize, size_t 
     // the FFT/FFT_inverse involve adding n numbers, where 2^n is the length of the FFT.  The maximum number of DIGITs of the carry-out
     // is (n + <size of a DIGIT in bits> - 1)/<size of DIGIT in bits)
     byMaxOverflowSize = 1;
-    while (((size_t) 1)<<(c_nDigitSize*byMaxOverflowSize) < nFFTLength) byMaxOverflowSize++;
+    while (((size_t) 1)<<(_DIGIT_SIZE_IN_BITS*byMaxOverflowSize) < nFFTLength) byMaxOverflowSize++;
 }
 
 void CUnsignedArithmeticHelper::Convolve(DIGIT       *pnFFT_a,
@@ -12962,13 +12962,13 @@ void CUnsignedArithmeticHelper::GetProductFromInverseFFT(const DIGIT *pnFFT_Inve
         for(j=0;j<byMaxOverflowSize;j++)
         {
             nSum        = ((nCarry+pnFFT_Inverse[nChunkSize+j])+pnFFT_Inverse[nFieldSize+1+j])+pnOverflowDigits[j];
-            nCarry      = (nSum>>c_nDigitSize);
+            nCarry      = (nSum>>_DIGIT_SIZE_IN_BITS);
             pnZValue[j] = (DIGIT) nSum;
         }
         for(;j<nChunkSize;j++)
         {
             nSum        = (nCarry+pnFFT_Inverse[nChunkSize+j])+pnFFT_Inverse[nFieldSize+1+j];
-            nCarry      = (nSum>>c_nDigitSize);
+            nCarry      = (nSum>>_DIGIT_SIZE_IN_BITS);
             pnZValue[j] = (DIGIT) nSum;
         }
         for(;j<nChunkSize+byMaxOverflowSize;j++)
@@ -12985,7 +12985,7 @@ void CUnsignedArithmeticHelper::GetProductFromInverseFFT(const DIGIT *pnFFT_Inve
         do
         {
             nSum          = ((nCarry+pnFFT_Inverse[nChunkSize+j])+pnFFT_Inverse[nFieldSize+1+j])+pnOverflowDigits[j];
-            nCarry        = (nSum>>c_nDigitSize);
+            nCarry        = (nSum>>_DIGIT_SIZE_IN_BITS);
             pnZValue[j++] = (DIGIT) nSum;
         }
         while(j<byMaxOverflowSize && pnZValue+j<pnProductTop);
@@ -12996,7 +12996,7 @@ void CUnsignedArithmeticHelper::GetProductFromInverseFFT(const DIGIT *pnFFT_Inve
                 do
                 {
                     nSum          = (nCarry+pnFFT_Inverse[nChunkSize+j])+pnFFT_Inverse[nFieldSize+1+j];
-                    nCarry        = (nSum>>c_nDigitSize);
+                    nCarry        = (nSum>>_DIGIT_SIZE_IN_BITS);
                     pnZValue[j++] = (DIGIT) nSum;
                 }
                 while(j<nChunkSize && pnZValue+j<pnProductTop);
@@ -13065,7 +13065,7 @@ void CUnsignedArithmeticHelper::GetLeadBit(size_t       nValSize,
                                            size_t       &nLeadDigit,
                                            size_t       &nLeadBit)
 {
-    nLeadBit   = ((size_t) 1)<<c_nDigitSize;
+    nLeadBit   = ((size_t) 1)<<_DIGIT_SIZE_IN_BITS;
     nLeadDigit = nValSize-1;
     // find the most-significant bit of Y
     do
@@ -13153,7 +13153,7 @@ void CUnsignedArithmeticHelper::PowerModulus(size_t      nXSize,
                     break;
                 }
                 nPowerDigit--;
-                nPowerBit = ((size_t) 1)<<(c_nDigitSize-1);
+                nPowerBit = ((size_t) 1)<<(_DIGIT_SIZE_IN_BITS-1);
             }
             // square
             if (0 == nPowerModulusSize)
@@ -13471,19 +13471,19 @@ void CUnsignedArithmeticHelper::REDC(size_t       nNSize,
         for(i=nNSize; i<min(nSTSize, nMultSize); i++)
         {
             nSum                = (nCarry + pTValue[i]) + pWorkspace[i];
-            nCarry              = nSum>>c_nDigitSize;
+            nCarry              = nSum>>_DIGIT_SIZE_IN_BITS;
             pSValue[i - nNSize] = (DIGIT) nSum;
         }
         for(; i<nMultSize; i++)
         {
             nSum                = nCarry + pWorkspace[i];
-            nCarry              = nSum>>c_nDigitSize;
+            nCarry              = nSum>>_DIGIT_SIZE_IN_BITS;
             pSValue[i - nNSize] = (DIGIT) nSum;
         }
         for(; i<nSTSize; i++)
         {
             nSum                = nCarry + pTValue[i];
-            nCarry              = nSum>>c_nDigitSize;
+            nCarry              = nSum>>_DIGIT_SIZE_IN_BITS;
             pSValue[i - nNSize] = (DIGIT) nSum;
         }
         nSTSize = i - nNSize;
@@ -13737,7 +13737,7 @@ void CUnsignedArithmeticHelper::MontgomeryPowerModulus(size_t      nXSize,
                     break;
                 }
                 nPowerDigit--;
-                nPowerBit = ((size_t) 1)<<(c_nDigitSize-1);
+                nPowerBit = ((size_t) 1)<<(_DIGIT_SIZE_IN_BITS-1);
             }
             if (0 == nPowerModulusSize)
             {
@@ -13899,7 +13899,7 @@ void CUnsignedArithmeticHelper::SquareRootRecursive(size_t  nXSize,
         {
             nCarry      += (((DOUBLEDIGIT) pnYPrime[i])<<1);
             pnYPrime[i] =  nCarry;
-            nCarry      =  nCarry>>c_nDigitSize;
+            nCarry      =  nCarry>>_DIGIT_SIZE_IN_BITS;
         }
         pnYPrime[i] =  nCarry;
         nX1Size     =  nYPrimeSize + (nOffset>>1) + nCarry; // note: nCarry is at most 1
@@ -13927,13 +13927,13 @@ void CUnsignedArithmeticHelper::SquareRootRecursive(size_t  nXSize,
         if(nY1Size<=(nOffset>>1))
         {
             i      = nYPrimeSize;
-            nCarry = (pnYPrime[i]<<(c_nDigitSize-1)); // note: pnYPrime[i] can only be 0 or 1
+            nCarry = (pnYPrime[i]<<(_DIGIT_SIZE_IN_BITS-1)); // note: pnYPrime[i] can only be 0 or 1
             do
             {
                 nVal      = pnYPrime[--i];
                 nCarry    = nCarry | (nVal>>1);
                 pnRoot[i] = nCarry;
-                nCarry    = (nVal&1)<<(c_nDigitSize-1); // &1 likely redundant -- ret get dropped anyway when cast to DIGIT
+                nCarry    = (nVal&1)<<(_DIGIT_SIZE_IN_BITS-1); // &1 likely redundant -- ret get dropped anyway when cast to DIGIT
             }
             while(i);
         }
@@ -13942,15 +13942,15 @@ void CUnsignedArithmeticHelper::SquareRootRecursive(size_t  nXSize,
             // some overlap between the two pieces
             for(i=0; i<nY1Size-(nOffset>>1); i++)
             {
-                nCarry    = (((DOUBLEDIGIT) pnRoot[i]) + (pnYPrime[i]>>1)) + (pnYPrime[i+1]<<(c_nDigitSize-1));
+                nCarry    = (((DOUBLEDIGIT) pnRoot[i]) + (pnYPrime[i]>>1)) + (pnYPrime[i+1]<<(_DIGIT_SIZE_IN_BITS-1));
                 pnRoot[i] = nCarry;
-                nCarry    = (nCarry>>c_nDigitSize);
+                nCarry    = (nCarry>>_DIGIT_SIZE_IN_BITS);
             }
             for(; i<nYPrimeSize; i++)
             {
-                nCarry    = ((DOUBLEDIGIT) + (pnYPrime[i]>>1)) + (pnYPrime[i+1]<<(c_nDigitSize-1));
+                nCarry    = ((DOUBLEDIGIT) + (pnYPrime[i]>>1)) + (pnYPrime[i+1]<<(_DIGIT_SIZE_IN_BITS-1));
                 pnRoot[i] = nCarry;
-                nCarry    = (nCarry>>c_nDigitSize);
+                nCarry    = (nCarry>>_DIGIT_SIZE_IN_BITS);
             }
         }
 #if(_CollectDetailedTimingData)
@@ -13966,7 +13966,7 @@ size_t BitSize(size_t nXSize, DIGIT *pnX)
 {
     if (0 == nXSize) return 0;
     DIGIT       nFirstDigit = pnX[nXSize - 1];
-    DOUBLEDIGIT nMask       = ((DOUBLEDIGIT) 1)<<(c_nDigitSize - 1);
+    DOUBLEDIGIT nMask       = ((DOUBLEDIGIT) 1)<<(_DIGIT_SIZE_IN_BITS - 1);
     size_t      nBits       = nXSize*sizeof(DIGIT)<<3; // BITs in nX
     // Construct smallest X(0)^2 such that nX <= X(0)^2 and X(0) is a power of two
     // From first nonzero bit of nX, that gives us the first nonzero bit of X(0)^2
@@ -14105,7 +14105,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                 {
                     nCarry1  = nCarry1 + pnX1[nHalfOffset + i];
                     pnX1a[i] = nCarry1;
-                    nCarry1  = (nCarry1>>c_nDigitSize);
+                    nCarry1  = (nCarry1>>_DIGIT_SIZE_IN_BITS);
                 }
                 pnX1a[i] = nCarry1;
                 nX1aSize = i + nCarry1;
@@ -14196,8 +14196,8 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         nCarry2      = nCarry2 + nVal2;
                         pnX1[i]      = nCarry1;
                         pnX1PlusY[i] = nCarry2;
-                        nCarry1      = (nCarry1>>c_nDigitSize);
-                        nCarry2      = (nCarry2>>c_nDigitSize);
+                        nCarry1      = (nCarry1>>_DIGIT_SIZE_IN_BITS);
+                        nCarry2      = (nCarry2>>_DIGIT_SIZE_IN_BITS);
                     }
                     for(; i<nX1Size; i++)
                     {
@@ -14206,8 +14206,8 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         nCarry2      = nCarry2 + nVal2;
                         pnX1[i]      = nCarry1;
                         pnX1PlusY[i] = nCarry2;
-                        nCarry1      = (nCarry1>>c_nDigitSize);
-                        nCarry2      = (nCarry2>>c_nDigitSize);
+                        nCarry1      = (nCarry1>>_DIGIT_SIZE_IN_BITS);
+                        nCarry2      = (nCarry2>>_DIGIT_SIZE_IN_BITS);
                     }
                     pnX1[i]      = nCarry1;
                     pnX1PlusY[i] = nCarry2;
@@ -14222,8 +14222,8 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         nCarry2      = nCarry2 + nVal2;
                         pnX1[i]      = nCarry1;
                         pnX1PlusY[i] = nCarry2;
-                        nCarry1      = (nCarry1>>c_nDigitSize);
-                        nCarry2      = (nCarry2>>c_nDigitSize);
+                        nCarry1      = (nCarry1>>_DIGIT_SIZE_IN_BITS);
+                        nCarry2      = (nCarry2>>_DIGIT_SIZE_IN_BITS);
                     }
                     for(; i<nYaSize; i++)
                     {
@@ -14232,8 +14232,8 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         nCarry2      = nCarry2 + nVal1;
                         pnX1[i]      = nCarry1;
                         pnX1PlusY[i] = nCarry2;
-                        nCarry1      = (nCarry1>>c_nDigitSize);
-                        nCarry2      = (nCarry2>>c_nDigitSize);
+                        nCarry1      = (nCarry1>>_DIGIT_SIZE_IN_BITS);
+                        nCarry2      = (nCarry2>>_DIGIT_SIZE_IN_BITS);
                     }
                     pnX1[i]      = nCarry1;
                     pnX1PlusY[i] = nCarry2;
@@ -14303,13 +14303,13 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         {
                             nCarry1   = (nCarry1 + pnRoot[i]) + pnYb[i];
                             pnRoot[i] = nCarry1;
-                            nCarry1   = (nCarry1>>c_nDigitSize);
+                            nCarry1   = (nCarry1>>_DIGIT_SIZE_IN_BITS);
                         }
                         for(; i<nYbSize; i++)
                         {
                             nCarry1   = nCarry1 + pnYb[i];
                             pnRoot[i] = nCarry1;
-                            nCarry1   = (nCarry1>>c_nDigitSize);
+                            nCarry1   = (nCarry1>>_DIGIT_SIZE_IN_BITS);
                         }
                         pnRoot[i] = nCarry1;
                         nRootSize = i + nCarry1;
@@ -14320,13 +14320,13 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         {
                             nCarry1   = (nCarry1 + pnRoot[i]) + pnYb[i];
                             pnRoot[i] = nCarry1;
-                            nCarry1   = (nCarry1>>c_nDigitSize);
+                            nCarry1   = (nCarry1>>_DIGIT_SIZE_IN_BITS);
                         }
                         while(nCarry1)
                         {
                             nCarry1     = nCarry1 + pnRoot[i];
                             pnRoot[i++] = nCarry1;
-                            nCarry1     = (nCarry1>>c_nDigitSize);
+                            nCarry1     = (nCarry1>>_DIGIT_SIZE_IN_BITS);
                         }
                         nRootSize = nYaSize + nHalfOffset;
                         if(0 != pnRoot[nRootSize]) nRootSize++;
@@ -14400,7 +14400,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         {
                             nCarry1   += pnX1[i];
                             pnX1[i++] =  nCarry1;
-                            nCarry1   =  nCarry1>>c_nDigitSize;
+                            nCarry1   =  nCarry1>>_DIGIT_SIZE_IN_BITS;
                         }
                         while(nCarry1);
                         if(nX1Size<i) nX1Size = i;
@@ -14419,7 +14419,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                             {
                                 nCarry1   += pnX1[i];
                                 pnX1[i++] =  nCarry1;
-                                nCarry1   =  nCarry1>>c_nDigitSize;
+                                nCarry1   =  nCarry1>>_DIGIT_SIZE_IN_BITS;
                             }
                             while(nCarry1);
                             if(nX1Size<i) nX1Size = i;
@@ -14432,7 +14432,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                             {
                                 nCarry1     += pnRoot[i];
                                 pnRoot[i++] =  nCarry1;
-                                nCarry1     =  nCarry1>>c_nDigitSize;
+                                nCarry1     =  nCarry1>>_DIGIT_SIZE_IN_BITS;
                             }
                             while(nCarry1);
                             if(nRootSize<i) nRootSize = i;
@@ -14461,7 +14461,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         {
                             nCarry1     += pnRoot[i];
                             pnRoot[i++] =  nCarry1;
-                            nCarry1     =  nCarry1>>c_nDigitSize;
+                            nCarry1     =  nCarry1>>_DIGIT_SIZE_IN_BITS;
                         }
                         while(nCarry1);
                         if(nRootSize<i) nRootSize = i;
@@ -14475,8 +14475,8 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                 }
                 else
                 {
-                    nDigitShift   = (nBitDiff+2)/c_nDigitSize;
-                    nBitShift     = (nBitDiff+2)%c_nDigitSize;
+                    nDigitShift   = (nBitDiff+2)/_DIGIT_SIZE_IN_BITS;
+                    nBitShift     = (nBitDiff+2)%_DIGIT_SIZE_IN_BITS;
                     pnX1[nX1Size] = 0; // overflow guard
                     if(0==nBitShift)
                     {
@@ -14488,7 +14488,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         {
                             nCarry1   += pnX1[i];
                             pnX1[i++] =  nCarry1;
-                            nCarry1   =  (nCarry1>>c_nDigitSize);
+                            nCarry1   =  (nCarry1>>_DIGIT_SIZE_IN_BITS);
                         }
                         while(nCarry1);
                         nX1aSize = nX1Size;
@@ -14526,8 +14526,8 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                             nCarry2  += nVal2;         // x1 mod <nDigitShift> + Ya
                             pnX1[i]  =  nCarry1;
                             pnTop[i] =  nCarry2;
-                            nCarry1  =  nCarry1>>c_nDigitSize;
-                            nCarry2  =  nCarry2>>c_nDigitSize;
+                            nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
+                            nCarry2  =  nCarry2>>_DIGIT_SIZE_IN_BITS;
                         }
                         pnTop[i] = nCarry2;
                         nTopSize = nDigitShift + nCarry2; // note Carry2 is 0 or 1 ONLY
@@ -14539,7 +14539,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                             {
                                 nCarry1   += pnX1[i];   // x1 + 2Ya
                                 pnX1[i++] =  nCarry1;
-                                nCarry1   =  nCarry1>>c_nDigitSize;
+                                nCarry1   =  nCarry1>>_DIGIT_SIZE_IN_BITS;
                             }
                             while(nCarry1);
                             if(nX1Size<i) nX1Size = i;
@@ -14553,14 +14553,14 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                                 nVal1               =  pnYa[i];
                                 nCarry3             += pnX2[nDigitShift+i] + (nVal1<<1); // (YY + 2Ya)<<BitDiff
                                 pnX2[nDigitShift+i] =  nCarry3;
-                                nCarry3             =  nCarry3>>c_nDigitSize;
+                                nCarry3             =  nCarry3>>_DIGIT_SIZE_IN_BITS;
                             }
                             for(; i<nYaSize; i++)
                             {
                                 nVal1               =  pnYa[i];
                                 nCarry3             += (nVal1<<1); // (YY + 2Ya)<<BitDiff
                                 pnX2[nDigitShift+i] =  nCarry3;
-                                nCarry3             =  nCarry3>>c_nDigitSize;
+                                nCarry3             =  nCarry3>>_DIGIT_SIZE_IN_BITS;
                             }
                             if(nCarry3) pnX2[nDigitShift+i] = nCarry3;
                             nX2Size = nYaSize + nDigitShift + (0<nCarry3);
@@ -14572,7 +14572,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                                 nVal1               =  pnYa[i];
                                 nCarry3             += pnX2[nDigitShift+i] + (nVal1<<1); // (YY + 2Ya)<<BitDiff
                                 pnX2[nDigitShift+i] =  nCarry3;
-                                nCarry3             =  nCarry3>>c_nDigitSize;
+                                nCarry3             =  nCarry3>>_DIGIT_SIZE_IN_BITS;
                             }
                             if(nCarry3)
                             {
@@ -14581,7 +14581,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                                 {
                                     nCarry3   += pnX2[i];
                                     pnX2[i++] =  nCarry3;
-                                    nCarry3   =  nCarry3>>c_nDigitSize;
+                                    nCarry3   =  nCarry3>>_DIGIT_SIZE_IN_BITS;
                                 }
                                 while(nCarry3);
                                 if(nX2Size<i) nX2Size++;
@@ -14619,7 +14619,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         {
                             nCarry1       += pnBottom[i];
                             pnBottom[i++] =  nCarry1;
-                            nCarry1       =  (nCarry1>>c_nDigitSize);
+                            nCarry1       =  (nCarry1>>_DIGIT_SIZE_IN_BITS);
                         }
                         while(nCarry1);
                         if(nBottomSize<i) nBottomSize = i;
@@ -14647,16 +14647,16 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                             {
                                 nCarry1     += ((DOUBLEDIGIT) pnYa[i]) + pnX1[i];
                                 pnBottom[i] =  nCarry1;
-                                nCarry1     =  (nCarry1>>c_nDigitSize);
+                                nCarry1     =  (nCarry1>>_DIGIT_SIZE_IN_BITS);
                             }
                             nCarry1       = (nCarry1 + nPartialDigitX1) + pnYa[i];
                             pnBottom[i++] = nCarry1;
-                            nCarry1       = (nCarry1>>c_nDigitSize);
+                            nCarry1       = (nCarry1>>_DIGIT_SIZE_IN_BITS);
                             for(; i<nYaSize; i++)
                             {
                                 nCarry1     += pnYa[i];
                                 pnBottom[i] =  nCarry1;
-                                nCarry1     =  (nCarry1>>c_nDigitSize);
+                                nCarry1     =  (nCarry1>>_DIGIT_SIZE_IN_BITS);
                             }
                             pnBottom[i] = nCarry1;
                             nBottomSize = i + nCarry1; // note nCarry1 is at most 1
@@ -14667,13 +14667,13 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                             {
                                 nCarry1     += ((DOUBLEDIGIT) pnYa[i]) + pnX1[i];
                                 pnBottom[i] =  nCarry1;
-                                nCarry1     =  (nCarry1>>c_nDigitSize);
+                                nCarry1     =  (nCarry1>>_DIGIT_SIZE_IN_BITS);
                             }
                             for(; i<nDigitShift-1; i++)
                             {
                                 nCarry1     += pnX1[i];
                                 pnBottom[i] =  nCarry1;
-                                nCarry1     =  (nCarry1>>c_nDigitSize);
+                                nCarry1     =  (nCarry1>>_DIGIT_SIZE_IN_BITS);
                             }
                             nCarry1     += nPartialDigitX1;
                             pnBottom[i] =  nCarry1;
@@ -14693,8 +14693,8 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                                 nCarry2  += nVal1 + pnX1[i];
                                 pnX2a[i] =  nCarry1;
                                 pnX1[i]  =  nCarry2;
-                                nCarry1  =  nCarry1>>c_nDigitSize;
-                                nCarry2  =  nCarry2>>c_nDigitSize;
+                                nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
+                                nCarry2  =  nCarry2>>_DIGIT_SIZE_IN_BITS;
                             }
                             for(; i<nYaSize; i++)
                             {
@@ -14703,8 +14703,8 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                                 nCarry2  += nVal1 + pnX1[i];
                                 pnX2a[i] =  nCarry1;
                                 pnX1[i]  =  nCarry2;
-                                nCarry1  =  nCarry1>>c_nDigitSize;
-                                nCarry2  =  nCarry2>>c_nDigitSize;
+                                nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
+                                nCarry2  =  nCarry2>>_DIGIT_SIZE_IN_BITS;
                             }
                         }
                         else
@@ -14716,14 +14716,14 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                                 nCarry2  += nVal1 + pnX1[i];
                                 pnX2a[i] =  nCarry1;
                                 pnX1[i]  =  nCarry2;
-                                nCarry1  =  nCarry1>>c_nDigitSize;
-                                nCarry2  =  nCarry2>>c_nDigitSize;
+                                nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
+                                nCarry2  =  nCarry2>>_DIGIT_SIZE_IN_BITS;
                             }
                             for(; i<nX2aSize; i++)
                             {
                                 nCarry1  += pnX2a[i];
                                 pnX2a[i] =  nCarry1;
-                                nCarry1  =  nCarry1>>c_nDigitSize;
+                                nCarry1  =  nCarry1>>_DIGIT_SIZE_IN_BITS;
                             }
                         }
                         pnX2a[i] = nCarry1;
@@ -14735,7 +14735,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                             {
                                 nCarry2   += pnX1[i];
                                 pnX1[i++] =  nCarry2;
-                                nCarry2   =  (nCarry2>>c_nDigitSize);
+                                nCarry2   =  (nCarry2>>_DIGIT_SIZE_IN_BITS);
                             }
                             while(nCarry2);
                             if (nX1Size<i) nX1Size = i;
@@ -14778,13 +14778,13 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                         {
                             nCarry1   = (nCarry1 + pnYa[i]) + pnRoot[i];
                             pnRoot[i] = nCarry1;
-                            nCarry1   = nCarry1>>c_nDigitSize;
+                            nCarry1   = nCarry1>>_DIGIT_SIZE_IN_BITS;
                         }
                         while(nCarry1)
                         {
                             nCarry1     += pnRoot[i];
                             pnRoot[i++] =  nCarry1;
-                            nCarry1     =  nCarry1>>c_nDigitSize;
+                            nCarry1     =  nCarry1>>_DIGIT_SIZE_IN_BITS;
                         }
                         if(nRootSize<i) nRootSize = i;
                     }
@@ -14873,7 +14873,7 @@ void CUnsignedArithmeticHelper::SquareRootNewton(size_t  nXSize,
         nBitShift     = ((nBitShift + 1)>>1); // y = 1<<nBitShift
         nDigitShift   = nBitShift/(sizeof(DIGIT)<<3);
         nBitShift     = nBitShift%(sizeof(DIGIT)<<3);
-        nInverseShift = c_nDigitSize - nBitShift;
+        nInverseShift = _DIGIT_SIZE_IN_BITS - nBitShift;
         nMask         = (DIGIT) (c_nClearHigh<<nInverseShift);
         // pYPrev <- (y + x/y)/2
         // note nDigitShift <= nXSize/2 < nXSize for nXSize != 1
@@ -14893,7 +14893,7 @@ void CUnsignedArithmeticHelper::SquareRootNewton(size_t  nXSize,
             for (i=1; i<nDigitShift; i++)
             {
                 nCarry      =  ((pnX[nDigitShift+i]>>nBitShift) | ((pnX[nDigitShift+i+1]<<nInverseShift)&nMask));
-                pYPrev[i-1] |= (nCarry&1)<<(c_nDigitSize-1);
+                pYPrev[i-1] |= (nCarry&1)<<(_DIGIT_SIZE_IN_BITS-1);
                 pYPrev[i]   =  ((nCarry&c_nClearHigh)>>1);
             }
             if(nDigitShift + i<nXSize)
@@ -14906,13 +14906,13 @@ void CUnsignedArithmeticHelper::SquareRootNewton(size_t  nXSize,
                 nCarry = 0;
             }
             nCarry      += (((DOUBLEDIGIT) 1)<<nBitShift);
-            pYPrev[i-1] |= (nCarry&1)<<(c_nDigitSize-1);
+            pYPrev[i-1] |= (nCarry&1)<<(_DIGIT_SIZE_IN_BITS-1);
             nCarry      =  ((nCarry&c_nClearHigh)>>1);
             pYPrev[i]   =  nCarry;
             nRootSize   =  (nCarry) ? i+1 : i;
         }
         // Newton proper
-        nInverseShift = c_nDigitSize - 1;
+        nInverseShift = _DIGIT_SIZE_IN_BITS - 1;
         do
         {
             // pYCurr = x -- make a copy: divide is destructive
@@ -14931,20 +14931,20 @@ void CUnsignedArithmeticHelper::SquareRootNewton(size_t  nXSize,
             // can speed this up a trifle by doing 2 digits at a time, thus saving a load/store for each digit -- todo xxx
             nCarry    = ((DOUBLEDIGIT) pYPrev[0]) + pNum1[0];
             pYCurr[0] = ((nCarry&c_nClearHigh)>>1);
-            nCarry    = nCarry>>c_nDigitSize;
+            nCarry    = nCarry>>_DIGIT_SIZE_IN_BITS;
             for(i=1; i<nDivSize; i++)
             {
                 nCarry      = (nCarry + pYPrev[i]) + pNum1[i];
                 pYCurr[i]   = ((nCarry&c_nClearHigh)>>1);
                 pYCurr[i-1] = pYCurr[i-1] | ((nCarry&1)<<nInverseShift);
-                nCarry      = nCarry>>c_nDigitSize;
+                nCarry      = nCarry>>_DIGIT_SIZE_IN_BITS;
             }
             for(; i<nRootSize; i++)
             {
                 nCarry      = nCarry + pYPrev[i];
                 pYCurr[i]   = ((nCarry&c_nClearHigh)>>1);;
                 pYCurr[i-1] = pYCurr[i-1] | ((nCarry&1)<<nInverseShift);
-                nCarry      = nCarry>>c_nDigitSize;
+                nCarry      = nCarry>>_DIGIT_SIZE_IN_BITS;
             }
             pYCurr[i-1] |= ((nCarry&1)<<nInverseShift);
             nDivSize    =  nRootSize; // size of previous guess
@@ -15011,9 +15011,9 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
     nTopSize    = BitSize(nX2Size, pnX2);
     nBottomSize = BitSize(nX1Size, pnX1);
     nBitShift   = min((nTopSize+1)>>1, nTopSize-nBottomSize+1);
-    nDigitShift = nBitShift/c_nDigitSize;
-    nBitShift   = 1 + (nBitShift%c_nDigitSize); // +1: note we actually use 2y, not y, in Newton
-    if(c_nDigitSize==nBitShift)
+    nDigitShift = nBitShift/_DIGIT_SIZE_IN_BITS;
+    nBitShift   = 1 + (nBitShift%_DIGIT_SIZE_IN_BITS); // +1: note we actually use 2y, not y, in Newton
+    if(_DIGIT_SIZE_IN_BITS==nBitShift)
     {
         nDigitShift++;
         nBitShift = 0;
@@ -15027,12 +15027,12 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
         }
         nCarry      = pnX1[i] + (((DOUBLEDIGIT) 1)<<nBitShift);
         pYCurr[i++] = nCarry;
-        nCarry      = nCarry>>c_nDigitSize;
+        nCarry      = nCarry>>_DIGIT_SIZE_IN_BITS;
         for(; i<nX1Size; i++)
         {
             nCarry    += pnX1[i];
             pYCurr[i] =  nCarry;
-            nCarry    =  nCarry>>c_nDigitSize;
+            nCarry    =  nCarry>>_DIGIT_SIZE_IN_BITS;
         }
         pYCurr[i]   = nCarry;
         nBottomSize = (0==nCarry) ? i : i+1;
@@ -15086,13 +15086,13 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
             {
                 nCarry   = (nCarry + pnX2[i]) + pNum3[i];
                 pNum1[i] = nCarry;
-                nCarry   = (nCarry>>c_nDigitSize);
+                nCarry   = (nCarry>>_DIGIT_SIZE_IN_BITS);
             }
             for(; i<nBottomSize; i++)
             {
                 nCarry   = nCarry + pNum3[i];
                 pNum1[i] = nCarry;
-                nCarry   = (nCarry>>c_nDigitSize);
+                nCarry   = (nCarry>>_DIGIT_SIZE_IN_BITS);
             }
         }
         else
@@ -15101,13 +15101,13 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
             {
                 nCarry   = (nCarry + pnX2[i]) + pNum3[i];
                 pNum1[i] = nCarry;
-                nCarry   = (nCarry>>c_nDigitSize);
+                nCarry   = (nCarry>>_DIGIT_SIZE_IN_BITS);
             }
             for(; i<nX2Size; i++)
             {
                 nCarry   = nCarry + pnX2[i];
                 pNum1[i] = nCarry;
-                nCarry   = (nCarry>>c_nDigitSize);
+                nCarry   = (nCarry>>_DIGIT_SIZE_IN_BITS);
             }
         }
         pNum1[i] = nCarry;
@@ -15120,13 +15120,13 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
             {
                 nCarry   += (((DOUBLEDIGIT) pYPrev[i])<<1) + pnX1[i];
                 pNum2[i] =  nCarry;
-                nCarry   =  nCarry>>c_nDigitSize;
+                nCarry   =  nCarry>>_DIGIT_SIZE_IN_BITS;
             }
             for(; i<nX1Size; i++)
             {
                 nCarry   += pnX1[i];
                 pNum2[i] =  nCarry;
-                nCarry   =  nCarry>>c_nDigitSize;
+                nCarry   =  nCarry>>_DIGIT_SIZE_IN_BITS;
             }
         }
         else
@@ -15135,13 +15135,13 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
             {
                 nCarry   += (((DOUBLEDIGIT) pYPrev[i])<<1) + pnX1[i];
                 pNum2[i] =  nCarry;
-                nCarry   =  nCarry>>c_nDigitSize;
+                nCarry   =  nCarry>>_DIGIT_SIZE_IN_BITS;
             }
             for(; i<nRootSize; i++)
             {
                 nCarry   += (((DOUBLEDIGIT) pYPrev[i])<<1);
                 pNum2[i] =  nCarry;
-                nCarry   =  nCarry>>c_nDigitSize;
+                nCarry   =  nCarry>>_DIGIT_SIZE_IN_BITS;
             }
         }
         pNum2[i]    = nCarry;

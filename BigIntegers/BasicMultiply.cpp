@@ -49,7 +49,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
                 nProd   = nX0*pY[j];
                 nSum    = (nProd&c_nClearHigh)+pZ[i+j]+nCarry;
                 pZ[i+j] = (DIGIT) nSum;
-                nCarry  = (nProd>>c_nDigitSize)+(nSum>>c_nDigitSize);
+                nCarry  = (nProd>>_DIGIT_SIZE_IN_BITS)+(nSum>>_DIGIT_SIZE_IN_BITS);
             }
             pZ[i+j] = (DIGIT) nCarry;
         }
@@ -66,11 +66,11 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
                 nProd   = nX0*pY[j];
                 nSum    = (nProd&c_nClearHigh)+pZ[i+j]+nCarry;
                 pZ[i+j] = (DIGIT) nSum;
-                nCarry  = (nProd>>c_nDigitSize)+(nSum>>c_nDigitSize);
+                nCarry  = (nProd>>_DIGIT_SIZE_IN_BITS)+(nSum>>_DIGIT_SIZE_IN_BITS);
             }
             nSum      = nCarry+nCarryOut+pZ[i+j];
             pZ[i+j]   = (DIGIT) nSum;
-            nCarryOut = nSum>>c_nDigitSize;
+            nCarryOut = nSum>>_DIGIT_SIZE_IN_BITS;
         }
         if(0 != nCarryOut)
         {
@@ -78,7 +78,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             do
             {
                 nSum      = nCarryOut + pZ[j];
-                nCarryOut = (nSum>>c_nDigitSize);
+                nCarryOut = (nSum>>_DIGIT_SIZE_IN_BITS);
                 pZ[j++]   = (DIGIT) nSum;
             }
             while(0 != nCarryOut);
@@ -152,7 +152,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             nY0    = pY[i];
             nProd  = nX0*((DOUBLEDIGIT) nY0);
             nSum   = (nProd&c_nClearHigh) + nCarry;
-            nCarry = (nSum>>c_nDigitSize) + (nProd>>c_nDigitSize);
+            nCarry = (nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS);
             pZ[i]  = (DIGIT) nSum;
         }
         pZ[i] = (DIGIT) nCarry;
@@ -164,7 +164,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             nY0    = pY[i];
             nProd  = nX0*((DOUBLEDIGIT) nY0);
             nSum   = (nProd&c_nClearHigh) + nCarry + pZ[i];
-            nCarry = (nSum>>c_nDigitSize) + (nProd>>c_nDigitSize);
+            nCarry = (nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS);
             pZ[i]  = (DIGIT) nSum;
         }
         if(0 != nCarry)
@@ -172,7 +172,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             do
             {
                 nSum    = pZ[i]+nCarry;
-                nCarry  = (nSum>>c_nDigitSize);
+                nCarry  = (nSum>>_DIGIT_SIZE_IN_BITS);
                 pZ[i++] = (DIGIT) nSum;
             }
             while(0 != nCarry);
@@ -190,7 +190,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             nY0    = pY[i];
             nProd  = nX0*((DOUBLEDIGIT) nY0);
             nSum   = (nProd&c_nClearHigh) + nCarry  + pZ[i];
-            nCarry = (nSum>>c_nDigitSize) + (nProd>>c_nDigitSize);
+            nCarry = (nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS);
             pZ[i]  = (DIGIT) nSum;
         }
         if(nCarry)
@@ -199,7 +199,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             {
                 nCarry  += pZ[i];
                 pZ[i++] =  (DIGIT) nCarry;
-                nCarry  =  nCarry>>c_nDigitSize;
+                nCarry  =  nCarry>>_DIGIT_SIZE_IN_BITS;
             }
             while(nCarry);
         }
@@ -224,7 +224,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             nX0    = pX[i];
             nProd  = nX0*((DOUBLEDIGIT) nY0);
             nSum   = (nProd&c_nClearHigh) + nCarry + pZ[i];
-            nCarry = (nSum>>c_nDigitSize) + (nProd>>c_nDigitSize);
+            nCarry = (nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS);
             pZ[i]  = (DIGIT) nSum;
         }
         if(nCarry)
@@ -233,7 +233,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             {
                 nCarry  += pZ[i];
                 pZ[i++] =  (DIGIT) nCarry;
-                nCarry  =  (nCarry>>c_nDigitSize);
+                nCarry  =  (nCarry>>_DIGIT_SIZE_IN_BITS);
             }
             while(nCarry);
         }
@@ -267,57 +267,57 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
 #endif
         nProd	=  nX0*((DOUBLEDIGIT) nY0);
         nSum	=  (nProd&c_nClearHigh) + pZ[j];
-        nCarry	=  (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	=  (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[j]   =  (DIGIT) nSum;
 #if(_REGISTER_BLOCK_SIZE>2)
         nProd	=  nX0*((DOUBLEDIGIT) nY1);
         nSum	=  (nProd&c_nClearHigh) + pZ[j+1] + nCarry;
-        nCarry	=  (nProd>>c_nDigitSize);
+        nCarry	=  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX1*((DOUBLEDIGIT) nY0);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[j+1] =  (DIGIT) nSum;
 #if(_REGISTER_BLOCK_SIZE>3)
         nProd	=  nX0*((DOUBLEDIGIT) nY2);
         nSum	=  (nProd&c_nClearHigh) + pZ[j+2] + nCarry;
-        nCarry	=  (nProd>>c_nDigitSize);
+        nCarry	=  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX1*((DOUBLEDIGIT) nY1);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX2*((DOUBLEDIGIT) nY0);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[j+2] =  (DIGIT) nSum;
 #if(_REGISTER_BLOCK_SIZE>4)
         nProd	=  nX0*((DOUBLEDIGIT) nY3);
         nSum	=  (nProd&c_nClearHigh) + pZ[j+3] + nCarry;
-        nCarry	=  (nProd>>c_nDigitSize);
+        nCarry	=  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX1*((DOUBLEDIGIT) nY2);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX2*((DOUBLEDIGIT) nY1);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX3*((DOUBLEDIGIT) nY0);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[j+3] =  (DIGIT) nSum;
 #if(_REGISTER_BLOCK_SIZE>5)
         nProd	=  nX0*((DOUBLEDIGIT) nY4);
         nSum	=  (nProd&c_nClearHigh) + pZ[j+4] + nCarry;
-        nCarry	=  (nProd>>c_nDigitSize);
+        nCarry	=  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX1*((DOUBLEDIGIT) nY3);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX2*((DOUBLEDIGIT) nY2);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX3*((DOUBLEDIGIT) nY1);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	=  nX4*((DOUBLEDIGIT) nY0);
         nSum	+= (nProd&c_nClearHigh);
-        nCarry	+= (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[j+4] =  (DIGIT) nSum;
 #endif
 #endif
@@ -327,79 +327,79 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
         {
             nProd   =  nX0*((DOUBLEDIGIT) yTOP);
             nSum    =  (nProd&c_nClearHigh) + pZ[i+j] + nCarry;
-            nCarry  =  (nProd>>c_nDigitSize);
+            nCarry  =  (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd   =  nX1*((DOUBLEDIGIT) yTOP_MINUS_1);
 #if(_REGISTER_BLOCK_SIZE>2)
             nSum    += (nProd&c_nClearHigh);
-            nCarry  += (nProd>>c_nDigitSize);
+            nCarry  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd   =  nX2*((DOUBLEDIGIT) yTOP_MINUS_2);
 #if(_REGISTER_BLOCK_SIZE>3)
             nSum    += (nProd&c_nClearHigh);
-            nCarry  += (nProd>>c_nDigitSize);
+            nCarry  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd   =  nX3*((DOUBLEDIGIT) yTOP_MINUS_3);
 #if(_REGISTER_BLOCK_SIZE>4)
             nSum    += (nProd&c_nClearHigh);
-            nCarry  += (nProd>>c_nDigitSize);
+            nCarry  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd   =  nX4*((DOUBLEDIGIT) yTOP_MINUS_4);
 #if(_REGISTER_BLOCK_SIZE>5)
             nSum    += (nProd&c_nClearHigh);
-            nCarry  += (nProd>>c_nDigitSize);
+            nCarry  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd   =  nX5*((DOUBLEDIGIT) yTOP_MINUS_5);
 #endif
 #endif
 #endif
 #endif
             nSum    += (nProd&c_nClearHigh);
-            nCarry  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+            nCarry  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
             pZ[i+j] =  (DIGIT) nSum;
             nX0		=  pX[i+1];
             nProd	=  nX1*((DOUBLEDIGIT) yTOP);
             nSum	=  (nProd&c_nClearHigh) + pZ[i+j+1] + nCarry;
-            nCarry	=  (nProd>>c_nDigitSize);
+            nCarry	=  (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==2)
             nProd	=  nX0*((DOUBLEDIGIT) yTOP_MINUS_1);
 #else
             nProd	=  nX2*((DOUBLEDIGIT) yTOP_MINUS_1);
             nSum	+= (nProd&c_nClearHigh);
-            nCarry	+= (nProd>>c_nDigitSize);
+            nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==3)
             nProd	=  nX0*((DOUBLEDIGIT) yTOP_MINUS_2);
 #else
             nProd	=  nX3*((DOUBLEDIGIT) yTOP_MINUS_2);
             nSum	+= (nProd&c_nClearHigh);
-            nCarry	+= (nProd>>c_nDigitSize);
+            nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==4)
             nProd	=  nX0*((DOUBLEDIGIT) yTOP_MINUS_3);
 #else
             nProd	=  nX4*((DOUBLEDIGIT) yTOP_MINUS_3);
             nSum	+= (nProd&c_nClearHigh);
-            nCarry	+= (nProd>>c_nDigitSize);
+            nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==5)
             nProd	=  nX0*((DOUBLEDIGIT) yTOP_MINUS_4);
 #else
             nProd	=  nX5*((DOUBLEDIGIT) yTOP_MINUS_4);
             nSum	+= (nProd&c_nClearHigh);
-            nCarry	+= (nProd>>c_nDigitSize);
+            nCarry	+= (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	=  nX0*((DOUBLEDIGIT) yTOP_MINUS_5);
 #endif
 #endif
 #endif
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
             pZ[i+j+1] =  (DIGIT) nSum;
             nX1		  =  pX[i+2];
 #if(_REGISTER_BLOCK_SIZE>2)
             nProd	  =  nX2*((DOUBLEDIGIT) yTOP);
             nSum	  =  (nProd&c_nClearHigh) + pZ[i+j+2] + nCarry;
-            nCarry	  =  (nProd>>c_nDigitSize);
+            nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==3)
             nProd	  =  nX0*((DOUBLEDIGIT) yTOP_MINUS_1);
 #else
             nProd	  =  nX3*((DOUBLEDIGIT) yTOP_MINUS_1);
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==3)
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_2);
 #elif(_REGISTER_BLOCK_SIZE==4)
@@ -409,7 +409,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
 #endif
 #if(_REGISTER_BLOCK_SIZE>3)
             nSum	  += (nProd&c_nClearHigh);
-            nCarry    += (nProd>>c_nDigitSize);
+            nCarry    += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==4)
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_3);
 #elif(_REGISTER_BLOCK_SIZE==5)
@@ -419,32 +419,32 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
 #endif
 #if(_REGISTER_BLOCK_SIZE>4)
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==5)
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_4);
 #else
             nProd	  =  nX0*((DOUBLEDIGIT) yTOP_MINUS_4);
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_5);
 #endif
 #endif
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
             pZ[i+j+2] =  (DIGIT) nSum;
             nX2		  =  pX[i+3];
 #if(_REGISTER_BLOCK_SIZE>3)
             nProd	  =  nX3*((DOUBLEDIGIT) yTOP);
             nSum	  =  (nProd&c_nClearHigh) + pZ[i+j+3] + nCarry;
-            nCarry	  =  (nProd>>c_nDigitSize);
+            nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==4)
             nProd	  =  nX0*((DOUBLEDIGIT) yTOP_MINUS_1);
 #else
             nProd	  =  nX4*((DOUBLEDIGIT) yTOP_MINUS_1);
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==4)
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_2);
 #elif(_REGISTER_BLOCK_SIZE==5)
@@ -453,7 +453,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
             nProd	  =  nX5*((DOUBLEDIGIT) yTOP_MINUS_2);
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==4)
             nProd	  =  nX2*((DOUBLEDIGIT) yTOP_MINUS_3);
 #elif(_REGISTER_BLOCK_SIZE==5)
@@ -463,76 +463,76 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
 #endif
 #if(_REGISTER_BLOCK_SIZE>4)
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==5)
             nProd	  =  nX2*((DOUBLEDIGIT) yTOP_MINUS_4);
 #else
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_4);
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	  =  nX2*((DOUBLEDIGIT) yTOP_MINUS_5);
 #endif
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
             pZ[i+j+3] =  (DIGIT) nSum;
             nX3		  =  pX[i+4];
 #if(_REGISTER_BLOCK_SIZE>4)
             nProd	  =  nX4*((DOUBLEDIGIT) yTOP);
             nSum	  =  (nProd&c_nClearHigh) + pZ[i+j+4] + nCarry;
-            nCarry	  =  (nProd>>c_nDigitSize);
+            nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==5)
             nProd	  =  nX0*((DOUBLEDIGIT) yTOP_MINUS_1);
 #else // == 6
             nProd	  =  nX5*((DOUBLEDIGIT) yTOP_MINUS_1);
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==5)
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_2);
 #else // == 6
             nProd	  =  nX0*((DOUBLEDIGIT) yTOP_MINUS_2);
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==5)
             nProd	  =  nX2*((DOUBLEDIGIT) yTOP_MINUS_3);
 #else
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_3);
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
 #if(_REGISTER_BLOCK_SIZE==5)
             nProd	  =  nX3*((DOUBLEDIGIT) yTOP_MINUS_4);
 #else
             nProd	  =  nX2*((DOUBLEDIGIT) yTOP_MINUS_4);
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	  =  nX3*((DOUBLEDIGIT) yTOP_MINUS_5);
 #endif
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
             pZ[i+j+4] =  (DIGIT) nSum;
             nX4		  =  pX[i+5];
 #if(_REGISTER_BLOCK_SIZE>5)
             nProd	  =  nX5*((DOUBLEDIGIT) yTOP);
             nSum	  =  (nProd&c_nClearHigh) + pZ[i+j+5] + nCarry;
-            nCarry	  =  (nProd>>c_nDigitSize);
+            nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	  =  nX0*((DOUBLEDIGIT) yTOP_MINUS_1);
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_2);
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	  =  nX2*((DOUBLEDIGIT) yTOP_MINUS_3);
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	  =  nX3*((DOUBLEDIGIT) yTOP_MINUS_4);
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
             nProd	  =  nX4*((DOUBLEDIGIT) yTOP_MINUS_5);
             nSum	  += (nProd&c_nClearHigh);
-            nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+            nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
             pZ[i+j+5] =  (DIGIT) nSum;
             nX5		  =  pX[i+6];
 #endif
@@ -542,92 +542,92 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
         }
         nProd	  =  nX0*((DOUBLEDIGIT) yTOP);
         nSum	  =  (nProd&c_nClearHigh) + pZ[i+j] + nCarry;
-        nCarry	  =  (nProd>>c_nDigitSize);
+        nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX1*((DOUBLEDIGIT) yTOP_MINUS_1);
 #if(_REGISTER_BLOCK_SIZE>2)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX2*((DOUBLEDIGIT) yTOP_MINUS_2);
 #if(_REGISTER_BLOCK_SIZE>3)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX3*((DOUBLEDIGIT) yTOP_MINUS_3);
 #if(_REGISTER_BLOCK_SIZE>4)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX4*((DOUBLEDIGIT) yTOP_MINUS_4);
 #if(_REGISTER_BLOCK_SIZE>5)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX5*((DOUBLEDIGIT) yTOP_MINUS_5);
 #endif
 #endif
 #endif
 #endif
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[i+j]	  =  (DIGIT) nSum;
         nProd	  =  nX1*((DOUBLEDIGIT) yTOP);
 #if(_REGISTER_BLOCK_SIZE>2)
         nSum	  =  (nProd&c_nClearHigh) + pZ[i+j+1] + nCarry;
-        nCarry	  =  (nProd>>c_nDigitSize);
+        nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX2*((DOUBLEDIGIT) yTOP_MINUS_1);
 #if(_REGISTER_BLOCK_SIZE>3)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry    += (nProd>>c_nDigitSize);
+        nCarry    += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX3*((DOUBLEDIGIT) yTOP_MINUS_2);
 #if(_REGISTER_BLOCK_SIZE>4)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX4*((DOUBLEDIGIT) yTOP_MINUS_3);
 #if(_REGISTER_BLOCK_SIZE>5)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX5*((DOUBLEDIGIT) yTOP_MINUS_4);
 #endif
 #endif
 #endif
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[i+j+1] =  (DIGIT) nSum;
         nProd	  =  nX2*((DOUBLEDIGIT) yTOP);
 #if(_REGISTER_BLOCK_SIZE>3)
         nSum	  =  (nProd&c_nClearHigh) + pZ[i+j+2] + nCarry;
-        nCarry	  =  (nProd>>c_nDigitSize);
+        nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX3*((DOUBLEDIGIT) yTOP_MINUS_1);
 #if(_REGISTER_BLOCK_SIZE>4)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX4*((DOUBLEDIGIT) yTOP_MINUS_2);
 #if(_REGISTER_BLOCK_SIZE>5)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX5*((DOUBLEDIGIT) yTOP_MINUS_3);
 #endif
 #endif
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[i+j+2] =  (DIGIT) (nSum&c_nClearHigh);
         nProd	  =  nX3*((DOUBLEDIGIT) yTOP);
 #if(_REGISTER_BLOCK_SIZE>4)
         nSum	  =  (nProd&c_nClearHigh) + pZ[i+j+3] + nCarry;
-        nCarry	  =  (nProd>>c_nDigitSize);
+        nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX4*((DOUBLEDIGIT) yTOP_MINUS_1);
 #if(_REGISTER_BLOCK_SIZE>5)
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX5*((DOUBLEDIGIT) yTOP_MINUS_2);
 #endif
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[i+j+3] =  (DIGIT) nSum;
         nProd	  =  nX4*((DOUBLEDIGIT) yTOP);
 #if(_REGISTER_BLOCK_SIZE>5)
         nSum	  =  (nProd&c_nClearHigh) + pZ[i+j+4] + nCarry;
-        nCarry	  =  (nProd>>c_nDigitSize);
+        nCarry	  =  (nProd>>_DIGIT_SIZE_IN_BITS);
         nProd	  =  nX5*((DOUBLEDIGIT) yTOP_MINUS_1);
         nSum	  += (nProd&c_nClearHigh);
-        nCarry	  += (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry	  += (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[i+j+4] =  (DIGIT) (nSum&c_nClearHigh);
         nProd	  =  nX5*((DOUBLEDIGIT) yTOP);
 #undef yTOP_MINUS_5
@@ -639,11 +639,11 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
 #undef yTOP_MINUS_2
 #endif
         nSum			               =  (nProd&c_nClearHigh)  + pZ[i+j+_REGISTER_BLOCK_SIZE-1] + nCarry;
-        nCarry		                   =  (nProd>>c_nDigitSize) + (nSum>>c_nDigitSize);
+        nCarry		                   =  (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
         pZ[i+j+_REGISTER_BLOCK_SIZE-1] =  (DIGIT) nSum;
         nCarry		                   =  pZ[i+j+_REGISTER_BLOCK_SIZE] + nCarry;
         pZ[i+j+_REGISTER_BLOCK_SIZE]   =  (DIGIT) nCarry;
-        nCarry		                   =  (nCarry>>c_nDigitSize);
+        nCarry		                   =  (nCarry>>_DIGIT_SIZE_IN_BITS);
         if(nCarry)
         {
             do
@@ -651,7 +651,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
                 i++;
                 nCarry                       += pZ[i+j+_REGISTER_BLOCK_SIZE];
                 pZ[i+j+_REGISTER_BLOCK_SIZE] =  (DIGIT) nCarry;
-                nCarry                       =  (nCarry>>c_nDigitSize);
+                nCarry                       =  (nCarry>>_DIGIT_SIZE_IN_BITS);
             }
             while(nCarry);
         }

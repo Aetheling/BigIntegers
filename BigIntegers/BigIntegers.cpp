@@ -19,7 +19,7 @@ DIGIT AddSmallUnsigned(DIGIT *pnLarge, size_t nLargeSize, DIGIT nAdd)
         {
             nSum       = nAdd+((DOUBLEDIGIT) pnLarge[i]);
             pnLarge[i] = (DIGIT) nSum;
-            nAdd       = (DIGIT) (nSum>>c_nDigitSize);
+            nAdd       = (DIGIT) (nSum>>_DIGIT_SIZE_IN_BITS);
         }
         while(0<nAdd && ++i<nLargeSize);
     }
@@ -159,7 +159,7 @@ bool PrintDecimalToFileHelper(FILE *pFile, bool bIsNegative, size_t nDigits, DIG
     {
         // space for the answer.  Total bits of the number divided by 3 gives an overestimate of the
         // number of base 10 digits
-        size_t nSize = nDigits*c_nDigitSize/3 + 2;
+        size_t nSize = nDigits*_DIGIT_SIZE_IN_BITS/3 + 2;
         szBase10Rep = (char *)  malloc(nSize); // +1 for terminal '\0'; + 1 more for sign
         pWorkspace  = (DIGIT *) malloc(sizeof(DIGIT)*nDigits);
         if (NULL == szBase10Rep || NULL == pWorkspace) goto exit;
@@ -174,7 +174,7 @@ bool PrintDecimalToFileHelper(FILE *pFile, bool bIsNegative, size_t nDigits, DIG
             DOUBLEDIGIT nCarry = 0;
             for(int i = nDigits-1; 0<=i; i--)
             {
-                nVal          = pWorkspace[i] | (nCarry<<c_nDigitSize);
+                nVal          = pWorkspace[i] | (nCarry<<_DIGIT_SIZE_IN_BITS);
                 nCarry        = nVal%10;
                 pWorkspace[i] = nVal/10;
             }
@@ -676,7 +676,7 @@ exit:
 
 bool CBigInteger::ShiftRight(size_t nBits)
 {
-    m_nSize = CBigIntegerHelper::ShiftRightInPlace(m_nSize, nBits%c_nDigitSize, nBits/c_nDigitSize, m_pnValue);
+    m_nSize = CBigIntegerHelper::ShiftRightInPlace(m_nSize, nBits%_DIGIT_SIZE_IN_BITS, nBits/_DIGIT_SIZE_IN_BITS, m_pnValue);
     if (0 == m_nSize) m_bNegative = false;
     return true;
 }
@@ -686,8 +686,8 @@ bool CBigInteger::ShiftLeft(size_t nBits)
     size_t nDigitShift, nBitShift, i;
     if (0 != nBits)
     {
-        nDigitShift = nBits/c_nDigitSize;
-        nBitShift   = nBits%c_nDigitSize;
+        nDigitShift = nBits/_DIGIT_SIZE_IN_BITS;
+        nBitShift   = nBits%_DIGIT_SIZE_IN_BITS;
         if (!Reserve(nDigitShift+m_nSize+1, true)) return false;
         m_nSize = CBigIntegerHelper::ShiftLeftInPlace(m_nSize, nBitShift, nDigitShift, m_pnValue);
     }
@@ -702,13 +702,13 @@ bool CBigInteger::CopyShiftRight(CBigInteger &nDestination, size_t nBits) const
         // simple copy
         return(nDestination = *this);
     }
-    nDigitShift = nBits/c_nDigitSize;
+    nDigitShift = nBits/_DIGIT_SIZE_IN_BITS;
     if(m_nSize <= nDigitShift)
     {
         nDestination.SetSize(0);
         return true;
     }
-    nBitShift = nBits%c_nDigitSize;
+    nBitShift = nBits%_DIGIT_SIZE_IN_BITS;
     if (!nDestination.Reserve(m_nSize - nDigitShift)) return false; // couldn't get enough memory -- weird!
     nDestination.SetSize(CBigIntegerHelper::ShiftXRight(m_nSize, nBitShift, nDigitShift, m_pnValue, nDestination.GetValue()));
     nDestination.SetNegative(m_bNegative);
@@ -723,8 +723,8 @@ bool CBigInteger::CopyShiftLeft(CBigInteger &nDestination, size_t nBits) const
         // simple copy
         return(nDestination = *this);
     }
-    nDigitShift = nBits/c_nDigitSize;
-    nBitShift   = nBits%c_nDigitSize;
+    nDigitShift = nBits/_DIGIT_SIZE_IN_BITS;
+    nBitShift   = nBits%_DIGIT_SIZE_IN_BITS;
     if(!nDestination.Reserve(GetSize()+nDigitShift+1))
     {
         return false;

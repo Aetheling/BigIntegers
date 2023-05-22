@@ -10,7 +10,7 @@ enum EMultiplyAlgorithm { eBasicMultiply = 0,
                           e3By2,
                           e5By3,
                           e7By4,
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
                           e9By5,
 #endif
                           e2NByN,
@@ -482,7 +482,7 @@ protected: // functions
                             DWORD64            &dwTimestamp,
 #endif
                             DIGIT              *pnWorkspace);
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
     static void MultU9by5(size_t             nXSize,
                           size_t             nYSize,
                           const DIGIT        *pXValue,
@@ -781,15 +781,6 @@ protected: // functions
                     SBitShift   nRootUnity,
                     DIGIT       *pnWorkspace);
 
-   /* static void FFT3(const DIGIT *pBase,    // the number whose FFT is to be computed
-                     DIGIT       *pFFT,
-                     size_t      nBaseSize, // the size of the number whose FFT is to be computed
-                     size_t      nChunkSize,
-                     size_t      nBaseStep, // should start at nChunkSize+1
-                     size_t      nLength,
-                     size_t      nFieldSize,
-                     SBitShift   nRootUnity,
-                     DIGIT       *pnWorkspace);*/
     // core FFT_opt assumes the length is a power of 4, and not just a power
     // of 2; wrapper to deal with that.  We still assume that the length of
     // the FFT is at least 2....
@@ -1048,19 +1039,6 @@ protected: // variables
     static const unsigned int c_nDivideThresholdDiff;        // at least 4 for correctness
     static const unsigned int c_nSquareRootThreshold;
 #endif
-    // note that these values are not used unless the compile flag _CollectDetailedTimingData is set
-    /*static unsigned long long s_nBuildTimes[eNumMultiplyAlgorithms];
-    static unsigned long long s_nProcessTimes[eNumMultiplyAlgorithms+1];
-    static unsigned long      s_nMultiplyCalls[eNumMultiplyAlgorithms];
-
-    static unsigned long long s_nDivideTime[eNumDivideComponents];
-
-    static unsigned long long s_nSquareRootTime[eNumSquareRootComponents];
-
-    static unsigned long long s_nPowerModulusTime[eNumPowerModulusComponents];
-
-    static unsigned long long s_nGCDTime[eNumGCDComponents];*/
-
     // might want to tune this value -- different machines might have different stack space
     static const unsigned int c_nMaxBYTESizeForRecursiveGCD = 400;
     static CHighPerfTimer     s_Timer;

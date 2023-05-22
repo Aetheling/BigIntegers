@@ -331,7 +331,7 @@ int main()
         printf("Montgomery multiply test succeeded\n");
     }
     cCorrectnessTester.ResetThresholdsForTest();
-    if (!cCorrectnessTester.TestMontgomeryPowerModulus())
+    if (!cCorrectnessTester.TestMontgomeryPowerModulus()) // another long test!
     {
         printf("Montgomery power modulus test failed\n");
         return 1;
@@ -380,7 +380,6 @@ int main()
     {
         printf("RSA without timing protection test succeeded\n");
     }
-    /*
 	////////////////////////////////////////////////////////////////////////////////////////
 	//                                                                                    //
 	//                              Tune parameters                                       //
@@ -388,7 +387,7 @@ int main()
 	////////////////////////////////////////////////////////////////////////////////////////
 	//PinThreadToProcessor((DWORD) -1); // want to keep the thread on the same processor -- trying to
 	                                  // optimize cache parameters!
-    cTuner.ResetThresholdsForTest();
+    /*cTuner.ResetThresholdsForTest();
 	cTuner.Test2NByNBlockSizes();
     cTuner.FindBestThresholds();
     cTuner.FindBestDivideThresholds();

@@ -102,7 +102,7 @@ bool CRSATest::TestProbablyPrime()
 	printf("Testing ProbablyPrime:\n  small tests:\n");
 	for(int i=0;i<10000;i++)
 	{
-		generator.RandomBits(20/c_nDigitSize, 20%c_nDigitSize, false, number); // 20-bit number -- one million
+		generator.RandomBits(20/_DIGIT_SIZE_IN_BITS, 20%_DIGIT_SIZE_IN_BITS, false, number); // 20-bit number -- one million
 		number.GetValue()[0] |= 1; // force odd
 		bProbablyPrime = CRSADecrypt::ProbablyPrime(number);
 		nNumberSmall   = number.GetValue()[0];
@@ -119,7 +119,7 @@ bool CRSATest::TestProbablyPrime()
 	printf("  large tests:\n");
 	for(int i=0; i<100; i++)
 	{
-		generator.RandomBits(56/c_nDigitSize, 56%c_nDigitSize, false, number); // 56-bit number -- at least 2 digits
+		generator.RandomBits(56/_DIGIT_SIZE_IN_BITS, 56%_DIGIT_SIZE_IN_BITS, false, number); // 56-bit number -- at least 2 digits
 		number.GetValue()[0] |= 1; // force odd
 		bProbablyPrime = CRSADecrypt::ProbablyPrime(number);
 		bActuallyPrime = BruteForcePrimeCheck(number);
@@ -377,7 +377,7 @@ void CRSATest::PerfTestDivisibleBySmallPrime()
 
 	for(int nBits=c_nBaseBitSize; nBits<=c_nMaxBitSize; nBits *= 2)
 	{
-		generator.RandomBits(nBits/c_nDigitSize, nBits%c_nDigitSize, false, number);
+		generator.RandomBits(nBits/_DIGIT_SIZE_IN_BITS, nBits%_DIGIT_SIZE_IN_BITS, false, number);
 		number.GetValue()[0] |= 1; // force odd
 		nTime = ::GetTickCount();
 		for (int i=0; i<c_nNumsToCheck; i++)
@@ -423,7 +423,7 @@ void CRSATest::PerfTestProbablyPrime()
 		nTime = ::GetTickCount();
 		for (int i = 0; i < c_nNumsToCheck; i++)
 		{
-			generator.RandomBits(nBaseBitSize/c_nDigitSize, nBaseBitSize%c_nDigitSize, false, number);
+			generator.RandomBits(nBaseBitSize/_DIGIT_SIZE_IN_BITS, nBaseBitSize%_DIGIT_SIZE_IN_BITS, false, number);
 			number.GetValue()[0] |= 1; // force odd
 			bProbablyPrime = CRSADecrypt::ProbablyPrime(number);
 		}
@@ -668,7 +668,7 @@ void CRSATest::PerfTestDivisibleBySmallPrime()
 	unsigned int       nTimeA, nTimeB, nTimeC, nTimeD;
 	bool               bAllDivisible = true; // so don't optimize out calls to DivisibleBySmallPrime
 
-	generator.RandomBits(c_nBaseBitSize / c_nDigitSize, c_nBaseBitSize % c_nDigitSize, false, number);
+	generator.RandomBits(c_nBaseBitSize / _DIGIT_SIZE_IN_BITS, c_nBaseBitSize % _DIGIT_SIZE_IN_BITS, false, number);
 	number.GetValue()[0] |= 1; // force odd
 	nTimeA      = ::GetTickCount();
 	nNumberCopy = number;

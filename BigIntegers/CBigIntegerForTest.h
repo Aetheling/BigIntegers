@@ -11,10 +11,10 @@ public: // functions
         size_t nLeadingBits;
         DIGIT  nVal;
         bool   bWorked      = false;
-        m_nSize = (nNumBits+c_nDigitSize-1)/c_nDigitSize;
+        m_nSize = (nNumBits+_DIGIT_SIZE_IN_BITS-1)/_DIGIT_SIZE_IN_BITS;
         if(Reserve(m_nSize))
         {
-            nLeadingBits = nNumBits%c_nDigitSize;
+            nLeadingBits = nNumBits%_DIGIT_SIZE_IN_BITS;
             if(0!=nSeed)
             {
                 srand(nSeed);

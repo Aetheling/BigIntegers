@@ -203,14 +203,14 @@ bool CRSADecrypt::DivisibleBySmallPrime(const CBigInteger &nNumber)
 	do
 	{
 		nVal = pnDigits[nDigit];
-		nRemainderA = (((nVal|nRemainderA)% 7)<<c_nDigitSize);
-		nRemainderB = (((nVal|nRemainderB)% 11)<<c_nDigitSize);
-		nRemainderC = (((nVal|nRemainderC)% 13)<<c_nDigitSize);
-		nRemainderD = (((nVal|nRemainderD)% 17)<<c_nDigitSize);
-		nRemainderE = (((nVal|nRemainderE)% 19)<<c_nDigitSize);
-		nRemainderF = (((nVal|nRemainderF)% 23)<<c_nDigitSize);
-		nRemainderG = (((nVal|nRemainderG)% 29)<<c_nDigitSize);
-		nRemainderH = (((nVal|nRemainderH)% 31)<<c_nDigitSize);
+		nRemainderA = (((nVal|nRemainderA)% 7)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderB = (((nVal|nRemainderB)% 11)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderC = (((nVal|nRemainderC)% 13)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderD = (((nVal|nRemainderD)% 17)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderE = (((nVal|nRemainderE)% 19)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderF = (((nVal|nRemainderF)% 23)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderG = (((nVal|nRemainderG)% 29)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderH = (((nVal|nRemainderH)% 31)<<_DIGIT_SIZE_IN_BITS);
 	}
 	while (0 != nDigit--);
 	if (0 == nRemainderA || 0 == nRemainderB || 0 == nRemainderC || 0 == nRemainderD || 0 == nRemainderE || 0 == nRemainderF || 0 == nRemainderG || 0 == nRemainderH) return true;
@@ -220,13 +220,13 @@ bool CRSADecrypt::DivisibleBySmallPrime(const CBigInteger &nNumber)
 	do
 	{
 		nVal = pnDigits[nDigit];
-		nRemainderA = (((nVal|nRemainderA)%37)<<c_nDigitSize);
-		nRemainderB = (((nVal|nRemainderB)%41)<<c_nDigitSize);
-		nRemainderC = (((nVal|nRemainderC)%43)<<c_nDigitSize);
-		nRemainderD = (((nVal|nRemainderD)%47)<<c_nDigitSize);
-		nRemainderE = (((nVal|nRemainderE)%53)<<c_nDigitSize);
-		nRemainderF = (((nVal|nRemainderF)%59)<<c_nDigitSize);
-		nRemainderG = (((nVal|nRemainderG)%61)<<c_nDigitSize);
+		nRemainderA = (((nVal|nRemainderA)%37)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderB = (((nVal|nRemainderB)%41)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderC = (((nVal|nRemainderC)%43)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderD = (((nVal|nRemainderD)%47)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderE = (((nVal|nRemainderE)%53)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderF = (((nVal|nRemainderF)%59)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderG = (((nVal|nRemainderG)%61)<<_DIGIT_SIZE_IN_BITS);
 	}
 	while (0 != nDigit--);
 	if (0 == nRemainderA || 0 == nRemainderB || 0 == nRemainderC || 0 == nRemainderD || 0 == nRemainderE || 0 == nRemainderF || 0 == nRemainderG) return true;
@@ -235,13 +235,13 @@ bool CRSADecrypt::DivisibleBySmallPrime(const CBigInteger &nNumber)
 	do
 	{
 		nVal = pnDigits[nDigit];
-		nRemainderA = (((nVal|nRemainderA)%67)<<c_nDigitSize);
-		nRemainderB = (((nVal|nRemainderB)%71)<<c_nDigitSize);
-		nRemainderC = (((nVal|nRemainderC)%73)<<c_nDigitSize);
-		nRemainderD = (((nVal|nRemainderD)%79)<<c_nDigitSize);
-		nRemainderE = (((nVal|nRemainderE)%83)<<c_nDigitSize);
-		nRemainderF = (((nVal|nRemainderF)%89)<<c_nDigitSize);
-		nRemainderG = (((nVal|nRemainderG)%97)<<c_nDigitSize);
+		nRemainderA = (((nVal|nRemainderA)%67)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderB = (((nVal|nRemainderB)%71)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderC = (((nVal|nRemainderC)%73)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderD = (((nVal|nRemainderD)%79)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderE = (((nVal|nRemainderE)%83)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderF = (((nVal|nRemainderF)%89)<<_DIGIT_SIZE_IN_BITS);
+		nRemainderG = (((nVal|nRemainderG)%97)<<_DIGIT_SIZE_IN_BITS);
 	}
 	while (0 != nDigit--);
 	return (0 == nRemainderA || 0 == nRemainderB || 0 == nRemainderC || 0 == nRemainderD || 0 == nRemainderE || 0 == nRemainderF || 0 == nRemainderG);
@@ -349,7 +349,7 @@ size_t CRSADecrypt::StripPowerOf2(CBigInteger &nNumber, CBigInteger &nFactor)
 	nBitShift = 0;
 	for (int i=0; i<nNumber.GetSize(); i++)
 	{
-		for (int j=0; j<c_nDigitSize; j++)
+		for (int j=0; j<_DIGIT_SIZE_IN_BITS; j++)
 		{
 			if(0 != (nNumber.GetValue()[i]&(1<<j)))
 			{
@@ -369,8 +369,8 @@ void CRSADecrypt::GetOddMultipleOf15Plus2(size_t nSizeInBYTEs, CBigInteger &nMul
 	// generate an odd number 4 bits smaller than desired and multiply it by 15 as our starting point
 	CRandomGenerator cGenerator;
 	size_t           nBitsDesired = (nSizeInBYTEs<<3) - 4;
-	size_t           nDigits      = nBitsDesired/c_nDigitSize;
-	size_t           nBits        = nBitsDesired%c_nDigitSize;
+	size_t           nDigits      = nBitsDesired/_DIGIT_SIZE_IN_BITS;
+	size_t           nBits        = nBitsDesired%_DIGIT_SIZE_IN_BITS;
 	cGenerator.RandomBits(nDigits, nBits, true, nMultipleOf15Plus2);
 	nMultipleOf15Plus2.GetValue()[0] = nMultipleOf15Plus2.GetValue()[0]|1; // force odd
 	// note guaranteed no overflow when multiply by 15 by way base number was generated
@@ -378,7 +378,7 @@ void CRSADecrypt::GetOddMultipleOf15Plus2(size_t nSizeInBYTEs, CBigInteger &nMul
 	for (size_t i = 0; i < nMultipleOf15Plus2.GetSize(); i++)
 	{
 		nVal                            = ((DOUBLEDIGIT) nMultipleOf15Plus2.m_pnValue[i])*15 + nCarry;
-		nCarry                          = nVal>>c_nDigitSize;
+		nCarry                          = nVal>>_DIGIT_SIZE_IN_BITS;
 		nMultipleOf15Plus2.m_pnValue[i] = nVal;
 	}
 }
@@ -603,7 +603,7 @@ bool CRSADecrypt::AllSmallPrimeFactors(CBigInteger &nNumber)
 			do
 			{
 				nDiv       = pVal[i] | nRemainder;
-				nRemainder = (nDiv%nPrime)<<c_nDigitSize;
+				nRemainder = (nDiv%nPrime)<<_DIGIT_SIZE_IN_BITS;
 				pDiv[i]    = nDiv/nPrime;
 			}
 			while(0 != i--);
@@ -647,14 +647,14 @@ bool CRSADecrypt::DivisibleBySmallPrime_b(const CBigInteger &nNumber)
 		do
 		{
 			nVal = pnDigits[nDigit];
-			nRemainder7 = (((nVal | nRemainder7) % 7) << c_nDigitSize);
-			nRemainder11 = (((nVal | nRemainder11) % 11) << c_nDigitSize);
-			nRemainder13 = (((nVal | nRemainder13) % 13) << c_nDigitSize);
-			nRemainder17 = (((nVal | nRemainder17) % 17) << c_nDigitSize);
-			nRemainder19 = (((nVal | nRemainder19) % 19) << c_nDigitSize);
-			nRemainder23 = (((nVal | nRemainder23) % 23) << c_nDigitSize);
-			nRemainder29 = (((nVal | nRemainder29) % 29) << c_nDigitSize);
-			nRemainder31 = (((nVal | nRemainder31) % 31) << c_nDigitSize);
+			nRemainder7 = (((nVal | nRemainder7) % 7) << _DIGIT_SIZE_IN_BITS);
+			nRemainder11 = (((nVal | nRemainder11) % 11) << _DIGIT_SIZE_IN_BITS);
+			nRemainder13 = (((nVal | nRemainder13) % 13) << _DIGIT_SIZE_IN_BITS);
+			nRemainder17 = (((nVal | nRemainder17) % 17) << _DIGIT_SIZE_IN_BITS);
+			nRemainder19 = (((nVal | nRemainder19) % 19) << _DIGIT_SIZE_IN_BITS);
+			nRemainder23 = (((nVal | nRemainder23) % 23) << _DIGIT_SIZE_IN_BITS);
+			nRemainder29 = (((nVal | nRemainder29) % 29) << _DIGIT_SIZE_IN_BITS);
+			nRemainder31 = (((nVal | nRemainder31) % 31) << _DIGIT_SIZE_IN_BITS);
 		} while (0 != nDigit--);
 		return (0 == nRemainder7 || 0 == nRemainder11 || 0 == nRemainder13 || 0 == nRemainder17 || 0 == nRemainder19 || 0 == nRemainder23 || 0 == nRemainder29 || 0 == nRemainder31);
 	}
@@ -715,7 +715,7 @@ bool CRSADecrypt::DivisibleBySmallPrime_b(const CBigInteger &nNumber)
 #define _StoreShift83   18 // remainder C
 #define _StoreShift89   25 // remainder C
 #define _StoreShift97   25 // remainder D
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 // all left shift
 #define _ComputeShift7  32 // remainder A
 #define _ComputeShift11 32 // remainder B
@@ -778,7 +778,7 @@ bool CRSADecrypt::DivisibleBySmallPrime_b(const CBigInteger &nNumber)
 			nInt_2 = ((((nRemainderA & _23Mask) << _ComputeShift23) | nVal) % 23) << _StoreShift23;
 			nInt_3 = ((((nRemainderA & _29Mask) << _ComputeShift29) | nVal) % 29) << _StoreShift29;
 			nInt_4 = ((((nRemainderA & _41Mask) << _ComputeShift41) | nVal) % 41) << _StoreShift41;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 			nInt_5 = ((((nRemainderA & _43Mask) << _ComputeShift43) | nVal) % 43) << _StoreShift43;
 			nInt_6 = ((((nRemainderA & _71Mask) << _ComputeShift71) | nVal) % 71) << _StoreShift71;
 #else
@@ -792,7 +792,7 @@ bool CRSADecrypt::DivisibleBySmallPrime_b(const CBigInteger &nNumber)
 			nInt_2 = ((((nRemainderB & _13Mask) << _ComputeShift13) | nVal) % 13) << _StoreShift13;
 			nInt_3 = ((((nRemainderB & _17Mask) << _ComputeShift17) | nVal) % 17) << _StoreShift17;
 			nInt_4 = ((((nRemainderB & _19Mask) << _ComputeShift19) | nVal) % 19) << _StoreShift19;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 			nInt_5 = ((((nRemainderB & _37Mask) << _ComputeShift37) | nVal) % 37) << _StoreShift37;
 			nInt_6 = ((((nRemainderB & _67Mask) << _ComputeShift67) | nVal) % 67) << _StoreShift67;
 #else
@@ -805,7 +805,7 @@ bool CRSADecrypt::DivisibleBySmallPrime_b(const CBigInteger &nNumber)
 			nInt_1 = (((nRemainderC & _31Mask) << _ComputeShift31) | nVal) % 31;
 			nInt_2 = ((((nRemainderC & _61Mask) << _ComputeShift61) | nVal) % 61) << _StoreShift61;
 			nInt_3 = ((((nRemainderC & _79Mask) << _ComputeShift79) | nVal) % 79) << _StoreShift79;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 			nInt_4 = ((((nRemainderC & _83Mask) << _ComputeShift83) | nVal) % 83) << _StoreShift83;
 			nInt_5 = ((((nRemainderC & _89Mask) << _ComputeShift89) | nVal) % 89) << _StoreShift89;
 #else
@@ -818,7 +818,7 @@ bool CRSADecrypt::DivisibleBySmallPrime_b(const CBigInteger &nNumber)
 			nInt_1 = (((nRemainderD & _47Mask) << _ComputeShift47) | nVal) % 47;
 			nInt_2 = ((((nRemainderD & _53Mask) << _ComputeShift53) | nVal) % 53) << _StoreShift53;
 			nInt_3 = ((((nRemainderD & _59Mask) << _ComputeShift59) | nVal) % 59) << _StoreShift59;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 			nInt_4 = ((((nRemainderD & _73Mask) << _ComputeShift73) | nVal) % 73) << _StoreShift73;
 			nInt_5 = ((((nRemainderD & _97Mask) << _ComputeShift97) | nVal) % 97) << _StoreShift97;
 #else
@@ -856,118 +856,118 @@ bool CRSADecrypt::DivisibleBySmallPrime_b(const CBigInteger &nNumber)
 			do
 			{
 				nVal = pnDigits[nDigit];
-				nRemainder7 = (((nVal | nRemainder7) % 7) << c_nDigitSize);
-				nRemainder11 = (((nVal | nRemainder11) % 11) << c_nDigitSize);
-				nRemainder13 = (((nVal | nRemainder13) % 13) << c_nDigitSize);
-				nRemainder17 = (((nVal | nRemainder17) % 17) << c_nDigitSize);
-				nRemainder19 = (((nVal | nRemainder19) % 19) << c_nDigitSize);
-				nRemainder23 = (((nVal | nRemainder23) % 23) << c_nDigitSize);
-				nRemainder29 = (((nVal | nRemainder29) % 29) << c_nDigitSize);
-				nRemainder31 = (((nVal | nRemainder31) % 31) << c_nDigitSize);
-				nRemainder37 = (((nVal | nRemainder37) % 37) << c_nDigitSize);
-				nRemainder41 = (((nVal | nRemainder41) % 41) << c_nDigitSize);
-				nRemainder43 = (((nVal | nRemainder43) % 43) << c_nDigitSize);
-				nRemainder47 = (((nVal | nRemainder47) % 47) << c_nDigitSize);
-				nRemainder53 = (((nVal | nRemainder53) % 53) << c_nDigitSize);
-				nRemainder59 = (((nVal | nRemainder59) % 59) << c_nDigitSize);
-				nRemainder61 = (((nVal | nRemainder61) % 61) << c_nDigitSize);
-				nRemainder67 = (((nVal | nRemainder67) % 67) << c_nDigitSize);
-				nRemainder71 = (((nVal | nRemainder71) % 71) << c_nDigitSize);
-				nRemainder73 = (((nVal | nRemainder73) % 73) << c_nDigitSize);
-				nRemainder79 = (((nVal | nRemainder79) % 79) << c_nDigitSize);
-				nRemainder83 = (((nVal | nRemainder83) % 83) << c_nDigitSize);
-				nRemainder89 = (((nVal | nRemainder89) % 89) << c_nDigitSize);
-				nRemainder97 = (((nVal | nRemainder97) % 97) << c_nDigitSize);
+				nRemainder7 = (((nVal | nRemainder7) % 7) << _DIGIT_SIZE_IN_BITS);
+				nRemainder11 = (((nVal | nRemainder11) % 11) << _DIGIT_SIZE_IN_BITS);
+				nRemainder13 = (((nVal | nRemainder13) % 13) << _DIGIT_SIZE_IN_BITS);
+				nRemainder17 = (((nVal | nRemainder17) % 17) << _DIGIT_SIZE_IN_BITS);
+				nRemainder19 = (((nVal | nRemainder19) % 19) << _DIGIT_SIZE_IN_BITS);
+				nRemainder23 = (((nVal | nRemainder23) % 23) << _DIGIT_SIZE_IN_BITS);
+				nRemainder29 = (((nVal | nRemainder29) % 29) << _DIGIT_SIZE_IN_BITS);
+				nRemainder31 = (((nVal | nRemainder31) % 31) << _DIGIT_SIZE_IN_BITS);
+				nRemainder37 = (((nVal | nRemainder37) % 37) << _DIGIT_SIZE_IN_BITS);
+				nRemainder41 = (((nVal | nRemainder41) % 41) << _DIGIT_SIZE_IN_BITS);
+				nRemainder43 = (((nVal | nRemainder43) % 43) << _DIGIT_SIZE_IN_BITS);
+				nRemainder47 = (((nVal | nRemainder47) % 47) << _DIGIT_SIZE_IN_BITS);
+				nRemainder53 = (((nVal | nRemainder53) % 53) << _DIGIT_SIZE_IN_BITS);
+				nRemainder59 = (((nVal | nRemainder59) % 59) << _DIGIT_SIZE_IN_BITS);
+				nRemainder61 = (((nVal | nRemainder61) % 61) << _DIGIT_SIZE_IN_BITS);
+				nRemainder67 = (((nVal | nRemainder67) % 67) << _DIGIT_SIZE_IN_BITS);
+				nRemainder71 = (((nVal | nRemainder71) % 71) << _DIGIT_SIZE_IN_BITS);
+				nRemainder73 = (((nVal | nRemainder73) % 73) << _DIGIT_SIZE_IN_BITS);
+				nRemainder79 = (((nVal | nRemainder79) % 79) << _DIGIT_SIZE_IN_BITS);
+				nRemainder83 = (((nVal | nRemainder83) % 83) << _DIGIT_SIZE_IN_BITS);
+				nRemainder89 = (((nVal | nRemainder89) % 89) << _DIGIT_SIZE_IN_BITS);
+				nRemainder97 = (((nVal | nRemainder97) % 97) << _DIGIT_SIZE_IN_BITS);
 			} while (0 != nDigit--);
 			// check A
-			if (nRemainder7 >> c_nDigitSize != (nRemainderA & _7Mask))
+			if (nRemainder7 >> _DIGIT_SIZE_IN_BITS != (nRemainderA & _7Mask))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder23 >> c_nDigitSize != ((nRemainderA & _23Mask)>> _StoreShift23))
+			if (nRemainder23 >> _DIGIT_SIZE_IN_BITS != ((nRemainderA & _23Mask)>> _StoreShift23))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder29 >> c_nDigitSize != ((nRemainderA & _29Mask) >> _StoreShift29))
+			if (nRemainder29 >> _DIGIT_SIZE_IN_BITS != ((nRemainderA & _29Mask) >> _StoreShift29))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder41 >> c_nDigitSize != ((nRemainderA & _41Mask) >> _StoreShift41))
+			if (nRemainder41 >> _DIGIT_SIZE_IN_BITS != ((nRemainderA & _41Mask) >> _StoreShift41))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder43 >> c_nDigitSize != ((nRemainderA & _43Mask) >> _StoreShift43))
+			if (nRemainder43 >> _DIGIT_SIZE_IN_BITS != ((nRemainderA & _43Mask) >> _StoreShift43))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder71 >> c_nDigitSize != ((nRemainderA & _71Mask) >> _StoreShift71))
+			if (nRemainder71 >> _DIGIT_SIZE_IN_BITS != ((nRemainderA & _71Mask) >> _StoreShift71))
 			{
 				printf("oops\n");
 			}
 			// check B
-			if (nRemainder11 >> c_nDigitSize != (nRemainderB & _11Mask))
+			if (nRemainder11 >> _DIGIT_SIZE_IN_BITS != (nRemainderB & _11Mask))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder13 >> c_nDigitSize != ((nRemainderB & _13Mask) >> _StoreShift13))
+			if (nRemainder13 >> _DIGIT_SIZE_IN_BITS != ((nRemainderB & _13Mask) >> _StoreShift13))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder17 >> c_nDigitSize != ((nRemainderB & _17Mask) >> _StoreShift17))
+			if (nRemainder17 >> _DIGIT_SIZE_IN_BITS != ((nRemainderB & _17Mask) >> _StoreShift17))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder19 >> c_nDigitSize != ((nRemainderB & _19Mask) >> _StoreShift19))
+			if (nRemainder19 >> _DIGIT_SIZE_IN_BITS != ((nRemainderB & _19Mask) >> _StoreShift19))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder37 >> c_nDigitSize != ((nRemainderB & _37Mask) >> _StoreShift37))
+			if (nRemainder37 >> _DIGIT_SIZE_IN_BITS != ((nRemainderB & _37Mask) >> _StoreShift37))
 			{
 				printf("oops\n");
 			}
-			if (nRemainder67 >> c_nDigitSize != ((nRemainderB & _67Mask) >> _StoreShift67))
+			if (nRemainder67 >> _DIGIT_SIZE_IN_BITS != ((nRemainderB & _67Mask) >> _StoreShift67))
 			{
 				printf("oops\n");
 			}
 			// check C
-			if (nRemainder31 >> c_nDigitSize != (nRemainderC & _31Mask))
+			if (nRemainder31 >> _DIGIT_SIZE_IN_BITS != (nRemainderC & _31Mask))
 			{
 				printf("oops\n"); // xxx
 			}
-			if (nRemainder61 >> c_nDigitSize != ((nRemainderC & _61Mask) >> _StoreShift61))
+			if (nRemainder61 >> _DIGIT_SIZE_IN_BITS != ((nRemainderC & _61Mask) >> _StoreShift61))
 			{
 				printf("oops\n"); // xxx
 			}
-			if (nRemainder79 >> c_nDigitSize != ((nRemainderC & _79Mask) >> _StoreShift79))
+			if (nRemainder79 >> _DIGIT_SIZE_IN_BITS != ((nRemainderC & _79Mask) >> _StoreShift79))
 			{
 				printf("oops\n"); // xxx
 			}
-			if (nRemainder83 >> c_nDigitSize != ((nRemainderC & _83Mask) >> _StoreShift83))
+			if (nRemainder83 >> _DIGIT_SIZE_IN_BITS != ((nRemainderC & _83Mask) >> _StoreShift83))
 			{
 				printf("oops\n"); // xxx
 			}
-			if (nRemainder89 >> c_nDigitSize != ((nRemainderC & _89Mask) >> _StoreShift89))
+			if (nRemainder89 >> _DIGIT_SIZE_IN_BITS != ((nRemainderC & _89Mask) >> _StoreShift89))
 			{
 				printf("oops\n"); // xxx
 			}
 			// check D
-			if (nRemainder47 >> c_nDigitSize != (nRemainderD & _47Mask))
+			if (nRemainder47 >> _DIGIT_SIZE_IN_BITS != (nRemainderD & _47Mask))
 			{
 				printf("oops\n"); // xxx
 			}
-			if (nRemainder53 >> c_nDigitSize != ((nRemainderD & _53Mask) >> _StoreShift53))
+			if (nRemainder53 >> _DIGIT_SIZE_IN_BITS != ((nRemainderD & _53Mask) >> _StoreShift53))
 			{
 				printf("oops\n"); // xxx
 			}
-			if (nRemainder59 >> c_nDigitSize != ((nRemainderD & _59Mask) >> _StoreShift59))
+			if (nRemainder59 >> _DIGIT_SIZE_IN_BITS != ((nRemainderD & _59Mask) >> _StoreShift59))
 			{
 				printf("oops\n"); // xxx
 			}
-			if (nRemainder73 >> c_nDigitSize != ((nRemainderD & _73Mask) >> _StoreShift73))
+			if (nRemainder73 >> _DIGIT_SIZE_IN_BITS != ((nRemainderD & _73Mask) >> _StoreShift73))
 			{
 				printf("oops\n"); // xxx
 			}
-			if (nRemainder97 >> c_nDigitSize != ((nRemainderD & _97Mask) >> _StoreShift97))
+			if (nRemainder97 >> _DIGIT_SIZE_IN_BITS != ((nRemainderD & _97Mask) >> _StoreShift97))
 			{
 				printf("oops\n"); // xxx
 			}
@@ -1022,14 +1022,14 @@ bool CRSADecrypt::DivisibleBySmallPrime_c(const CBigInteger& nNumber)
 		do
 		{
 			nVal = pnDigits[nDigit];
-			nRemainder7 = (((nVal | nRemainder7) % 7) << c_nDigitSize);
-			nRemainder11 = (((nVal | nRemainder11) % 11) << c_nDigitSize);
-			nRemainder13 = (((nVal | nRemainder13) % 13) << c_nDigitSize);
-			nRemainder17 = (((nVal | nRemainder17) % 17) << c_nDigitSize);
-			nRemainder19 = (((nVal | nRemainder19) % 19) << c_nDigitSize);
-			nRemainder23 = (((nVal | nRemainder23) % 23) << c_nDigitSize);
-			nRemainder29 = (((nVal | nRemainder29) % 29) << c_nDigitSize);
-			nRemainder31 = (((nVal | nRemainder31) % 31) << c_nDigitSize);
+			nRemainder7 = (((nVal | nRemainder7) % 7) << _DIGIT_SIZE_IN_BITS);
+			nRemainder11 = (((nVal | nRemainder11) % 11) << _DIGIT_SIZE_IN_BITS);
+			nRemainder13 = (((nVal | nRemainder13) % 13) << _DIGIT_SIZE_IN_BITS);
+			nRemainder17 = (((nVal | nRemainder17) % 17) << _DIGIT_SIZE_IN_BITS);
+			nRemainder19 = (((nVal | nRemainder19) % 19) << _DIGIT_SIZE_IN_BITS);
+			nRemainder23 = (((nVal | nRemainder23) % 23) << _DIGIT_SIZE_IN_BITS);
+			nRemainder29 = (((nVal | nRemainder29) % 29) << _DIGIT_SIZE_IN_BITS);
+			nRemainder31 = (((nVal | nRemainder31) % 31) << _DIGIT_SIZE_IN_BITS);
 		} while (0 != nDigit--);
 		return (0 == nRemainder7 || 0 == nRemainder11 || 0 == nRemainder13 || 0 == nRemainder17 || 0 == nRemainder19 || 0 == nRemainder23 || 0 == nRemainder29 || 0 == nRemainder31);
 	}
@@ -1052,28 +1052,28 @@ bool CRSADecrypt::DivisibleBySmallPrime_c(const CBigInteger& nNumber)
 		do
 		{
 			nVal = pnDigits[nDigit];
-			nRemainder7 = (((nVal | nRemainder7) % 7) << c_nDigitSize);
-			nRemainder11 = (((nVal | nRemainder11) % 11) << c_nDigitSize);
-			nRemainder13 = (((nVal | nRemainder13) % 13) << c_nDigitSize);
-			nRemainder17 = (((nVal | nRemainder17) % 17) << c_nDigitSize);
-			nRemainder19 = (((nVal | nRemainder19) % 19) << c_nDigitSize);
-			nRemainder23 = (((nVal | nRemainder23) % 23) << c_nDigitSize);
-			nRemainder29 = (((nVal | nRemainder29) % 29) << c_nDigitSize);
-			nRemainder31 = (((nVal | nRemainder31) % 31) << c_nDigitSize);
-			nRemainder37 = (((nVal | nRemainder37) % 37) << c_nDigitSize);
-			nRemainder41 = (((nVal | nRemainder41) % 41) << c_nDigitSize);
-			nRemainder43 = (((nVal | nRemainder43) % 43) << c_nDigitSize);
-			nRemainder47 = (((nVal | nRemainder47) % 47) << c_nDigitSize);
-			nRemainder53 = (((nVal | nRemainder53) % 53) << c_nDigitSize);
-			nRemainder59 = (((nVal | nRemainder59) % 59) << c_nDigitSize);
-			nRemainder61 = (((nVal | nRemainder61) % 61) << c_nDigitSize);
-			nRemainder67 = (((nVal | nRemainder67) % 67) << c_nDigitSize);
-			nRemainder71 = (((nVal | nRemainder71) % 71) << c_nDigitSize);
-			nRemainder73 = (((nVal | nRemainder73) % 73) << c_nDigitSize);
-			nRemainder79 = (((nVal | nRemainder79) % 79) << c_nDigitSize);
-			nRemainder83 = (((nVal | nRemainder83) % 83) << c_nDigitSize);
-			nRemainder89 = (((nVal | nRemainder89) % 89) << c_nDigitSize);
-			nRemainder97 = (((nVal | nRemainder97) % 97) << c_nDigitSize);
+			nRemainder7 = (((nVal | nRemainder7) % 7) << _DIGIT_SIZE_IN_BITS);
+			nRemainder11 = (((nVal | nRemainder11) % 11) << _DIGIT_SIZE_IN_BITS);
+			nRemainder13 = (((nVal | nRemainder13) % 13) << _DIGIT_SIZE_IN_BITS);
+			nRemainder17 = (((nVal | nRemainder17) % 17) << _DIGIT_SIZE_IN_BITS);
+			nRemainder19 = (((nVal | nRemainder19) % 19) << _DIGIT_SIZE_IN_BITS);
+			nRemainder23 = (((nVal | nRemainder23) % 23) << _DIGIT_SIZE_IN_BITS);
+			nRemainder29 = (((nVal | nRemainder29) % 29) << _DIGIT_SIZE_IN_BITS);
+			nRemainder31 = (((nVal | nRemainder31) % 31) << _DIGIT_SIZE_IN_BITS);
+			nRemainder37 = (((nVal | nRemainder37) % 37) << _DIGIT_SIZE_IN_BITS);
+			nRemainder41 = (((nVal | nRemainder41) % 41) << _DIGIT_SIZE_IN_BITS);
+			nRemainder43 = (((nVal | nRemainder43) % 43) << _DIGIT_SIZE_IN_BITS);
+			nRemainder47 = (((nVal | nRemainder47) % 47) << _DIGIT_SIZE_IN_BITS);
+			nRemainder53 = (((nVal | nRemainder53) % 53) << _DIGIT_SIZE_IN_BITS);
+			nRemainder59 = (((nVal | nRemainder59) % 59) << _DIGIT_SIZE_IN_BITS);
+			nRemainder61 = (((nVal | nRemainder61) % 61) << _DIGIT_SIZE_IN_BITS);
+			nRemainder67 = (((nVal | nRemainder67) % 67) << _DIGIT_SIZE_IN_BITS);
+			nRemainder71 = (((nVal | nRemainder71) % 71) << _DIGIT_SIZE_IN_BITS);
+			nRemainder73 = (((nVal | nRemainder73) % 73) << _DIGIT_SIZE_IN_BITS);
+			nRemainder79 = (((nVal | nRemainder79) % 79) << _DIGIT_SIZE_IN_BITS);
+			nRemainder83 = (((nVal | nRemainder83) % 83) << _DIGIT_SIZE_IN_BITS);
+			nRemainder89 = (((nVal | nRemainder89) % 89) << _DIGIT_SIZE_IN_BITS);
+			nRemainder97 = (((nVal | nRemainder97) % 97) << _DIGIT_SIZE_IN_BITS);
 		} while (0 != nDigit--);
 		return (0 == nRemainder7 ||
 			0 == nRemainder11 ||

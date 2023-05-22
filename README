@@ -72,7 +72,7 @@ size_t CUnsignedArithmeticHelper::MultOracle(size_t      nXSize,
             {
                 nProduct = nX*pY[j];
                 nSum     = (nProduct&c_nClearHigh) + nCarry + pZ[i+j];
-                nCarry   = (nProduct>>c_nDigitSize)+(nSum>>c_nDigitSize);
+                nCarry   = (nProduct>>_DIGIT_SIZE_IN_BITS)+(nSum>>_DIGIT_SIZE_IN_BITS);
                 pZ[i+j]  = (DIGIT) nSum;
             }
             pZ[i+j] = (DIGIT) nCarry;

@@ -8,7 +8,7 @@ size_t CBigIntegerHelper::ShiftXRight(size_t nXSize, int nBitShift, size_t nDigi
     {
         for(i=nDigitShift; i<nXSize-1; i++)
         {
-            pnShiftedValue[i-nDigitShift] = (pnX[i]>>nBitShift) | (pnX[i+1]<<(c_nDigitSize-nBitShift));
+            pnShiftedValue[i-nDigitShift] = (pnX[i]>>nBitShift) | (pnX[i+1]<<(_DIGIT_SIZE_IN_BITS-nBitShift));
         }
         pnShiftedValue[i-nDigitShift] = (pnX[i]>>nBitShift);
         return (0==pnShiftedValue[i-nDigitShift]) ? nXSize - (nDigitShift + 1) : nXSize - nDigitShift;
@@ -35,9 +35,9 @@ size_t CBigIntegerHelper::ShiftXLeft(size_t nXSize, int nBitShift, size_t nDigit
         pnShiftedValue[i++] = (pnX[i-nDigitShift]<<nBitShift);
         for(; i<nDigitShift+nXSize; i++)
         {
-            pnShiftedValue[i] = (pnX[i - nDigitShift]<<nBitShift) | (pnX[i-(1+nDigitShift)]>>(c_nDigitSize-nBitShift));
+            pnShiftedValue[i] = (pnX[i - nDigitShift]<<nBitShift) | (pnX[i-(1+nDigitShift)]>>(_DIGIT_SIZE_IN_BITS-nBitShift));
         }
-        pnShiftedValue[i] = pnX[i-(1+nDigitShift)]>>(c_nDigitSize-nBitShift);
+        pnShiftedValue[i] = pnX[i-(1+nDigitShift)]>>(_DIGIT_SIZE_IN_BITS-nBitShift);
         return (0 == pnShiftedValue[i]) ? i : i+1;
     }
     else
@@ -75,7 +75,7 @@ size_t CBigIntegerHelper::ShiftLeftInPlace(size_t nXSize, int nBitShift, size_t 
     else
     {
         i             = nXSize + nDigitShift;
-        nReverseShift = c_nDigitSize - nBitShift;
+        nReverseShift = _DIGIT_SIZE_IN_BITS - nBitShift;
         pnX[i--] = pnX[i - (1 + nDigitShift)]>>nReverseShift;
         if (i != nDigitShift)
         {
@@ -105,7 +105,7 @@ size_t CBigIntegerHelper::ShiftRightInPlace(size_t nXSize, int nBitShift, size_t
     if(nXSize <= nDigitShift) return 0; // entiely shifted away
     if(nBitShift)
     {
-        int nReverseShift = c_nDigitSize - nBitShift;
+        int nReverseShift = _DIGIT_SIZE_IN_BITS - nBitShift;
         for (i=nDigitShift; i<nXSize-1; i++)
         {
             pnX[i - nDigitShift] = (pnX[i]>>nBitShift) | (pnX[i + 1]<<nReverseShift);

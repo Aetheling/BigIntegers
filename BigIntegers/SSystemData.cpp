@@ -305,7 +305,7 @@ void SSystemData::PrintSystem(bool bVerbose)
             {
                 if(m_ppnSizesRi[i][j]==2)
                 {
-                    printf("%I64u ",m_pppCoefficientsRi[i][j][0]+(((DOUBLEDIGIT) m_pppCoefficientsRi[i][j][1])<<c_nDigitSize));
+                    printf("%I64u ",m_pppCoefficientsRi[i][j][0]+(((DOUBLEDIGIT) m_pppCoefficientsRi[i][j][1])<<_DIGIT_SIZE_IN_BITS));
                 }
                 else
                 {
@@ -342,7 +342,7 @@ void SSystemData::PrintSystem(bool bVerbose)
                 }
                 if(m_ppnSizesPi[i][j]==2)
                 {
-                    printf("%I64u ",m_pppCoefficientsPi[i][j][0]+(((DOUBLEDIGIT) m_pppCoefficientsPi[i][j][1])<<c_nDigitSize));
+                    printf("%I64u ",m_pppCoefficientsPi[i][j][0]+(((DOUBLEDIGIT) m_pppCoefficientsPi[i][j][1])<<_DIGIT_SIZE_IN_BITS));
                 }
                 else
                 {

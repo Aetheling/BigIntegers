@@ -645,7 +645,7 @@ void CArithmeticPerformanceTester::CompareBaseMultiplicationToFFT()
     size_t             nProductSize;
     printf("If you're not doing this with a retail build, you're not getting good numbers\n");
     // note size 5 DIGITs is the smallest size FFTMult will work with; we start with 8 -- smallest power of 2 which is at least 5
-    for(size_t i=8*c_nDigitSize; i<=((size_t) 1)<<31; i=i<<1)
+    for(size_t i=8*_DIGIT_SIZE_IN_BITS; i<=((size_t) 1)<<31; i=i<<1)
     {
         size_t nFFTLength,nFieldSize,nChunkSize;
         BYTE   byChunkSize;
@@ -3366,9 +3366,9 @@ void CArithmeticPerformanceTester::PowerModulusMontgomeryVsStandard()
     printf("Doing this in retail?  If not, your numbers won't be representative\n");
     for(int nBits=c_nMinBits; nBits<=c_nMaxBits; nBits *= 2)
     {
-        cRandom.RandomBits(nBits/c_nDigitSize, nBits%c_nDigitSize, true, nBase);
-        cRandom.RandomBits(nBits/c_nDigitSize, nBits%c_nDigitSize, true, nPower);
-        cRandom.RandomBits(nBits/c_nDigitSize, nBits%c_nDigitSize, true, nModulus);
+        cRandom.RandomBits(nBits/_DIGIT_SIZE_IN_BITS, nBits%_DIGIT_SIZE_IN_BITS, true, nBase);
+        cRandom.RandomBits(nBits/_DIGIT_SIZE_IN_BITS, nBits%_DIGIT_SIZE_IN_BITS, true, nPower);
+        cRandom.RandomBits(nBits/_DIGIT_SIZE_IN_BITS, nBits%_DIGIT_SIZE_IN_BITS, true, nModulus);
         nResult.Reserve(2*nModulus.GetSize()+1);
         nModulus.GetValue()[0] |= 1; // force the modulus to be odd, so it is suitable for Montgomery
         // first, standard power modulus
@@ -3761,8 +3761,8 @@ void CArithmeticPerformanceTester::SquareRootTimes()
     {
         nX2.SetSize(0);
         // want to make sure we hit 3-DIGIT numbers, too
-        if(c_nDigitSize*4 == nSize) nSize -= c_nDigitSize;
-        else if(c_nDigitSize*6 == nSize) nSize -= (2*c_nDigitSize);
+        if(_DIGIT_SIZE_IN_BITS*4 == nSize) nSize -= _DIGIT_SIZE_IN_BITS;
+        else if(_DIGIT_SIZE_IN_BITS*6 == nSize) nSize -= (2*_DIGIT_SIZE_IN_BITS);
         nX1.SetRandom(nSize);
         nSqrtX.Reserve(nX1.GetSize()+1); // extra digit for overflow --  only needed in single-digit case
         nTime = ::GetTickCount();
@@ -3852,7 +3852,7 @@ void CArithmeticPerformanceTester::SquareRootTimes()
     SquareRootNewton(nX1.GetSize(), nRootSize, nX1.GetValue(), nSqrtX.GetValue(), pWorkspace);
 #endif
     printf("Simple Newton:                                                                 %i milliseconds\n",::GetTickCount()-nTime);
-    nX2.SetRandom(nX1.GetSize()*c_nDigitSize/2);
+    nX2.SetRandom(nX1.GetSize()*_DIGIT_SIZE_IN_BITS/2);
     nX1Copy = nX1;
     nX2Copy = nX2;
     nTime   = ::GetTickCount();
@@ -3862,7 +3862,7 @@ void CArithmeticPerformanceTester::SquareRootTimes()
     GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), pWorkspace);
 #endif
     printf("General recursive (half-size x1):                                              %i milliseconds\n", ::GetTickCount() - nTime);
-    nX2.SetRandom(nX1.GetSize()*c_nDigitSize*2/3);
+    nX2.SetRandom(nX1.GetSize()*_DIGIT_SIZE_IN_BITS*2/3);
     nX1Copy = nX1;
     nX2Copy = nX2;
     nTime   = ::GetTickCount();
@@ -3872,7 +3872,7 @@ void CArithmeticPerformanceTester::SquareRootTimes()
     GeneralSquareRootRecursive(nX2Copy.GetSize(), nX1Copy.GetSize(), nRootSize, nX2Copy.GetValue(), nX1Copy.GetValue(), nSqrtX.GetValue(), pWorkspace);
 #endif
     printf("General recursive (two thirds-size x1):                                        %i milliseconds\n", ::GetTickCount() - nTime);
-    nX2.SetRandom(nX1.GetSize()*c_nDigitSize/3);
+    nX2.SetRandom(nX1.GetSize()*_DIGIT_SIZE_IN_BITS/3);
     nX1Copy = nX1;
     nX2Copy = nX2;
     nTime   = ::GetTickCount();
@@ -4186,10 +4186,10 @@ void  CArithmeticPerformanceTester::MatrixMultiplyTimes()
         {
             for (int j=0; j<nSize; j++)
             {
-                nBigInt.SetRandom(c_nDigitSize);
+                nBigInt.SetRandom(_DIGIT_SIZE_IN_BITS);
                 nBigInt.SetNegative(rand()%2);
                 nMat1[i][j] = nBigInt;
-                nBigInt.SetRandom(c_nDigitSize);
+                nBigInt.SetRandom(_DIGIT_SIZE_IN_BITS);
                 nBigInt.SetNegative(rand()%2);
                 nMat2[i][j] = nBigInt;
             }
@@ -4217,10 +4217,10 @@ void  CArithmeticPerformanceTester::MatrixMultiplyTimes()
             {
                 for (int j=0; j<nSize; j++)
                 {
-                    nBigInt.SetRandom(nDigits*c_nDigitSize);
+                    nBigInt.SetRandom(nDigits*_DIGIT_SIZE_IN_BITS);
                     nBigInt.SetNegative(rand()%2);
                     nMat1[i][j] = nBigInt;
-                    nBigInt.SetRandom(nDigits*c_nDigitSize);
+                    nBigInt.SetRandom(nDigits*_DIGIT_SIZE_IN_BITS);
                     nBigInt.SetNegative(rand()%2);
                     nMat2[i][j] = nBigInt;
                 }

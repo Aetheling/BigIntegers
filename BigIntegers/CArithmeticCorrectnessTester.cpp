@@ -162,7 +162,7 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         printf("Should not be able to set size to greater than that allocated\n");
         goto exit;
     }
-#ifdef _USESMALLDIGITS
+#if(16==_DIGIT_SIZE_IN_BITS)
     nY.SetFromHexString("BCDE");
 #else
     nY.SetFromHexString("890ABCDE");
@@ -715,7 +715,7 @@ bool CArithmeticCorrectnessTester::TestShortLongMultiply(bool bVerbose)
                 else if(1==k)
                 {
                     // Test with the larger operand having lots of internal 0s
-                    nX.SetRandom(i*c_nDigitSize);
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
                     for(size_t m=0;m<j-1;m++)
                     {
                         nY.GetValue()[m] = 0;
@@ -726,8 +726,8 @@ bool CArithmeticCorrectnessTester::TestShortLongMultiply(bool bVerbose)
                 else
                 {
                     // test more general multiplication
-                    nX.SetRandom(i*c_nDigitSize);
-                    nY.SetRandom(j*c_nDigitSize);
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
                 }
                 size_t nXSize = nX.GetSize();
                 size_t nYSize = nY.GetSize();
@@ -803,9 +803,9 @@ bool CArithmeticCorrectnessTester::TestShortLongMultiply(bool bVerbose)
                 else
                 {
                     // test more general multiplication
-                    nX.SetRandom(i*c_nDigitSize);
-                    nY.SetRandom(j*c_nDigitSize);
-                    nAdd.SetRandom((i+j)*c_nDigitSize);
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                    nAdd.SetRandom((i+j)*_DIGIT_SIZE_IN_BITS);
                 }
                 nXSize = nX.GetSize();
                 nYSize = nY.GetSize();
@@ -937,14 +937,14 @@ bool CArithmeticCorrectnessTester::TestBasicMultiply(bool bVerbose)
                         }
                         if (0 == nX.GetValue()[i - 1]) nX.SetSize(i - 1);
                         else                           nX.SetSize(i);
-                        nY.SetRandom(j*c_nDigitSize);
+                        nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
                     }
                     else
                     {
                         // test more general multiplication
-                        nX.SetRandom(i*c_nDigitSize);
-                        nY.SetRandom(j*c_nDigitSize);
-                        nAdd.SetRandom((i+j)*c_nDigitSize);
+                        nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                        nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                        nAdd.SetRandom((i+j)*_DIGIT_SIZE_IN_BITS);
                     }
                     if(0==j%3)
                     {
@@ -1123,7 +1123,7 @@ bool CArithmeticCorrectnessTester::TestRecursiveMultiply(bool bVerbose)
     pY->Reserve(c_nMaxSize);
     c_pnMultiplicationThresholds[e2NByN] = c_nMaxSize + 1;
     // Then, test the larger multiplication algorithms against the oracle
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS) // use algorithm names -- debug resolve todo
     for(int nAlgorithm=0;nAlgorithm<4;nAlgorithm++)
 #else
     for(int nAlgorithm=0;nAlgorithm<3;nAlgorithm++)
@@ -1140,8 +1140,8 @@ bool CArithmeticCorrectnessTester::TestRecursiveMultiply(bool bVerbose)
                     {
                     case 0:
                         // random values
-                        pX->SetRandom(i*c_nDigitSize);
-                        pY->SetRandom(j*c_nDigitSize);
+                        pX->SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                        pY->SetRandom(j*_DIGIT_SIZE_IN_BITS);
                         break;
                     case 1:
                         // max values
@@ -1193,7 +1193,7 @@ bool CArithmeticCorrectnessTester::TestRecursiveMultiply(bool bVerbose)
                         }
                         if (0 == pX->GetValue()[i - 1]) pX->SetSize(i - 1);
                         else                            pX->SetSize(i);
-                        pY->SetRandom(j*c_nDigitSize);
+                        pY->SetRandom(j*_DIGIT_SIZE_IN_BITS);
                     }
                     size_t nXSize = pX->GetSize();
                     size_t nYSize = pY->GetSize();
@@ -1240,7 +1240,7 @@ bool CArithmeticCorrectnessTester::TestRecursiveMultiply(bool bVerbose)
                             c_pnMultiplicationThresholds[e5By3] = nSmallSize;
                             c_pnMultiplicationThresholds[e7By4] = nLargeSize+1;
                             break;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
                         case 3:
                             c_pnMultiplicationThresholds[e3By2] = nSmallSize;
                             c_pnMultiplicationThresholds[e5By3] = nSmallSize;
@@ -1350,11 +1350,11 @@ bool CArithmeticCorrectnessTester::TestMultiplyAdd(bool bVerbose)
             {
                 for(int nZPos=0; nZPos<2; nZPos++)
                 {
-                    nX.SetRandom(i*c_nDigitSize,::GetTickCount());
-                    nY.SetRandom(j*c_nDigitSize);
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS,::GetTickCount());
+                    nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
                     if(k&1)
                     {
-                        nZ.SetRandom(k*c_nDigitSize);
+                        nZ.SetRandom(k*_DIGIT_SIZE_IN_BITS);
                     }
                     else
                     {
@@ -1409,13 +1409,17 @@ bool CArithmeticCorrectnessTester::TestDivide(bool bVerbose)
         {
             for(int k=0;k<5;k++)
             {
-                nX.SetRandom(j*c_nDigitSize);
-                nZ.SetRandom(i*c_nDigitSize);
+                nX.SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                nZ.SetRandom(i*_DIGIT_SIZE_IN_BITS);
                 switch(k)
                 {
                 case 0:
                     // random divisor
-                    nY.SetRandom(i*c_nDigitSize);
+                    do
+                    {
+                        nY.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    }
+                    while(nY.IsZero());
                     break;
                 case 1:
                     // one maximal divisor
@@ -1453,7 +1457,7 @@ bool CArithmeticCorrectnessTester::TestDivide(bool bVerbose)
                         nX.GetValue()[n] = (1+n)&1;
                     }
                     nX.SetSize(0==nX.GetValue()[j-1] ? j-1 : j);
-                    nY.SetRandom(i*c_nDigitSize);
+                    nY.SetRandom(i*_DIGIT_SIZE_IN_BITS);
                     break;
                 }
                 if(nY <= nZ)
@@ -1900,8 +1904,8 @@ bool CArithmeticCorrectnessTester::TestBigGCD(bool bVerbose)
         printf("Size %i, 1-991\n",i);
         for (size_t j=1; j<1000; j += 10)
         {
-            nX.SetRandom(c_nDigitSize*i);
-            nY.SetRandom(c_nDigitSize*j);
+            nX.SetRandom(_DIGIT_SIZE_IN_BITS*i);
+            nY.SetRandom(_DIGIT_SIZE_IN_BITS*j);
             nXSize           = nX.GetSize();
             nYSize           = nY.GetSize();
             nMinSize         = (nXSize < nYSize) ? nXSize : nYSize;
@@ -2194,7 +2198,7 @@ bool CArithmeticCorrectnessTester::TestBigGCD(bool bVerbose)
         {
             do
             {
-                nYCoef.SetRandom((j + 1)*c_nDigitSize);
+                nYCoef.SetRandom((j + 1)*_DIGIT_SIZE_IN_BITS);
             }
             while(nYCoef.GetSize() <= j);
             cBox.Multiply(nHold, nYCoef, nY);
@@ -2408,7 +2412,7 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
         {
             nBig.SetFromHexString("0");
             nMat1[i][j] = nBig;
-            nBig.SetRandom(c_nDigitSize*c_nMatrixSize);
+            nBig.SetRandom(_DIGIT_SIZE_IN_BITS*c_nMatrixSize);
 			nBig.SetNegative(rand()%2);
             nMat2[i][j] = nBig;
         }
@@ -2419,7 +2423,7 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
         {
             nBig.SetFromHexString("0");
             nMat2[i][j] = nBig;
-            nBig.SetRandom(c_nDigitSize*c_nMatrixSize);
+            nBig.SetRandom(_DIGIT_SIZE_IN_BITS*c_nMatrixSize);
 			nBig.SetNegative(rand()%2);
             nMat1[i][j] = nBig;
         }
@@ -2543,7 +2547,7 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
         {
             for(int j=0;j<nBigMat1.GetCols(); j++)
             {
-                nBig.SetRandom(c_nMatrixSize*c_nDigitSize);
+                nBig.SetRandom(c_nMatrixSize*_DIGIT_SIZE_IN_BITS);
                 nBigMat1[i][j] = nBig;
             }
         }
@@ -2551,7 +2555,7 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
         {
             for(int j=0;j<nBigMat2.GetCols(); j++)
             {
-                nBig.SetRandom(c_nMatrixSize*c_nDigitSize);
+                nBig.SetRandom(c_nMatrixSize*_DIGIT_SIZE_IN_BITS);
                 nBigMat2[i][j] = nBig;
             }
         }
@@ -2632,7 +2636,7 @@ bool CArithmeticCorrectnessTester::Test2NByNMultiply(bool bVerbose)
     c_pnMultiplicationThresholds[e3By2]  = 0;
     c_pnMultiplicationThresholds[e5By3]  = 0;
     c_pnMultiplicationThresholds[e7By4]  = 0;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
     c_pnMultiplicationThresholds[e9By5]  = 0;
 #endif
     c_pnMultiplicationThresholds[e2NByN] = (DWORD) -1;
@@ -2682,8 +2686,8 @@ bool CArithmeticCorrectnessTester::Test2NByNMultiply(bool bVerbose)
                             {
                             case 0:
                                 // random values
-                                pX->SetRandom(i*c_nDigitSize);
-                                pY->SetRandom(j*c_nDigitSize);
+                                pX->SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                                pY->SetRandom(j*_DIGIT_SIZE_IN_BITS);
                                 break;
                             case 1:
                                 // max values
@@ -2729,8 +2733,8 @@ bool CArithmeticCorrectnessTester::Test2NByNMultiply(bool bVerbose)
                                 break;
                             case 4:
                                 // leading 0s -- may happen as a subproblem
-                                pX->SetRandom(i*c_nDigitSize);
-                                pY->SetRandom(j*c_nDigitSize);
+                                pX->SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                                pY->SetRandom(j*_DIGIT_SIZE_IN_BITS);
                                 for(size_t nn = 1+rand()%pX->GetSize();nn<pX->GetSize();nn++)
                                 {
                                     pX->GetValue()[nn] = 0;
@@ -2832,8 +2836,8 @@ bool CArithmeticCorrectnessTester::Test2NByNMultiply(bool bVerbose)
                pSystem->m_nMaxSizePI,
                pSystem->m_nMaxSizeRI);
     }
-    nX1.SetRandom(c_nDigitSize*c_nFinalTestDIGITs);
-    nX2.SetRandom(c_nDigitSize*c_nFinalTestDIGITs);
+    nX1.SetRandom(_DIGIT_SIZE_IN_BITS*c_nFinalTestDIGITs);
+    nX2.SetRandom(_DIGIT_SIZE_IN_BITS*c_nFinalTestDIGITs);
     nProdMult.Reserve(nX1.GetSize() + nX2.GetSize() + 1);
     nProdMult.GetValue()[nX1.GetSize() + nX2.GetSize()] = TEST_BUFFERGUARD;
     nProdOracle.Reserve(nX1.GetSize() + nX2.GetSize());
@@ -2922,7 +2926,7 @@ bool CArithmeticCorrectnessTester::TestModBy2NPlus1(bool bVerbose)
         // next, make a few more general tests
         for(size_t m=1;m<=n;m++)
         {
-            nX.SetRandom(m*c_nDigitSize);
+            nX.SetRandom(m*_DIGIT_SIZE_IN_BITS);
             // run twice: once where the divide is exact; then, with remainder
             for(size_t j=0;j<2;j++)
             {
@@ -2939,7 +2943,7 @@ bool CArithmeticCorrectnessTester::TestModBy2NPlus1(bool bVerbose)
                 {
                     // remainder desired
                     nX -= 1;
-                    nY.SetRandom(m*c_nDigitSize);
+                    nY.SetRandom(m*_DIGIT_SIZE_IN_BITS);
                 }
 #if _CollectDetailedTimingData
                 DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
@@ -3029,13 +3033,13 @@ bool CArithmeticCorrectnessTester::TestMult2toMmodOnePlus2toN(bool bVerbose)
             for(size_t k=0;k<3;k++)
             {
                 // first, compute using the generic procedures
-                CBigInteger *pTwoToMBits = NewBigIntegerOnePlus2ToN(m/c_nDigitSize);
-                if(0<m/c_nDigitSize)
+                CBigInteger *pTwoToMBits = NewBigIntegerOnePlus2ToN(m/_DIGIT_SIZE_IN_BITS);
+                if(0<m/_DIGIT_SIZE_IN_BITS)
                 {
                     *pTwoToMBits -= 1;
                 }
                 nSum.SetSize(1);
-                nSum.GetValue()[0] = (1<<(m%c_nDigitSize));
+                nSum.GetValue()[0] = (1<<(m%_DIGIT_SIZE_IN_BITS));
 #if _CollectDetailedTimingData
                 DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
                 MultUBackend(nSum.GetSize(),
@@ -3059,7 +3063,7 @@ bool CArithmeticCorrectnessTester::TestMult2toMmodOnePlus2toN(bool bVerbose)
                 if(0==k)
                 {
                     // general case
-                    nX.SetRandom(c_nDigitSize*n);
+                    nX.SetRandom(_DIGIT_SIZE_IN_BITS*n);
                     for(size_t i=nX.GetSize();i<n+1;i++)
                     {
                         nX.GetValue()[i] = 0;
@@ -3117,8 +3121,8 @@ bool CArithmeticCorrectnessTester::TestMult2toMmodOnePlus2toN(bool bVerbose)
                 nProd.SetSize(nDivSize);
                 nSum.SetSize(nRemainderSize);
                 // nSum has the mod in it now.  Recompute using the specialized proceedure, and compare
-                nShift.m_nBitShift   = m%c_nDigitSize;
-                nShift.m_nDigitShift = m/c_nDigitSize;
+                nShift.m_nBitShift   = m%_DIGIT_SIZE_IN_BITS;
+                nShift.m_nDigitShift = m/_DIGIT_SIZE_IN_BITS;
                 Mult2toMmodOnePlus2toN(nX.GetValue(),n,nShift,nProd.GetValue());
                 // compare the two and make sure they match
                 size_t i = n;
@@ -3158,7 +3162,7 @@ exit:
 
 bool CArithmeticCorrectnessTester::TestFFT(bool bVerbose)
 {
-#ifdef _USESMALLDIGITS
+#if(16==_DIGIT_SIZE_IN_BITS)
     const size_t       c_MaxElementSizeInDigits = 4096;
 #else
     // my machine runs out of memory for the basic FFT crosscheck with large digits with 4096 of them
@@ -3520,8 +3524,8 @@ bool CArithmeticCorrectnessTester::TestFFTMult(bool bVerbose)
         for(int i=0; i<nMaxIterations; i++)
         {
             ResetThresholdsForOptimization();
-            nX.SetRandom(nSize*c_nDigitSize);
-            nY.SetRandom(nSize*c_nDigitSize);
+            nX.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
+            nY.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
             nProd.Reserve(nSize+nSize+1);
             nProdComputed.Reserve(nSize+nSize+1);
             nProdComputed.m_pnValue[nSize+nSize] = TEST_BUFFERGUARD;
@@ -3592,7 +3596,7 @@ bool CArithmeticCorrectnessTester::TestSquare()
     pX->Reserve(c_nMaxSize);
     c_pnMultiplicationThresholds[e2NByN] = c_nMaxSize + 1;
     // Then, test the larger multiplication algorithms against the oracle
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS) // use names as in multiply test -- debug resolve todo
     for(int nAlgorithm=0; nAlgorithm<6; nAlgorithm++)
 #else
     for(int nAlgorithm=0; nAlgorithm<5; nAlgorithm++)
@@ -3613,7 +3617,7 @@ bool CArithmeticCorrectnessTester::TestSquare()
                     {
                     case 0:
                         // random values
-                        pX->SetRandom(i*c_nDigitSize);
+                        pX->SetRandom(i*_DIGIT_SIZE_IN_BITS);
                         break;
                     case 1:
                         // max values
@@ -3685,7 +3689,7 @@ bool CArithmeticCorrectnessTester::TestSquare()
                             c_pnMultiplicationThresholds[e7By4]  = nXSize + 1;
                             c_pnMultiplicationThresholds[e2NByN] = nXSize + 1;
                             break;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
                         case 3:
                             // 9 by 5 multiply
                             c_pnMultiplicationThresholds[e3By2]  = nXSize;
@@ -4134,7 +4138,7 @@ bool CArithmeticCorrectnessTester::TestMontgomeryFormat()
             nN.SetRandom(13*k);
             nN.m_pnValue[0] |= 1; // needs to be odd for Montgomery to work
         }
-        nNumBits = (nN.GetSize() - 1)*c_nDigitSize;
+        nNumBits = (nN.GetSize() - 1)*_DIGIT_SIZE_IN_BITS;
         nMontgomeryX.Reserve(nN.GetSize()*2);
         nMontgomeryY.Reserve(nN.GetSize()*2);
         nConvertedBack.Reserve(nN.GetSize()*2);
@@ -4215,7 +4219,7 @@ bool CArithmeticCorrectnessTester::TestMontgomeryMultiply()
     // Note that 98096A1FC1FB69 is prime
   //  nN.SetFromHexString("98096A1FC1FB69");
     nN.SetFromHexString("70B7D90310FDB40C3F2BA643C039157EDA370D60E87F29B0E23AC3F52A185955994A40AECBC38EF4A9AE43CB3730B9679E614DA37C874D5F6994231DCBE1C1DDDE2A4E36FDCB11B8343B9C800AC83C1B8A949F9F91CEC5065E332BCC55C635CB15CEDB55BD0F9591794B8A1951FAF7D23447DC0E414DECDF5791B4BCDFC20C58D8AEBEC12286A7");// 98096A1FC1FB69");
-    nNumBits = (nN.GetSize() - 1)*c_nDigitSize;
+    nNumBits = (nN.GetSize() - 1)*_DIGIT_SIZE_IN_BITS;
     nMontgomeryX.Reserve(nN.GetSize()*2);
     nMontgomeryY.Reserve(nN.GetSize()*2);
     nConvertedBack.Reserve(nN.GetSize()*2);
@@ -4443,7 +4447,7 @@ bool CArithmeticCorrectnessTester::TestMontgomeryPowerModulus()
                 nN.SetRandom(640);
                 nN.GetValue()[0] |= 1; // force odd to be suitable for Montgomery
             }
-            while(nN.GetSize()*c_nDigitSize != 640);
+            while(nN.GetSize()*_DIGIT_SIZE_IN_BITS != 640);
             nNPrime.Reserve(nN.GetSize() + 1); // needs a little extra space for overflow (of 0) to avoid checking boundaries
             nRPrime.Reserve(nN.GetSize() + 1); // one extra digit for overflow during computation
             nPowerModulusMontgomery.Reserve(nN.GetSize() + 1); // one extra DIGIT for buffer guard
@@ -4714,8 +4718,8 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
     for(int nBitSize=c_nMinBitSize; nBitSize<=c_nMaxBitSize; nBitSize *= 2)
     {
         // want to make sure we hit 3-DIGIT numbers, too
-        if(c_nDigitSize*4 == nBitSize) nBitSize -= c_nDigitSize;
-        else if(c_nDigitSize*6 == nBitSize) nBitSize -= (2*c_nDigitSize);
+        if(_DIGIT_SIZE_IN_BITS*4 == nBitSize) nBitSize -= _DIGIT_SIZE_IN_BITS;
+        else if(_DIGIT_SIZE_IN_BITS*6 == nBitSize) nBitSize -= (2*_DIGIT_SIZE_IN_BITS);
         printf("Testing square root of %i bit numbers using Newton\n", nBitSize);
         for(int i=0;i<c_nTests; i++)
         {
@@ -4784,8 +4788,8 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
     for(int nBitSize=c_nMinBitSize; nBitSize<=c_nMaxBitSize; nBitSize *= 2)
     {
         // want to make sure we hit 3-DIGIT numbers, too
-        if(c_nDigitSize*4 == nBitSize) nBitSize -= c_nDigitSize;
-        else if(c_nDigitSize*6 == nBitSize) nBitSize -= (2*c_nDigitSize);
+        if(_DIGIT_SIZE_IN_BITS*4 == nBitSize) nBitSize -= _DIGIT_SIZE_IN_BITS;
+        else if(_DIGIT_SIZE_IN_BITS*6 == nBitSize) nBitSize -= (2*_DIGIT_SIZE_IN_BITS);
         printf("Testing square root of %i bit numbers using recursive method\n", nBitSize);
         for(int i=0;i<c_nTests; i++)
         {
@@ -4918,7 +4922,7 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
                     {
                         nX1.GetValue()[j] = 0;
                     }
-                    nX1.GetValue()[nDigits-1] = 1<<(i%c_nDigitSize);
+                    nX1.GetValue()[nDigits-1] = 1<<(i%_DIGIT_SIZE_IN_BITS);
                 }
                 nX1.SetSize(nDigits);
             }
@@ -5041,7 +5045,7 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
                     {
                         nX1.GetValue()[j] = 0;
                     }
-                    nX1.GetValue()[nDigits-1] = 1<<(i%c_nDigitSize);
+                    nX1.GetValue()[nDigits-1] = 1<<(i%_DIGIT_SIZE_IN_BITS);
                 }
                 nX1.SetSize(nDigits);
             }
@@ -5217,7 +5221,7 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
     // finally, a few tests using the arithmetic box to make sure that interface is working properly
     for(int i=0;i<c_nTests; i++)
     {
-        nX1.SetRandom(i*c_nDigitSize);
+        nX1.SetRandom(i*_DIGIT_SIZE_IN_BITS);
         nX1Copy = nX1;
         cBox.SQRT(nX1Copy, nX1Copy); // if we can overwrite x, we can put the result anywhere
         cBox.Square(nX1Copy, nX2);

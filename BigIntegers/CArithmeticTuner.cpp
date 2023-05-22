@@ -14,7 +14,7 @@ const char *c_szMultiplicationAlgorithmNames[eNumMultiplyAlgorithms] = { "eBasic
 																		 "e3By2",
 																		 "e5By3",
 																		 "e7By4",
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 																		 "e9By5",
 #endif
 																		 "e2NByN",
@@ -314,7 +314,7 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
     DWORD              nIterations, nBaseIterations;
 	FILE               *pOutput;
 	fopen_s(&pOutput, "2NByNGrowthParameters", "w");
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 	// set the starting size to the 7by4 threshold
 	nSize = c_pnMultiplicationThresholds[e7By4];
 #else
@@ -367,7 +367,7 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
 			nZ.Reserve(nSize<<1);
 			dwStartTime = s_Timer.GetMicroseconds();
 			dwTimestamp = dwStartTime;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 			c_pnMultiplicationThresholds[e9By5]  = nSize-1; // so we only use the 2nbyn algorithm for the top level
 #else
 			c_pnMultiplicationThresholds[e7By4]  = nSize-1; // so we only use the 2nbyn algorithm for the top level
@@ -477,7 +477,7 @@ void CArithmeticTuner::Compute2NByNGrowthParameters()
         printf("%i:%i threshold: %i (c_pn2NByNBreakpoints[%i])\n",nPieces,nPieces+1,nSizeLow,nPieces-5);
     }
 	FILE *pThreshold;
-#ifndef _USESMALLDIGITS
+#if(32<=_DIGIT_SIZE_IN_BITS)
 	// get the threshold for the 7x4/2nxn-1 split -- c_pnMultiplicationThresholds[e9By5]
 	c_pnMultiplicationThresholds[e9By5] = c_pnMultiplicationThresholds[e7By4] + 1; // starting point 
 	fopen_s(&pThreshold, "e9By5Threshold", "w");
@@ -966,7 +966,7 @@ void CArithmeticTuner::FindBestThresholds()
 	CWorkspace cWork;
 	c_pnMultiplicationThresholds[eBasicMultiply] = 15; // likely lower than need be
 	for(DWORD i=e3By2;i<eNumMultiplyAlgorithms;i++) c_pnMultiplicationThresholds[i] = 1000000000; // make sure only testing expected algorithm
-#if _USESMALLDIGITS
+#if(_DIGIT_SIZE_IN_BITS<32)
 	for(DWORD i=eBasicMultiply;i<e7By4;i++)
 #else
 	for(DWORD i=eBasicMultiply;i<e9By5;i++)
@@ -1636,10 +1636,10 @@ void CArithmeticTuner::FindBestStrassenThreshold()
 			{
 				for(int j=0; j<nSize; j++)
 				{
-					nBigInt.SetRandom(nDigits*c_nDigitSize);
+					nBigInt.SetRandom(nDigits*_DIGIT_SIZE_IN_BITS);
 					nBigInt.SetNegative(rand()%2);
 					nBigInt.Copy(nMat1[i][j]);
-					nBigInt.SetRandom(nDigits*c_nDigitSize);
+					nBigInt.SetRandom(nDigits*_DIGIT_SIZE_IN_BITS);
 					nBigInt.SetNegative(rand()%2);
 					nBigInt.Copy(nMat2[i][j]);
 				}

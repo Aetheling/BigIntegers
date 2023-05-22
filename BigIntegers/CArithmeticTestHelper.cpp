@@ -12,7 +12,7 @@
 void CArithmeticTestHelper::ResetThresholdsForOptimization()
 {
 #ifdef _UsingVariableThresholdsForTest
-#ifdef _USESMALLDIGITS
+#if(16==_DIGIT_SIZE_IN_BITS)
     // values found to be reasonable
     c_nBuildBlockSizePre                         = 8388608; // effectively ignored
     c_nBuildBlockSizePost                        = 16777216; // ignored
