@@ -17,6 +17,8 @@ public:    // functions
 public:    // variables
 protected: // variables
 	size_t                          m_nModulusBYTESize;
+	int                             m_nLeadByteBitMask; // lead BYTE of each chunk topped off with random bits for greater security; mask makes
+	                                                    // sure we don't set too many
 	CFixedPowerModularArithmeticBox m_Box;
 };
 
@@ -40,13 +42,6 @@ public:  // functions
 	// If pDecryptedMessage is NOT null, it is assumed to have adequate space.  That can be found using SpaceNeededForDecryptedMessage, below
 	virtual bool Decrypt(const char *pMessage, size_t nEncryptedMessageLength, size_t nPaddingBYTEs, char *&pDecryptedMessage, size_t &nMessageLength);
 	virtual size_t SpaceNeededForDecryptedMessage(size_t nEncryptedMessageLength);
-	static void PrintTestsToReject()
-	{
-		for(int i=0;i<c_nMaxMillerRabinTests;i++)
-		{
-			printf("%i took %i Miller-Rabin tests to reject\n",s_nTestsToReject[i],i+1);
-		}
-	}
 private: // functions
 	CRSADecrypt(CBigInteger &nPowerP,
 				CBigInteger &nPowerQ,
@@ -79,6 +74,13 @@ private: // functions
 	static bool AllSmallPrimeFactors(CBigInteger &nNumber);
 	// sets nFactor to nNumber divided by the largest possible power of 2, and returns that power
 	static size_t StripPowerOf2(CBigInteger &nNumber, CBigInteger &nFactor);
+	static void PrintTestsToReject()
+	{
+		for(int i=0;i<c_nMaxMillerRabinTests;i++)
+		{
+			printf("%i took %i Miller-Rabin tests to reject\n",s_nTestsToReject[i],i+1);
+		}
+	}
 public:  // variables
 private: // variables;
 	static const unsigned int       c_nMaxMillerRabinTests = 20;

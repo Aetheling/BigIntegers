@@ -128,36 +128,41 @@ CRSADecrypt *CRSADecrypt::GetDecrypt(size_t nDesiredModulusSizeInBYTEs, bool bFo
 	// first, we need a couple prime numbers which, when multiplied together, will give the desired
 	// modulus size.  Should be roughly the same size: here, choose them to be within (roughly) 10%
 	// of each other in length
-	nBYTELengthP = (0.5 + ((float) (rand()%100))/1000)*nDesiredModulusSizeInBYTEs;
-	nBYTELengthQ = nDesiredModulusSizeInBYTEs - nBYTELengthP;
-	// 65537 is a standard choice for the public power: short (but not too short) with few bits set -> fast.  Also
-	// prime, so always works (needs to be coprime with lcm(p-1, q-1) -- being prime insures that no matter what
-	// choice of p, q is made)
-	if (!publicPower.SetFromHexString("10001")) return NULL;
-	// If the public power is a factor of p-1 or q-1, the system won't work.  Either need a new p (q), or a new public
-	// power.  If we choose to get a new public power, users will know that either p-1 or q-1 is a multiple of the
-	// standard public power, leading to security weakness.  Ergo we choose the route of picking a new p (q).
 	do
 	{
-		GetOddPrime(p, nBYTELengthP, bForceUniformPrimeDistribution);
-		if (!(primeMinus1 = p)) return NULL;
-		primeMinus1 -= 1;
-		cBox.Divide(p, publicPower, dummyA , dummyB); // Divide only done to validate publicPower does NOT divide p
+		nBYTELengthP = (0.5 + ((float) (rand()%100))/1000)*nDesiredModulusSizeInBYTEs;
+		nBYTELengthQ = nDesiredModulusSizeInBYTEs - nBYTELengthP;
+		// 65537 is a standard choice for the public power: short (but not too short) with few bits set -> fast.  Also
+		// prime, so always works (needs to be coprime with lcm(p-1, q-1) -- being prime insures that no matter what
+		// choice of p, q is made)
+		if (!publicPower.SetFromHexString("10001")) return NULL;
+		// If the public power is a factor of p-1 or q-1, the system won't work.  Either need a new p (q), or a new public
+		// power.  If we choose to get a new public power, users will know that either p-1 or q-1 is a multiple of the
+		// standard public power, leading to security weakness.  Ergo we choose the route of picking a new p (q).
+		do
+		{
+			GetOddPrime(p, nBYTELengthP, bForceUniformPrimeDistribution);
+			if (!(primeMinus1 = p)) return NULL;
+			primeMinus1 -= 1;
+			cBox.Divide(p, publicPower, dummyA , dummyB); // Divide only done to validate publicPower does NOT divide p
+		}
+		while(AllSmallPrimeFactors(primeMinus1) || 0 == dummyB.GetSize()); // remainder 0?  public power is a divisor -- try again
+		do
+		{
+			GetOddPrime(q, nBYTELengthQ, bForceUniformPrimeDistribution);
+			if (!(primeMinus1 = q)) return NULL;
+			primeMinus1 -= 1;
+			cBox.Divide(q, publicPower, dummyA , dummyB); // Divide only done to validate publicPower does NOT divide q
+		}
+		while (AllSmallPrimeFactors(primeMinus1) || TooClose(p,q,cBox) || 0 == dummyB.GetSize()); // remainder 0?  public power is a divisor -- try again
+		// larger prime needs to be FIRST
+		if(p<q)
+			pDecryptor = GetDecrypt(q, p, publicPower, cBox, bProtectAgainstTimingAttacks);
+		else
+			pDecryptor = GetDecrypt(p, q, publicPower, cBox, bProtectAgainstTimingAttacks);
 	}
-	while(AllSmallPrimeFactors(primeMinus1) || 0 == dummyB.GetSize()); // remainder 0?  public power is a divisor -- try again
-	do
-	{
-		GetOddPrime(q, nBYTELengthQ, bForceUniformPrimeDistribution);
-		if (!(primeMinus1 = q)) return NULL;
-		primeMinus1 -= 1;
-		cBox.Divide(q, publicPower, dummyA , dummyB); // Divide only done to validate publicPower does NOT divide q
-	}
-	while (AllSmallPrimeFactors(primeMinus1) || TooClose(p,q,cBox) || 0 == dummyB.GetSize()); // remainder 0?  public power is a divisor -- try again
-	// larger prime needs to be FIRST
-	if(p<q)
-		return GetDecrypt(q, p, publicPower, cBox, bProtectAgainstTimingAttacks);
-	else
-	    return GetDecrypt(p, q, publicPower, cBox, bProtectAgainstTimingAttacks);
+	while(NULL == pDecryptor);
+	return pDecryptor;
 }
 
 CRSADecrypt *CRSADecrypt::GetDecrypt(CBigInteger &primeP, CBigInteger &primeQ, bool bProtectAgainstTimingAttacks)
@@ -504,6 +509,15 @@ CRSADecrypt *CRSADecrypt::GetDecrypt(CBigInteger &p, CBigInteger &q, CBigInteger
 	CBigInteger nModulus, privatePower, powerP, powerQ, inverseQ, pMinus1, qMinus1, gcd, lcm, work;
 	// this gives us the modulus...  almost: modulus is product of p and q
 	if (eOperationSucceeded != cBox.Multiply(p, q, nModulus)) return NULL;
+	// want the first nonzero BYTE of the modulus to be at least 16: want some spare bits to dump junk in for greater security
+	// Note that the first DIGIT of nModulus is guaranteed to be nozero
+	int nShift = _DIGIT_SIZE_IN_BITS - 8;
+	DIGIT nFirstDigit = nModulus.GetValue()[nModulus.GetSize()-1];
+	while(0==(nFirstDigit>>nShift)) nShift -=8;
+	if((nFirstDigit>>nShift) < 16)
+	{
+		return NULL;
+	}
 	// need lcm(p-1, q-1) to get private power from public power
 	if (!(pMinus1=p))
 	{

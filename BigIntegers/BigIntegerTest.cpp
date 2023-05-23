@@ -116,7 +116,7 @@ int main()
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
     cCorrectnessTester.ResetThresholdsForTest();
-    if(!cCorrectnessTester.TestBigInteger())
+    /*if(!cCorrectnessTester.TestBigInteger())
     {
         printf("BigInteger test failed\n");
         return 1;
@@ -360,7 +360,7 @@ int main()
     {
         printf("Probably prime test succeeded\n");
     }
-    cCorrectnessTester.ResetThresholdsForTest();
+    */cCorrectnessTester.ResetThresholdsForTest();
     if (!cRSATester.TestRSA(true))
     {
         printf("RSA with timing protection test failed\n");

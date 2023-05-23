@@ -4,11 +4,16 @@
 CRSAEncrypt::CRSAEncrypt(CBigInteger &nPublicPower, CBigInteger &nModulus) : m_Box(nPublicPower, nModulus, false)
 {
 	BYTE *pFirstDigit = (BYTE *) (nModulus.GetValue() + nModulus.GetSize() - 1);
-	int  i            = sizeof(DIGIT) - 1;
+	int  i            = sizeof(DIGIT);
 	m_nModulusBYTESize = nModulus.GetSize()*sizeof(DIGIT);
 	// tweak the modulus size to its exact size in BYTEs.  Note the first digit is guaranteed to be nonzero,
 	// so need not check against using index -1
-	while(0 == pFirstDigit[i--]) m_nModulusBYTESize--;
+	while(0 == pFirstDigit[--i]) m_nModulusBYTESize--;
+	// find the leading bit of the leading BYTE
+	BYTE b = pFirstDigit[i];
+	i = 8;
+	while(0==(b&(1<<(--i)))) ;
+	m_nLeadByteBitMask = (1<<i)-1;
 }
 
 size_t CRSAEncrypt::SpaceNeededForEncryptedMessage(size_t nMessageLength)
@@ -24,6 +29,7 @@ size_t CRSAEncrypt::SpaceNeededForEncryptedMessage(size_t nMessageLength)
 
 bool CRSAEncrypt::Encrypt(const char *pMessage, size_t nMessageLength, char *&pEncryptedMessage, size_t &nEncryptedMessageLength, size_t &nPadding)
 {
+	BYTE        nRandom;
 	CBigInteger nChunk, nEncrypted;
 	size_t      nChunks, nChunkDigits, nFinalChunkBYTEs, i, nSize;
 	const char  *pMessageChunk;
@@ -49,15 +55,17 @@ bool CRSAEncrypt::Encrypt(const char *pMessage, size_t nMessageLength, char *&pE
 #endif
 	pMessageChunk   = pMessage;
 	pEncryptedChunk = pEncryptedMessage;
-	nChunkDigits    = (m_nModulusBYTESize + sizeof(DIGIT) - 2)/sizeof(DIGIT);
+	nChunkDigits    = (m_nModulusBYTESize + sizeof(DIGIT) - 1)/sizeof(DIGIT);
 	nChunk.Reserve(nChunkDigits);
 	nChunk.GetValue()[nChunkDigits - 1] = 0;
+	nChunk.SetSize(nChunkDigits);
 	// Note: loop to nChunks-1 -- final chunk may be smaller than the rest
 	for(i=0; i<nChunks-1; i++)
 	{
 		memcpy(nChunk.GetValue(), pMessageChunk, m_nModulusBYTESize - 1);
-		nChunk.SetSize(nChunkDigits);
-		nChunk.FixLeadingZeros(); // in case the data has leading 0s
+		// add a bit of randomness to the dead space
+		nRandom = (rand()%255 + 1)&m_nLeadByteBitMask; // add NONZERO random bits, in fact
+		((BYTE *) nChunk.GetValue())[m_nModulusBYTESize - 1] = nRandom; // add NONZERO random bits, in fact
 		m_Box.Power(nChunk, nEncrypted);
 		nSize = nEncrypted.GetSize()*sizeof(DIGIT);
 		if(nSize<m_nModulusBYTESize)
@@ -75,12 +83,13 @@ bool CRSAEncrypt::Encrypt(const char *pMessage, size_t nMessageLength, char *&pE
 	}
 	// final chunk
 	memcpy(nChunk.GetValue(), pMessageChunk, nFinalChunkBYTEs);
+	// add a bit of randomness to the dead space
 	for(i=nFinalChunkBYTEs; i<m_nModulusBYTESize-1; i++)
 	{
-	    ((char *) nChunk.GetValue())[i] = 0;
+	    ((char *) nChunk.GetValue())[i] = rand()&255;
 	}
-	nChunk.SetSize(nChunkDigits);
-	nChunk.FixLeadingZeros(); // in case the data has leading 0s
+	nRandom = (rand()%255 + 1)&m_nLeadByteBitMask; // add NONZERO random bits, in fact
+	((BYTE *) nChunk.GetValue())[m_nModulusBYTESize - 1] = nRandom; // add NONZERO random bits, in fact
 	m_Box.Power(nChunk, nEncrypted);
 	nSize = nEncrypted.GetSize()*sizeof(DIGIT);
 	if (nSize < m_nModulusBYTESize)
