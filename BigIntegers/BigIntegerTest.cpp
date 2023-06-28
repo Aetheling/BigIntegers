@@ -25,7 +25,8 @@ int CRandom::s_nSeed = 0;
 bool PinThreadToProcessor(DWORD dwProcessID)
 {
 	// pin the process to the CPU passed (or top CPU if none given); when testing best cache sizes, need to maintain the cache!
-	// And...  pinning to a processor REALLY speeds things up
+	// And...  pinning to a processor REALLY speeds things up.
+    // WARNING: also sets proces priority to realtime, and thread priority to highest -- DO NOT DO THIS if running multithreaded!
     SYSTEM_INFO  sysInfo;
     HANDLE       hCurrentProcessHandle = GetCurrentProcess(), hCurrentThreadHandle = GetCurrentThread();
     DWORD_PTR    pProcessAffinityMask,pSystemAffinityMask,pProcessorMask=1;
@@ -54,16 +55,25 @@ bool PinThreadToProcessor(DWORD dwProcessID)
 		if(0==pProcessorMask)
 		{
 			printf("processor specified not in allowed set\n");
+            goto exit;
 		}
 		else if(0==SetThreadAffinityMask(hCurrentThreadHandle, pProcessorMask))
 		{
 			printf("Unable to set affinity mask\n");
+            goto exit;
 		}
-		else
-		{
-			bAllOK = true;
-		}
-	}
+        if (!SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS))
+        {
+            printf("Failed to boost process priority to realtime\n");
+            goto exit;
+        }
+        if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST))
+        {
+            printf("Failed to boost thread priority to highest\n");
+            goto exit;
+        }
+    }
+    bAllOK = true;
 exit:
 	return bAllOK;
 }
@@ -89,16 +99,24 @@ bool UnpinProcessor()
 		if(0==pProcessorMask)
 		{
 			printf("processor specified not in allowed set\n");
+            goto exit;
 		}
 		else if(0==SetThreadAffinityMask(hCurrentThreadHandle, pProcessorMask))
 		{
 			printf("Unable to set affinity mask\n");
+            goto exit;
 		}
-		else
-		{
-			bAllOK = true;
-		}
+        if (!SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS))
+        {
+            printf("Failed to restore process priority to realtime\n");
+        }
+        if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL))
+        {
+            printf("Failed to restore thread priority to normal\n");
+        }
 	}
+    bAllOK = true;
+exit:
 	return bAllOK;
 }
 
@@ -116,7 +134,7 @@ int main()
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
     cCorrectnessTester.ResetThresholdsForTest();
-    /*if(!cCorrectnessTester.TestBigInteger())
+    if(!cCorrectnessTester.TestBigInteger())
     {
         printf("BigInteger test failed\n");
         return 1;
@@ -135,8 +153,6 @@ int main()
     {
         printf("Add/subtract test passed\n");
     }
-    // note that the 2n-1 by 2n multiply requires divide, GCD, and
-    // matrix ops.  So we test it after testing those functions
     cCorrectnessTester.ResetThresholdsForTest();
     if(!cCorrectnessTester.TestShortLongMultiply())
     {
@@ -217,6 +233,8 @@ int main()
     {
         printf("Matrix test succeeded\n");
     }
+    // note that the 2n-1 by 2n multiply requires divide, GCD, and
+    // matrix ops.  So we test it after testing those functions
     cCorrectnessTester.ResetThresholdsForTest();
 	if(!cCorrectnessTester.Test2NByNMultiply()) // long test!  especially in debug (in debug, also validates generating the system of equations which takes time, above and beyond just generating it)
 	{
@@ -360,7 +378,7 @@ int main()
     {
         printf("Probably prime test succeeded\n");
     }
-    */cCorrectnessTester.ResetThresholdsForTest();
+    cCorrectnessTester.ResetThresholdsForTest();
     if (!cRSATester.TestRSA(true))
     {
         printf("RSA with timing protection test failed\n");
@@ -385,13 +403,12 @@ int main()
 	//                              Tune parameters                                       //
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
-	//PinThreadToProcessor((DWORD) -1); // want to keep the thread on the same processor -- trying to
+	PinThreadToProcessor((DWORD) -1); // want to keep the thread on the same processor -- trying to
 	                                  // optimize cache parameters!
-    /*cTuner.ResetThresholdsForTest();
-	cTuner.Test2NByNBlockSizes();
-    cTuner.FindBestThresholds();
+    cTuner.ResetThresholdsForTest();
+//	cTuner.Test2NByNBlockSizes(); // likely no need for this -- by the time the problem is big enough for doing it in chunks to help, FFT is faster regardless
+    cTuner.FindBestMultiplicationThresholds();
     cTuner.FindBestDivideThresholds();
-
 	////////////////////////////////////////////////////////////////////////////////////////
 	//                                                                                    //
 	//                              Performance tests                                     //
@@ -403,15 +420,26 @@ int main()
         printf("Pinning processor failed!\n");
         return 1;
     }
-    printf("tests with processor pinned:\n");
+    else
+    {
+        printf("tests with processor pinned:\n");
+    }
+    // on my machine, striped multiply is (almost) always faster than basic multiply.  But if basic multiply is faster on your
+    // machine, you will want to adjust CUnsignedArithmeticHelper::MultUBackend, CUnsignedArithmeticHelper::MultAddUBackend,
+    // and perhaps CUnsignedArithmeticHelper::SquareUBackend
+    // to take account
     cPerfTester.SpeedCheckBasicMultiply();
+    cPerfTester.CompareBasicMultiplicationToStripedMultiplication();
+    cPerfTester.CompareBasicMultiplicationToLongShortMultiplication();
     cPerfTester.TestMultiplyTimes();
     cPerfTester.CompareBaseMultiplicationToFFT();
     cPerfTester.CompareMultiplicationAlgorithms();
     cPerfTester.CompareDivideTimes();
     cPerfTester.SquareRootTimes();
     cPerfTester.GCDTimes();
+    cPerfTester.MatrixMultiplyTimes();
     cPerfTester.PowerModulusMontgomeryVsStandard();
+    cPerfTester.FFTTimes();
     cRSATester.PerfTestDivisibleBySmallPrime();
     cRSATester.PerfTestProbablyPrime();
     cRSATester.PerfTestGetPrime();
@@ -424,21 +452,5 @@ int main()
         printf("Unpinning processor failed!\n");
         return 1;
     }
-    printf("tests with processor unpinned:\n");
-    cPerfTester.SpeedCheckBasicMultiply();
-    cPerfTester.TestMultiplyTimes();
-    cPerfTester.CompareBaseMultiplicationToFFT();
-    cPerfTester.CompareMultiplicationAlgorithms();
-    cPerfTester.CompareDivideTimes();
-    cPerfTester.SquareRootTimes();
-    cPerfTester.GCDTimes();
-    cPerfTester.MatrixMultiplyTimes();
-    cRSATester.PerfTestDivisibleBySmallPrime();
-    cRSATester.PerfTestProbablyPrime();
-    cRSATester.PerfTestGetPrime();
-    if (!cRSATester.PerfTestRSA())
-    {
-        printf("Perf test revealed encrypt-decrypt error\n");
-    }*/
     return 0;
 }

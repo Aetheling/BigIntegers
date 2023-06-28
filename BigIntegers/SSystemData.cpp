@@ -76,7 +76,6 @@ void SSystemData::Init(size_t n)
     CBigInteger          nCoef("1");
     size_t               i,j,k,nSp=0,nSpaceNeeded=0;
     CBigIntegerMatrix    cBigMat(2*n-1);
-    //CBigIntegerVector    *pDiag   = new CBigIntegerVector(2*n-1);
 
     m_nSystemSize         = n; // only use m_nSystemSize for cleanup, printing
     cBigMat[0][0]         = nOne;
@@ -89,7 +88,6 @@ void SSystemData::Init(size_t n)
     nSpaceNeeded = 0;
     for(j=1;j<2*n-2;j++)
     {
-       // pBigMat->Assign(j,0,nOne);
         cBigMat[j][0] = nOne;
         for(i=1;i<n;i++)
         {
@@ -157,7 +155,7 @@ void SSystemData::Init(size_t n)
     m_pppCoefficientsPi = (DIGIT ***) malloc(sizeof(DIGIT **)*(2*n-3));
     m_ppbSigns          = (bool **)   malloc(sizeof(bool *)*(2*n-3));
     m_ppbSigns[0]       = new bool[(2*n-3)*(2*n-1)];
-    m_ppnSizesPi        = (size_t **)   malloc(sizeof(size_t *)*(2*n-3));
+    m_ppnSizesPi        = (size_t **) malloc(sizeof(size_t *)*(2*n-3));
     m_ppnSizesPi[0]     = new size_t[(2*n-3)*2*n];
     for(i=0;i<2*n-3;i++)
     {

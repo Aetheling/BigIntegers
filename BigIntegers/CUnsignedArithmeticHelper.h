@@ -14,7 +14,7 @@ enum EMultiplyAlgorithm { eBasicMultiply = 0,
                           e9By5,
 #endif
                           e2NByN,
-                          eFFTMult,
+                          eFFTMult, // not used as a threshold marker.  Purely here for naming purposes
                           eNumMultiplyAlgorithms };
 
 enum EDivideComponents { eTotalDivideCalls, eDivideProcessTime, eDivideMultCallsTime, eBasicDivideTime, eTotalDivideTime, eNumDivideComponents };
@@ -89,6 +89,7 @@ public:  // functions
     // If nSum is passed, it computes the memory needed for z = x*y+z.
     // Note that z is assumed to have the same sign as x*y!
     static size_t MultiplyMemoryNeeds(size_t nXSize, size_t nYSize, size_t nSum = 0);
+    static size_t SquareMemoryNeeds(size_t nXSize, size_t nSum = 0);
     // Returns the amount of memory needed, in DIGITs, to divide a number of
     // size nNumeratorSize by one of size nDenominatorSize.  Rounds UP to the
     // nearest multiple of 2.
@@ -101,6 +102,7 @@ public:  // functions
     // Computes memory needed for FFT multiplication.  Seperate from MultiplyMemoryNeeds
     // for now.
     static size_t FFTMultiplyMemoryNeeds(size_t nXSize, size_t nYSize, bool bMultAdd);
+    static size_t FFTSquareMemoryNeeds(size_t nXSize, bool bMultAdd);
     static size_t SquareRootMemoryNeeds(size_t nXSize);
     static void Multiply(size_t nXSize,
                          size_t nYSize,
@@ -412,6 +414,15 @@ protected: // functions
                            const DIGIT  *pY,
                            DIGIT        *pZ,
                            bool         bAddInitialZValueToProduct);
+    // same as MultUBasic; just does the work in a different fashion.  Assumes
+    // nXSize is at least 13 (else wouldn't be calling this function).  Also
+    // assumes z is 0 above nYSize+6 if doing multiply, 0 above <z size> for mult-add
+    static void MultUStriped(size_t       nXSize,
+                             size_t       nYSize,
+                             const DIGIT  *pX,
+                             const DIGIT  *pY,
+                             DIGIT        *pZ,
+                             bool         bAddInitialZValueToProduct);
     // Note that it is assumed that nXSize <= nYSize (unverified).  Also
     // doesn't handle 0-sized numbers!.
     static void MultUShortLong(size_t       nXSize,
@@ -539,6 +550,7 @@ protected: // functions
     // but for now hardwired for testing.
     // Assumes nXsize <= nYsize!
     static size_t PiecesByProblemSize(size_t nSize);
+    static size_t PiecesByProblemSizeSquare(size_t nSize);
 	static void ConstructArgumentsFor2NByNSubproblems(size_t              nSubproblemSize,
 													  size_t              nNumPieces,
 													  size_t              nXSize,
@@ -756,6 +768,7 @@ protected: // functions
 
     // converts the base number whose FFT is to be computed into the format desired for the FFT
     // Note the nFFTLength is always a power of 2, and division by 2^m is the same as multiplication by 2^(2n-m) in the field.
+    // This function is only used in test, for FFT_basic (which is itself only used in test for validation purposes)
     static void ExpandBaseNumberForFFT(const DIGIT *pnToExpand,
                                        size_t      nToExpandLength,
                                        size_t      nChunkSize,
@@ -780,21 +793,20 @@ protected: // functions
                     size_t      nFieldSize,
                     SBitShift   nRootUnity,
                     DIGIT       *pnWorkspace);
-
-    // core FFT_opt assumes the length is a power of 4, and not just a power
-    // of 2; wrapper to deal with that.  We still assume that the length of
-    // the FFT is at least 2....
-    static void FFT_opt_wrapper(DIGIT       *pFFT,
-                                size_t      nLength,
-                                size_t      nFieldSize,
-                                SBitShift   nRootUnity,
-                                DIGIT       *pnWorkspace);
-    // assumes the length is a power of 4, not just a power of 2
-    static void FFT_opt(DIGIT       *pFFT,
-                        size_t      nLength,
-                        size_t      nFieldSize,
-                        SBitShift   nRootUnity,
-                        DIGIT       *pnWorkspace);
+    // computes the FFT with a different ordering of the data for better locality of reference
+    /*static void FFTReordered(const DIGIT *pBase,    // the number whose FFT is to be computed
+                    DIGIT       *pFFT,
+                    size_t      nBaseSize, // the size of the number whose FFT is to be computed
+                    size_t      nChunkSize,
+                    size_t      nLength,
+                    size_t      nFieldSize,
+                    SBitShift   nRootUnity,
+                    DIGIT       *pnWorkspace);
+    static void FFTReorderedBackend(DIGIT       *pFFT,
+                                    size_t      nLength,
+                                    size_t      nFieldSize,
+                                    SBitShift   nRootUnity,
+                                    DIGIT       *pnWorkspace);*/
     static void FFT_Inverse_basic(const DIGIT *pToCompute,
                                   size_t      nLength,
                                   SBitShift   nRootUnity, // the root of unity used in the forward FFT
@@ -808,7 +820,7 @@ protected: // functions
                            size_t      nFieldSize,
                            SBitShift   nRootUnity,
                            DIGIT       *pnWorkspace);
-	// for use with further=optimized FFT
+	// for use with optimized FFT
     static void FFT_Inverse(const DIGIT *pFFT,
 		                    DIGIT       *pFFT_FFTInverse,
                             size_t      nLength,
@@ -1018,22 +1030,26 @@ protected: // functions
 
 public:    // variables
 protected: // variables
-	static const unsigned int c_n2NBynSizeBreakpoints = 7;
+    static const unsigned int c_n2NBynSizeBreakpoints = 7;
 #ifdef _UsingVariableThresholdsForTest
     static unsigned int       c_nBuildBlockSizePre;
     static unsigned int       c_nBuildBlockSizePost;
-    static unsigned int       c_pnMultiplicationThresholds[eNumMultiplyAlgorithms];
+    static unsigned int       c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1];
+    static unsigned int       c_pnSquareThresholds[eNumMultiplyAlgorithms-1];
 	static unsigned int       c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]; // switch between 5 and 6 pieces, 6 and 7, etc.  By the upper end,
 	                                                                         // don't care -- FFT mult is faster, anyway
+    static unsigned int       c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints];
     static unsigned int       c_nDivideThresholdSmall;       // at least 4 for correctness
     static unsigned int       c_nDivideThresholdDiff;        // at least 4 for correctness
     static unsigned int       c_nSquareRootThreshold;
 #else
     static const unsigned int c_nBuildBlockSizePre;          // or whatever is found to be best in testing thresholds -- this is good
     static const unsigned int c_nBuildBlockSizePost;         // or whatever is found to be best in testing thresholds -- this is good
-    static const unsigned int c_pnMultiplicationThresholds[eNumMultiplyAlgorithms];
+    static const unsigned int c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1];
+    static const unsigned int c_pnSquareThresholds[eNumMultiplyAlgorithms-1];
 	static const unsigned int c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]; // switch between 5 and 6 pieces, 6 and 7, etc.  By the upper end,
 	                                                                         // don't care -- FFT mult is faster, anyway
+    static const unsigned int c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints];
     // used by the function deciding how many pieces to use for REALLY BIG multiplications
     static const unsigned int c_nDivideThresholdSmall;       // at least 4 for correctness
     static const unsigned int c_nDivideThresholdDiff;        // at least 4 for correctness

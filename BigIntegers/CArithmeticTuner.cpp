@@ -11,14 +11,14 @@
 #pragma warning(disable:4267)    // conversion from 'size_t' to 'unsigned int' -- possible loss of data
 
 const char *c_szMultiplicationAlgorithmNames[eNumMultiplyAlgorithms] = { "eBasicMultiply",
-																		 "e3By2",
-																		 "e5By3",
-																		 "e7By4",
+                                                                         "e3By2",
+                                                                         "e5By3",
+                                                                         "e7By4",
 #if(32<=_DIGIT_SIZE_IN_BITS)
-																		 "e9By5",
+                                                                         "e9By5",
 #endif
-																		 "e2NByN",
-																		 "eFFTMult" };
+                                                                         "e2NByN",
+                                                                         "eFFTMult" };
 /*
 This test takes LOTS of time to do, since only very big problems are helped by the cache optimizations.
 Sample run:
@@ -81,42 +81,42 @@ Chosen sizes: Pre: 8192 Time: 472765539 Post: 32768 Time: 1822001072
 */
 void CArithmeticTuner::Test2NByNBlockSizes()
 {
-	FILE         *pOutput;
-	fopen_s(&pOutput, "2NByNBlockSizes", "w");
-	const size_t c_nMaxSize = 100000000;//1000000000; // my computer can't handle this bigger memory size
-	DIGIT        *pnX,*pnY,*pnZ, *pnWorkspace, **ppnRi, *pnOverflowDigits;
-	size_t       i,j,nPieces,nIterations,*pnRiSizes,*pnRiOpSizes, nSubproblemSize, nMaxRiOpSize;
-	unsigned int *pnCacheBlock;
-	SSystemData  *pSystemToUse;
-	DWORD64      pdwBestTime[2], nTimestampLow, nTimestampHigh, dwTimestamp;
-	size_t       nProblemSize; // cache only helps for big problems
-	pnX = new DIGIT[c_nMaxSize];
-	pnY = new DIGIT[c_nMaxSize];
-	pnZ = new DIGIT[2*c_nMaxSize];
-	pnWorkspace = (DIGIT *) malloc(sizeof(DIGIT)*20*c_nMaxSize);
-	for(i=0;i<c_nMaxSize;i++)
-	{
-		pnX[i] = (DIGIT) -1;
-		pnY[i] = (DIGIT) -1;
-	}
-	// pre-generate systems so we don't count that time in optimizing
-	for(size_t nProblemSize = 10000; nProblemSize<= c_nMaxSize; nProblemSize *= 10)
-	{
-		nPieces      = PiecesByProblemSize(nProblemSize);
-		pSystemToUse = GenerateSystem(nPieces);
-	}
-	nProblemSize      =  c_nMaxSize; // cache only helps for big problems
-	nIterations       =  c_nMaxSize/nProblemSize;
-	nPieces           =  PiecesByProblemSize(nProblemSize);
-	pSystemToUse      =  GenerateSystem(nPieces);
-	pnOverflowDigits  =  pnWorkspace;
-	pnWorkspace       += 2*(2*nPieces-2)*(pSystemToUse->m_nMaxSizeRI+2);
-	ppnRi             =  (DIGIT **) pnWorkspace;
+    FILE         *pOutput;
+    fopen_s(&pOutput, "2NByNBlockSizes", "w");
+    const size_t c_nMaxSize = 100000000;//1000000000; // my computer can't handle this bigger memory size
+    DIGIT        *pnX,*pnY,*pnZ, *pnWorkspace, **ppnRi, *pnOverflowDigits;
+    size_t       i,j,nPieces,nIterations,*pnRiSizes,*pnRiOpSizes, nSubproblemSize, nMaxRiOpSize;
+    unsigned int *pnCacheBlock;
+    SSystemData  *pSystemToUse;
+    DWORD64      pdwBestTime[2], nTimestampLow, nTimestampHigh, dwTimestamp;
+    size_t       nProblemSize; // cache only helps for big problems
+    pnX = new DIGIT[c_nMaxSize];
+    pnY = new DIGIT[c_nMaxSize];
+    pnZ = new DIGIT[2*c_nMaxSize];
+    pnWorkspace = (DIGIT *) malloc(sizeof(DIGIT)*20*c_nMaxSize);
+    for(i=0;i<c_nMaxSize;i++)
+    {
+        pnX[i] = (DIGIT) -1;
+        pnY[i] = (DIGIT) -1;
+    }
+    // pre-generate systems so we don't count that time in optimizing
+    for(size_t nProblemSize = 10000; nProblemSize<= c_nMaxSize; nProblemSize *= 10)
+    {
+        nPieces      = PiecesByProblemSize(nProblemSize);
+        pSystemToUse = GenerateSystem(nPieces);
+    }
+    nProblemSize      =  c_nMaxSize; // cache only helps for big problems
+    nIterations       =  c_nMaxSize/nProblemSize;
+    nPieces           =  PiecesByProblemSize(nProblemSize);
+    pSystemToUse      =  GenerateSystem(nPieces);
+    pnOverflowDigits  =  pnWorkspace;
+    pnWorkspace       += 2*(2*nPieces-2)*(pSystemToUse->m_nMaxSizeRI+2);
+    ppnRi             =  (DIGIT **) pnWorkspace;
     pnRiSizes         =  (size_t *) (ppnRi + (2*nPieces-1));
     pnWorkspace       =  (DIGIT *)  (pnRiSizes + 2*nPieces-1);
     pnRiOpSizes       =  (size_t *) (pnZ + ((size_t) pnZ)%(sizeof(size_t)/sizeof(DIGIT)));
-	nMaxRiOpSize      =  ((nProblemSize+nPieces-1)/nPieces+pSystemToUse->m_nMaxSizeRI+2);
-	printf("doing %i x %i multiplication in %i pieces\n", nProblemSize, nProblemSize, nPieces);
+    nMaxRiOpSize      =  ((nProblemSize+nPieces-1)/nPieces+pSystemToUse->m_nMaxSizeRI+2);
+    printf("doing %i x %i multiplication in %i pieces\n", nProblemSize, nProblemSize, nPieces);
     for(i=0;i<2*nPieces-2;i++)
     {
         // this gives more space than is needed to hold r(0) and r(2n-2) --
@@ -125,681 +125,396 @@ void CArithmeticTuner::Test2NByNBlockSizes()
         // for the args for r(1), r(1) for r(2), etc.
         ppnRi[i]     =  pnWorkspace;
         pnWorkspace  += (nProblemSize+nPieces-1)/nPieces+pSystemToUse->m_nMaxSizeRI+2;
-		pnRiSizes[i] =  nMaxRiOpSize<<1;
+        pnRiSizes[i] =  nMaxRiOpSize<<1;
     }
-	ppnRi[i]     = pnZ;
-	pnRiSizes[i] = nMaxRiOpSize<<1;
-	for(i=0;i<2*nPieces-1;i++)
-	{
-		for(j=0;j<pnRiSizes[i];j++)
-		{
-			ppnRi[i][j] = (DIGIT) (i+1)*(j+1);
-		}
-	}
-	for(i=0;i<1;i++) // stop at 0: cache blocks for post disabled; code not working & tests indicate not useful for problem sizes that matter
-	{
-		unsigned int nBestSize;
-		pdwBestTime[i] = 0xffffffff;
-		if(0==i)
-		{
-			printf("testing pre block sizes:\n");
-			pnCacheBlock    = &c_nBuildBlockSizePre;
-			nSubproblemSize = ((nProblemSize+nPieces-1)/nPieces+pSystemToUse->m_nMaxSizeRI+2);
-		}
-		else
-		{
-			printf("testing post block sizes:\n");
-			pnCacheBlock    = &c_nBuildBlockSizePost;
-			nSubproblemSize = ((nProblemSize+nPieces-1)/nPieces+pSystemToUse->m_nMaxSizeRI+2)<<1;
-		}
-		for(size_t nCacheBlockSize = 1; nCacheBlockSize <= nSubproblemSize*2; nCacheBlockSize=nCacheBlockSize<<1)
-		{
-			if (1 == nCacheBlockSize)
-			{
-				*pnCacheBlock = 1000000000; // no caching.  Cache block size 1 very definately SLOW.
-			}
-			else
-			{
-				*pnCacheBlock = nCacheBlockSize;
-			}
-			nTimestampLow = s_Timer.GetMicroseconds();
-			if(0==i)
-			{
-				for(j=0;j<nIterations;j++)
-				{
+    ppnRi[i]     = pnZ;
+    pnRiSizes[i] = nMaxRiOpSize<<1;
+    for(i=0;i<2*nPieces-1;i++)
+    {
+        for(j=0;j<pnRiSizes[i];j++)
+        {
+            ppnRi[i][j] = (DIGIT) (i+1)*(j+1);
+        }
+    }
+    for(i=0;i<1;i++) // stop at 0: cache blocks for post disabled; code not working & tests indicate not useful for problem sizes that matter
+    {
+        unsigned int nBestSize;
+        pdwBestTime[i] = 0xffffffff;
+        if(0==i)
+        {
+            printf("testing pre block sizes:\n");
+            pnCacheBlock    = &c_nBuildBlockSizePre;
+            nSubproblemSize = ((nProblemSize+nPieces-1)/nPieces+pSystemToUse->m_nMaxSizeRI+2);
+        }
+        else
+        {
+            printf("testing post block sizes:\n");
+            pnCacheBlock    = &c_nBuildBlockSizePost;
+            nSubproblemSize = ((nProblemSize+nPieces-1)/nPieces+pSystemToUse->m_nMaxSizeRI+2)<<1;
+        }
+        for(size_t nCacheBlockSize = 1; nCacheBlockSize <= nSubproblemSize*2; nCacheBlockSize=nCacheBlockSize<<1)
+        {
+            if (1 == nCacheBlockSize)
+            {
+                *pnCacheBlock = 1000000000; // no caching.  Cache block size 1 very definately SLOW.
+            }
+            else
+            {
+                *pnCacheBlock = nCacheBlockSize;
+            }
+            nTimestampLow = s_Timer.GetMicroseconds();
+            if(0==i)
+            {
+                for(j=0;j<nIterations;j++)
+                {
 #if _CollectDetailedTimingData
-					ConstructArgumentsFor2NByNSubproblems((nProblemSize+nPieces-1)/nPieces,
-						                                  nPieces,
-														  nProblemSize,
-														  nProblemSize,
-														  nMaxRiOpSize,
-														  pSystemToUse->m_nMaxSizeRI+2,
-														  ppnRi,
-														  pnRiOpSizes,
-														  pnX,
-														  pnY,
-														  pnOverflowDigits,
-														  pSystemToUse,
-														  dwTimestamp,
-														  pnWorkspace);
+                    ConstructArgumentsFor2NByNSubproblems((nProblemSize+nPieces-1)/nPieces,
+                                                          nPieces,
+                                                          nProblemSize,
+                                                          nProblemSize,
+                                                          nMaxRiOpSize,
+                                                          pSystemToUse->m_nMaxSizeRI+2,
+                                                          ppnRi,
+                                                          pnRiOpSizes,
+                                                          pnX,
+                                                          pnY,
+                                                          pnOverflowDigits,
+                                                          pSystemToUse,
+                                                          dwTimestamp,
+                                                          pnWorkspace);
 #else
-					ConstructArgumentsFor2NByNSubproblems((nProblemSize+nPieces-1)/nPieces,
-						                                  nPieces,
-														  nProblemSize,
-														  nProblemSize,
-														  nMaxRiOpSize,
-														  pSystemToUse->m_nMaxSizeRI+2,
-														  ppnRi,
-														  pnRiOpSizes,
-														  pnX,
-														  pnY,
-														  pnOverflowDigits,
-														  pSystemToUse,
-														  pnWorkspace);
+                    ConstructArgumentsFor2NByNSubproblems((nProblemSize+nPieces-1)/nPieces,
+                                                          nPieces,
+                                                          nProblemSize,
+                                                          nProblemSize,
+                                                          nMaxRiOpSize,
+                                                          pSystemToUse->m_nMaxSizeRI+2,
+                                                          ppnRi,
+                                                          pnRiOpSizes,
+                                                          pnX,
+                                                          pnY,
+                                                          pnOverflowDigits,
+                                                          pSystemToUse,
+                                                          pnWorkspace);
 #endif
-				}
-			}
-			else
-			{
-				for(j=0;j<nIterations;j++)
-				{
+                }
+            }
+            else
+            {
+                for(j=0;j<nIterations;j++)
+                {
 #if _CollectDetailedTimingData
-					
-					ComputeProductFrom2NByNSubproblemResults(nPieces,
-						                                     nMaxRiOpSize<<1,
-															 (nProblemSize+nPieces-1)/nPieces,
-															 nProblemSize,
-															 nProblemSize,
-															 pnRiSizes,
-															 ppnRi,
-															 pnZ,
-															 pSystemToUse,
-															 dwTimestamp,
-															 pnWorkspace);
+                    
+                    ComputeProductFrom2NByNSubproblemResults(nPieces,
+                                                             nMaxRiOpSize<<1,
+                                                             (nProblemSize+nPieces-1)/nPieces,
+                                                             nProblemSize,
+                                                             nProblemSize,
+                                                             pnRiSizes,
+                                                             ppnRi,
+                                                             pnZ,
+                                                             pSystemToUse,
+                                                             dwTimestamp,
+                                                             pnWorkspace);
 #else
-					ComputeProductFrom2NByNSubproblemResults(nPieces,
-						                                     nMaxRiOpSize<<1,
-															 (nProblemSize+nPieces-1)/nPieces,
-															 nProblemSize,
-															 nProblemSize,
-															 pnRiSizes,
-															 ppnRi,
-															 pnZ,
-															 pSystemToUse,
-															 pnWorkspace);
+                    ComputeProductFrom2NByNSubproblemResults(nPieces,
+                                                             nMaxRiOpSize<<1,
+                                                             (nProblemSize+nPieces-1)/nPieces,
+                                                             nProblemSize,
+                                                             nProblemSize,
+                                                             pnRiSizes,
+                                                             ppnRi,
+                                                             pnZ,
+                                                             pSystemToUse,
+                                                             pnWorkspace);
 #endif
-				}
-			}
-			nTimestampHigh = s_Timer.GetMicroseconds();
-			if(nTimestampHigh-nTimestampLow<pdwBestTime[i])
-			{
-				pdwBestTime[i] = nTimestampHigh-nTimestampLow;
-				nBestSize      = *pnCacheBlock;
-			}
-			printf( "Cache Size: %i\tSubpiece size: %i\tTime: %I64u\n", *pnCacheBlock, nSubproblemSize, nTimestampHigh - nTimestampLow);
-			fprintf(pOutput,"Cache Size: %i\tSubpiece size: %i\tTime: %I64u\n", *pnCacheBlock,nSubproblemSize,nTimestampHigh-nTimestampLow);
-		}
-		*pnCacheBlock = nBestSize;
-	}
-	printf("Chosen sizes: Pre: %i Time: %I64u\tPost: %i Time: %I64u\n",c_nBuildBlockSizePre,pdwBestTime[0],c_nBuildBlockSizePost,pdwBestTime[1]);
-	delete pnX;
-	delete pnY;
-	delete pnZ;
-	free(pnOverflowDigits); // pnOverflowDigits aligned with original workspace allocation
-	fclose(pOutput);
+                }
+            }
+            nTimestampHigh = s_Timer.GetMicroseconds();
+            if(nTimestampHigh-nTimestampLow<pdwBestTime[i])
+            {
+                pdwBestTime[i] = nTimestampHigh-nTimestampLow;
+                nBestSize      = *pnCacheBlock;
+            }
+            printf( "Cache Size: %i\tSubpiece size: %i\tTime: %I64u\n", *pnCacheBlock, nSubproblemSize, nTimestampHigh - nTimestampLow);
+            fprintf(pOutput,"Cache Size: %i\tSubpiece size: %i\tTime: %I64u\n", *pnCacheBlock,nSubproblemSize,nTimestampHigh-nTimestampLow);
+        }
+        *pnCacheBlock = nBestSize;
+    }
+    printf("Chosen sizes: Pre: %i Time: %I64u\tPost: %i Time: %I64u\n",c_nBuildBlockSizePre,pdwBestTime[0],c_nBuildBlockSizePost,pdwBestTime[1]);
+    delete pnX;
+    delete pnY;
+    delete pnZ;
+    free(pnOverflowDigits); // pnOverflowDigits aligned with original workspace allocation
+    fclose(pOutput);
 }
 
-// Turns out, the gcd threshld tested here doesn't actually help
+// Turns out, the gcd threshold tested here doesn't actually help
 #if 0
 void CArithmeticTuner::FindBestGCDThreshold()
 {
-	CArithmeticBox     cBox;
-	CRandomGenerator   cGenerator;
-	const unsigned int c_nBaseDigitSize = 256, c_nIterations = 8192;// 16384;
-	CBigInteger        nX, nY, nXCoef, nYCoef, nGCD, nXExtended, nYExtended;
-	// find two numbers which are relatively prime; use these as the base for constructing numbers with the desired size of GCD
-	cGenerator.RandomBits(c_nBaseDigitSize, 0, true, nX);
-	do
-	{
-		cGenerator.RandomBits(c_nBaseDigitSize, 0, true, nY);
-		cBox.GCD(&nX, &nY, &nGCD, &nXCoef, &nYCoef);
-	}
-	while(1 != nGCD.GetSize() || 1 != nGCD.GetValue()[0]);
-	for(int nNumberSize = 1; nNumberSize<=256; nNumberSize++)
-	{
-		// find a suitable common factor
-		cGenerator.RandomBits(nNumberSize, 0, true, nGCD);
-		// construct numbers with that as there greatest common divisor
-		cBox.Multiply(&nX, &nGCD, &nXExtended);
-		cBox.Multiply(&nY, &nGCD, &nYExtended);
-		// time with threshold below the GCD size and above
-		s_nGCDThreshold = 0;
-		unsigned int nStartTime = ::GetTickCount();
-		for(int i=0; i<c_nIterations; i++)
-		{
-			cBox.GCD(&nXExtended, &nYExtended, &nGCD, &nXCoef, &nYCoef);
-		}
-		unsigned int nMiddleTime = ::GetTickCount();
-		s_nGCDThreshold = 1000000;
-		for(int i=0; i<c_nIterations; i++)
-		{
-			cBox.GCD(&nXExtended, &nYExtended, &nGCD, &nXCoef, &nYCoef);
-		}
-		unsigned int nEndTime = ::GetTickCount();
-		printf("Number size: %i GCD size: %i Time with low threshold: %i ms  Time with high threshold: %i ms\n",
-			   c_nBaseDigitSize + nNumberSize,
-			   nNumberSize,
-			   nMiddleTime - nStartTime,
-			   nEndTime - nMiddleTime);
-	}
+    CArithmeticBox     cBox;
+    CRandomGenerator   cGenerator;
+    const unsigned int c_nBaseDigitSize = 256, c_nIterations = 8192;// 16384;
+    CBigInteger        nX, nY, nXCoef, nYCoef, nGCD, nXExtended, nYExtended;
+    // find two numbers which are relatively prime; use these as the base for constructing numbers with the desired size of GCD
+    cGenerator.RandomBits(c_nBaseDigitSize, 0, true, nX);
+    do
+    {
+        cGenerator.RandomBits(c_nBaseDigitSize, 0, true, nY);
+        cBox.GCD(&nX, &nY, &nGCD, &nXCoef, &nYCoef);
+    }
+    while(1 != nGCD.GetSize() || 1 != nGCD.GetValue()[0]);
+    for(int nNumberSize = 1; nNumberSize<=256; nNumberSize++)
+    {
+        // find a suitable common factor
+        cGenerator.RandomBits(nNumberSize, 0, true, nGCD);
+        // construct numbers with that as there greatest common divisor
+        cBox.Multiply(&nX, &nGCD, &nXExtended);
+        cBox.Multiply(&nY, &nGCD, &nYExtended);
+        // time with threshold below the GCD size and above
+        s_nGCDThreshold = 0;
+        unsigned int nStartTime = ::GetTickCount();
+        for(int i=0; i<c_nIterations; i++)
+        {
+            cBox.GCD(&nXExtended, &nYExtended, &nGCD, &nXCoef, &nYCoef);
+        }
+        unsigned int nMiddleTime = ::GetTickCount();
+        s_nGCDThreshold = 1000000;
+        for(int i=0; i<c_nIterations; i++)
+        {
+            cBox.GCD(&nXExtended, &nYExtended, &nGCD, &nXCoef, &nYCoef);
+        }
+        unsigned int nEndTime = ::GetTickCount();
+        printf("Number size: %i GCD size: %i Time with low threshold: %i ms  Time with high threshold: %i ms\n",
+               c_nBaseDigitSize + nNumberSize,
+               nNumberSize,
+               nMiddleTime - nStartTime,
+               nEndTime - nMiddleTime);
+    }
 }
 #endif
 
-// try to figure out the parameters for deciding how to do Really Big Multiplies
-// Need to compute 3 values:
-// CExtendedPrecisionInteger::s_7by4Threshold: threshold below which we use 7x4 multiplication
-// CExtendedPrecisionInteger::s_2NbyN_addend: constant term in fnc for deciding number of pieces for Big Problems
-// CExtendedPrecisionInteger::s_2NbyN_coef: coef (linear) term in fnc for deciding number of pieces for Big Problems
-// It should use AT LEAST 5 pieces at the s_7by4Threshold (might use more; the 2NbyN algorithm isn't
-// as well-tuned, since it has to be general -- so we might actually skip the first size or three).
-// Determine best break points for 4 to 5, 5 to 6, and 6 to 7 to get basic values; repeat and also
-    // get break points for 7 to 8, 8 to 9, and 9 to 10 to refine with curve fitting.
-void CArithmeticTuner::Compute2NByNGrowthParameters()
+// computes the next size to try in seeking a threshold
+void NextSize(unsigned int &dwSize, DWORD64 dwLowTime, DWORD64 dwHighTime)
 {
-	CBigIntegerForTest nX, nY, nZ;
-	CWorkspace         cWork;
-    DWORD              i;
-    DWORD64            dwFewPiecesTime, dwMorePiecesTime, dwStartTime, dwTimestamp;
-    size_t             nSize, nSizeLow, nSizeHigh, nProdSize;
-    DWORD              nIterations, nBaseIterations;
-	FILE               *pOutput;
-	fopen_s(&pOutput, "2NByNGrowthParameters", "w");
-#if(32<=_DIGIT_SIZE_IN_BITS)
-	// set the starting size to the 7by4 threshold
-	nSize = c_pnMultiplicationThresholds[e7By4];
-#else
-	// set the starting size to the 5by3 threshold
-	nSize = c_pnMultiplicationThresholds[e5By3];
-#endif
-    // find out how many multiplications (roughly) that it takes to use up at least
-    // a second's worth of time
-	nX.SetRandom(nSize*sizeof(DIGIT)<<3); // random number on nSize digits
-    nY.SetRandom(nSize*sizeof(DIGIT)<<3); // random number on nSize digits
-	nZ.Reserve(nSize<<1);
-	// find a reasonable number of iterations -- want at least a second of work to
-	// get stable times, but not so much as to be slow!
-	cWork.Reserve(8*MultiplyMemoryNeeds(nSize,nSize));  // *8: fudge factor; may be using more pieces than memory func designed for
-    nIterations = 1;
+    if (dwLowTime<21*dwHighTime/20)   dwSize++;
+    else if(dwLowTime<5*dwHighTime/4) dwSize += (dwSize+99)/100; // if far apart, bump size faster
+    else if(dwLowTime<3*dwHighTime/2) dwSize += (dwSize+9)/10;
+    else if(dwLowTime<2*dwHighTime)   dwSize += (dwSize+4)/5;
+    else if(dwLowTime<3*dwHighTime)   dwSize += (2*dwSize+4)/5;
+    else if(dwLowTime<4*dwHighTime)   dwSize += (3*dwSize+3)/4;
+    else                              dwSize += dwSize;
+}
+
+void CArithmeticTuner::Resize(DWORD dwSize, CWorkspace &cWork, CBigIntegerForTest &nX, CBigIntegerForTest &nY, CBigIntegerForTest &nZ, bool bTestingSquare)
+{
+    if(nX.m_nAllocatedSize <= dwSize)
+    {
+        size_t nAllocatedSize = ((size_t) dwSize)*2;
+        size_t nMemoryNeeds   = (bTestingSquare) ? SquareMemoryNeeds(nAllocatedSize) : MultiplyMemoryNeeds(nAllocatedSize, nAllocatedSize);
+        nMemoryNeeds = nMemoryNeeds*4 + 1024; // might not be using the "expected" algorithm -> count could be off.
+        nX.Reserve(nAllocatedSize);
+        nY.Reserve(nAllocatedSize);
+        nZ.Reserve(nAllocatedSize*2);
+        cWork.Reserve(nMemoryNeeds);
+    }
+    nX.SetSize(dwSize);
+    nY.SetSize(dwSize);
+    // initializing largely redundant -- but it DOES help put the system in the same state every time
+    for(unsigned int i=0; i<dwSize; i++)
+    {
+        nX.GetValue()[i] = (DIGIT) -1;
+        nY.GetValue()[i] = (DIGIT) -1;
+    }
+}
+
+void CArithmeticTuner::MultiplyMultipleTimes(DWORD64            dwNumMultiplies,
+                                             DWORD              &dwTimeTaken,
+                                             CWorkspace         &cWork,
+                                             CBigIntegerForTest &nX,
+                                             CBigIntegerForTest &nY,
+                                             CBigIntegerForTest &nZ,
+                                             bool               bTestingSquare)
+{
+    DIGIT *pX     = nX.GetValue();
+    DIGIT *pY     = nY.GetValue();
+    DIGIT *pZ     = nZ.GetValue();
+    DIGIT *pWork  = cWork.GetSpace();
+    size_t nXSize = nX.GetSize();
+    size_t nYSize = nX.GetSize();
+    dwTimeTaken = ::GetTickCount();
+    for(DWORD64 i=0; i<dwNumMultiplies; i++)
+    {
+        if (bTestingSquare) Square(nXSize, pX, pZ, pWork);
+        else                Multiply(nXSize, nYSize, pX, pY, pZ, pWork);
+    }
+    dwTimeTaken = ::GetTickCount() - dwTimeTaken;
+}
+
+// compute the number of multiplies of the given size required to take 5 seconds (roughly)
+DWORD64 CArithmeticTuner::GetIterations(DWORD dwSize, CWorkspace &cWork, CBigIntegerForTest &nX, CBigIntegerForTest &nY, CBigIntegerForTest &nZ, DWORD dwMinMillisecondsPerTest, bool bTestingSquare)
+{
+    DWORD   dwTime;
+    DWORD64 dwIterations = 1;
+    Resize(dwSize, cWork, nX, nY, nZ, bTestingSquare);
     do
     {
-        dwStartTime = s_Timer.GetMicroseconds();
-		dwTimestamp = dwStartTime;
-        for(i=0;i<nIterations;i++)
+        MultiplyMultipleTimes(dwIterations, dwTime, cWork, nX, nY, nZ, bTestingSquare);
+        if(dwMinMillisecondsPerTest <= dwTime) break;
+        printf("%I64u %i\n", dwIterations, dwTime);
+        dwIterations = dwIterations<<1;
+    }
+    while(true);
+    return dwIterations;
+}
+
+void CArithmeticTuner::ComputeThreshold(unsigned int       *pnThreshold,
+                                        unsigned int       dwSize,
+                                        bool               bTestingSquare,
+                                        CBigIntegerForTest &nX,
+                                        CBigIntegerForTest &nY,
+                                        CBigIntegerForTest &nZ,
+                                        CWorkspace         &cWork,
+                                        DWORD              dwMinMillisecondsPerTest,
+                                        FILE               *pOutput,
+                                        bool               bBinarySearchOnly,
+                                        unsigned int       *pnSecondaryThreshold,
+                                        size_t             nLim)
+{
+    char         szOutput[16][1024];
+    unsigned int nLow, nHigh, nOrigSecondary = 0;
+    bool         bDoubled = false;
+    DWORD64      dwIterations;
+    DWORD        dwLowTime, dwHighTime, i=0, dwHoldSize, dwCnt = 0;
+    if(nLim)
+    {
+        // try at the limit first, if given.  If the higher threshold is faster, abort
+        if (pnSecondaryThreshold)
         {
-#if _CollectDetailedTimingData
-			MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),cWork.GetSpace(),dwTimestamp,&nProdSize);
-#else
-			MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),cWork.GetSpace(),&nProdSize);
-#endif
+            nOrigSecondary        = *pnSecondaryThreshold;
+            *pnSecondaryThreshold = nLim - 1;
         }
-        dwFewPiecesTime = s_Timer.GetMicroseconds()-dwStartTime;
-        if(1000000<dwFewPiecesTime)
+        *pnThreshold    = nLim;
+        dwIterations    = GetIterations(nLim, cWork, nX, nY, nZ, dwMinMillisecondsPerTest, bTestingSquare);
+        MultiplyMultipleTimes(dwIterations, dwLowTime, cWork, nX, nY, nZ, bTestingSquare);
+        *pnThreshold    = nLim+1;
+        MultiplyMultipleTimes(dwIterations, dwHighTime, cWork, nX, nY, nZ, bTestingSquare);
+        if (pnSecondaryThreshold)
         {
+            *pnSecondaryThreshold = nOrigSecondary;
+        }
+        if(dwHighTime<dwLowTime) return; // threshold not in the passed range
+    }
+    // if we get to here, either no upper limit or the threshold should be below it
+    dwIterations = GetIterations(dwSize, cWork, nX, nY, nZ, dwMinMillisecondsPerTest, bTestingSquare);
+    // first, binary search to get to the right general area
+    // first, doubling to find the search range
+    do
+    {
+        if (pnSecondaryThreshold)
+        {
+            nOrigSecondary = *pnSecondaryThreshold;
+            *pnSecondaryThreshold = dwSize - 1;
+        }
+        *pnThreshold = dwSize;
+        MultiplyMultipleTimes(dwIterations, dwLowTime, cWork, nX, nY, nZ, bTestingSquare);
+        *pnThreshold = dwSize + 1;
+        MultiplyMultipleTimes(dwIterations, dwHighTime, cWork, nX, nY, nZ, bTestingSquare);
+        if (pOutput) fprintf(pOutput, "Size: %u\tLow: %u  High: %u  Iterations: %I64u\n", dwSize, dwLowTime, dwHighTime, dwIterations);
+        if(dwLowTime<dwHighTime) break;
+        dwIterations =  (1+dwIterations)/2;
+        dwSize       *= 2;
+        bDoubled     =  true;
+        Resize(dwSize, cWork, nX, nY, nZ, bTestingSquare);
+        if (pnSecondaryThreshold)
+        {
+            *pnSecondaryThreshold = nOrigSecondary;
+        }
+    }
+    while(true);
+    // now, actual binary search if appropriate
+    if(bDoubled)
+    {
+        nHigh = dwSize;
+        nLow  = nHigh/2;
+        do
+        {
+            dwSize = (nLow+nHigh)/2;
+            if (pnSecondaryThreshold)
+            {
+                nOrigSecondary = *pnSecondaryThreshold;
+                *pnSecondaryThreshold = dwSize - 1;
+            }
+            *pnThreshold = dwSize;
+            MultiplyMultipleTimes(dwIterations, dwLowTime, cWork, nX, nY, nZ, bTestingSquare);
+            *pnThreshold = dwSize + 1;
+            MultiplyMultipleTimes(dwIterations, dwHighTime, cWork, nX, nY, nZ, bTestingSquare);
+            if (dwLowTime < dwHighTime) nHigh = dwSize;
+            else                        nLow  = dwSize;
+            if (pOutput) fprintf(pOutput, "Size: %u\tLow: %u  High: %u  Iterations: %I64u\n", dwSize, dwLowTime, dwHighTime, dwIterations);
+            if(2*dwMinMillisecondsPerTest < dwHighTime) dwIterations = (1+dwIterations)/2;
+            Resize(dwSize, cWork, nX, nY, nZ, bTestingSquare);
+            if (pnSecondaryThreshold)
+            {
+                *pnSecondaryThreshold = nOrigSecondary;
+            }
+        }
+        while(nLow<nHigh-1);
+        dwSize = nLow;
+    }
+    if (bBinarySearchOnly)
+    {
+        if(dwLowTime<dwHighTime) *pnThreshold = dwSize;
+        return;
+    }
+    // now, final linear search to make sure we have the highest point at which the higher htreshold is best
+    do
+    {
+        if (pnSecondaryThreshold)
+        {
+            nOrigSecondary = *pnSecondaryThreshold;
+            *pnSecondaryThreshold = dwSize - 1;
+        }
+        *pnThreshold = dwSize;
+        MultiplyMultipleTimes(dwIterations, dwLowTime, cWork, nX, nY, nZ, bTestingSquare);
+        *pnThreshold = dwSize+1;
+        MultiplyMultipleTimes(dwIterations, dwHighTime, cWork, nX, nY, nZ, bTestingSquare);
+        if (pOutput)
+        {
+          //  sprintf_s(szOutput[i%16],"Size: %u\tLow threshold time: %u\tHigh threshold time: %u\tIterations: %u\n", dwSize, dwLowTime, dwHighTime, dwIterations);
+            fprintf(pOutput, "Size: %u\tLow threshold time: %u\tHigh threshold time: %u\tIterations: %u\n", dwSize, dwLowTime, dwHighTime, dwIterations);
+        }
+        if(dwLowTime<dwHighTime)
+        {
+            if(0==dwCnt++) dwHoldSize = dwSize;
+        }
+        else if(nLim && nLim<=dwSize)
+        {
+            dwHoldSize = dwSize;
             break;
         }
-        nIterations = nIterations<<1;
+        else
+        {
+            if(nLim) dwHoldSize = nLim+2; // so it won't be mistaken for anything real
+            dwCnt = 0;
+        }
+        NextSize(dwSize, dwLowTime, dwHighTime);
+        if(2*dwMinMillisecondsPerTest<=dwLowTime) dwIterations = (dwIterations+1)/2;
+        Resize(dwSize, cWork, nX, nY, nZ, bTestingSquare);
+        i++;
+        if (pnSecondaryThreshold)
+        {
+            *pnSecondaryThreshold = nOrigSecondary;
+        }
     }
-    while(1);
-    nBaseIterations = nIterations;
-    // find the switch points between nPieces and nPieces+1
-    for(size_t nPieces=5; nPieces<5+c_n2NBynSizeBreakpoints; nPieces++)
+    while(dwCnt < 6);
+    if (pOutput)
     {
-		printf("Considering %i:%i split for the 2N-1 by N multiplication\n",nPieces,nPieces+1);
-        // first, need to find a size for which nPieces+1 is faster than nPieces.
-        // Then, we can do a binary search to find the change point.  It is assumed
-        // that we start with a size for which nPieces is faster!
-        nSizeLow = nSize;
-        nSize    = nSize<<1;
-        do
-        {
-			nX.SetRandom(nSize*sizeof(DIGIT)<<3); // random number on nSize digits
-			nY.SetRandom(nSize*sizeof(DIGIT)<<3); // random number on nSize digits
-			nZ.Reserve(nSize<<1);
-			dwStartTime = s_Timer.GetMicroseconds();
-			dwTimestamp = dwStartTime;
-#if(32<=_DIGIT_SIZE_IN_BITS)
-			c_pnMultiplicationThresholds[e9By5]  = nSize-1; // so we only use the 2nbyn algorithm for the top level
-#else
-			c_pnMultiplicationThresholds[e7By4]  = nSize-1; // so we only use the 2nbyn algorithm for the top level
-#endif
-			cWork.Reserve(8*MultiplyMemoryNeeds(nSize,nSize));  // *8: fudge factor; may be using more pieces than memory func designed for
-            for(i=0;i<nIterations;i++)
-            {
-#if _CollectDetailedTimingData
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), cWork.GetSpace(), dwTimestamp);
-#else
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), cWork.GetSpace());
-#endif
-            }
-			dwFewPiecesTime = s_Timer.GetMicroseconds() - dwStartTime;
-            fprintf(pOutput,
-					"Size: %i Pieces: %i Iterations: %i Microseconds: %I64u\n",
-                    nSize,
-                    nPieces,
-                    nIterations,
-                    dwFewPiecesTime);
-            dwStartTime = s_Timer.GetMicroseconds();
-			dwTimestamp = dwStartTime;
-            for(i=0;i<nIterations;i++)
-            {
-#if _CollectDetailedTimingData
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), cWork.GetSpace(), dwTimestamp);
-#else
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), cWork.GetSpace());
-#endif
-            }
-			dwMorePiecesTime = s_Timer.GetMicroseconds() - dwStartTime;
-            fprintf(pOutput,
-					"Size: %i Pieces: %i Iterations: %i Microseconds: %I64u\n",
-                    nSize,
-                    nPieces+1,
-                    nIterations,
-                    dwMorePiecesTime);
-            if(dwMorePiecesTime<dwFewPiecesTime)
-            {
-                nSizeLow  = nSize>>1;
-                nSizeHigh = nSize;
-                break;
-            }
-            else if(nIterations>1)
-            {
-                nIterations = nIterations>>1;
-            }
-            nSize = nSize<<1;
-        }
-        while(1);
-        // Now, use binary search to find the breakpoint
-        do
-        {
-            nSize       = (nSizeLow+nSizeHigh)>>1;
-			dwStartTime = s_Timer.GetMicroseconds();
-			dwTimestamp = dwStartTime;
-            for(i=0;i<nIterations;i++)
-            {
-#if _CollectDetailedTimingData
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), cWork.GetSpace(), dwTimestamp);
-#else
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces), cWork.GetSpace());
-#endif
-            }
-			dwFewPiecesTime = s_Timer.GetMicroseconds() - dwStartTime;
-            fprintf(pOutput,
-					"Size: %i Pieces: %i Iterations: %i Microseconds: %I64u\n",
-                    nSize,
-                    nPieces,
-                    nIterations,
-                    dwFewPiecesTime);
-            dwStartTime = s_Timer.GetMicroseconds();
-            for(i=0;i<nIterations;i++)
-            {
-#if _CollectDetailedTimingData
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), cWork.GetSpace(), dwTimestamp);
-#else
-				MultU2NByN(nX.GetSize(), nY.GetSize(), nX.GetValue(), nY.GetValue(), nZ.GetValue(), GenerateSystem(nPieces+1), cWork.GetSpace());
-#endif
-            }
-            dwMorePiecesTime = s_Timer.GetMicroseconds() - dwStartTime;
-            fprintf(pOutput,
-					"Size: %i Pieces: %i Iterations: %i Microseconds: %I64u\n",
-                    nSize,
-                    nPieces+1,
-                    nIterations,
-                    dwMorePiecesTime);
-            if(dwMorePiecesTime<dwFewPiecesTime)
-            {
-                nSizeHigh = nSize;
-                if(2000000<dwMorePiecesTime && 1<nIterations)
-                {
-                    nIterations = nIterations>>1;
-                }
-            }
-            else
-            {
-                nSizeLow = nSize;
-                if(2000000<dwFewPiecesTime && 1<nIterations)
-                {
-                    nIterations = nIterations>>1;
-                }
-            }
-        }
-        while(nSizeLow < nSizeHigh-1);
-		c_pn2NByNBreakpoints[nPieces-5] = nSizeLow;
-        printf("%i:%i threshold: %i (c_pn2NByNBreakpoints[%i])\n",nPieces,nPieces+1,nSizeLow,nPieces-5);
+     //   for(int j=0;j<16;j++) fprintf(pOutput,"%s",szOutput[(i+j)%16]); // debug restore todo
+        fprintf(pOutput,"\n");
     }
-	FILE *pThreshold;
-#if(32<=_DIGIT_SIZE_IN_BITS)
-	// get the threshold for the 7x4/2nxn-1 split -- c_pnMultiplicationThresholds[e9By5]
-	c_pnMultiplicationThresholds[e9By5] = c_pnMultiplicationThresholds[e7By4] + 1; // starting point 
-	fopen_s(&pThreshold, "e9By5Threshold", "w");
-    GetSimpleThreshold(e9By5,cWork,pThreshold);
-#else
-	// get the threshold for the 7x4/2nxn-1 split -- c_pnMultiplicationThresholds[e7By4]
-	c_pnMultiplicationThresholds[e7By4] = c_pnMultiplicationThresholds[e5By3] + 1; // starting point
-	fopen_s(&pThreshold, "e7By4Threshold", "w");
-	GetSimpleThreshold(e7By4, cWork, pThreshold);
-#endif
-	fclose(pThreshold);
-	fclose(pOutput);
-}
-
-// should have LOTS of available digits in pX, pY
-void CArithmeticTuner::GetSimpleThreshold(EMultiplyAlgorithm eThresholdToTest, CWorkspace &Work, FILE *pOutput)
-{
-	DWORD nIterates   = 1;
-    DWORD nCnt        = 0;
-    bool  bFoundFast  = false;
-    bool  bSearchDown = false;
-	CBigInteger nX,nY,nZ;
-    // low threshold time gives time for the higher-order algorithm (size
-    // is above the low threshold).  high threshold time, conversely, gives
-    // the time for the low-order algorithm.
-    DWORD   i, dwSize, dwHoldSize, dwAllocatedSize=0;
-	DWORD64 dwStart, dwLowThresholdTime, dwHighThresholdTime;
-    // get the starting size
-	dwSize = c_pnMultiplicationThresholds[eThresholdToTest];
-    do
-	{
-        c_pnMultiplicationThresholds[eThresholdToTest] = dwSize;
-		if(dwAllocatedSize<dwSize+1)
-		{
-			dwAllocatedSize = (dwSize+1)<<1;
-			nX.Reserve(dwAllocatedSize);
-			nY.Reserve(dwAllocatedSize);
-			nZ.Reserve(dwAllocatedSize<<1);
-			Work.Reserve(MultiplyMemoryNeeds(dwAllocatedSize,dwAllocatedSize));
-			for(nCnt=0;nCnt<dwAllocatedSize;nCnt++)
-			{
-				nX.GetValue()[nCnt] = (DIGIT) -1;
-				nY.GetValue()[nCnt] = (DIGIT) -1;
-			}
-		}
-		nX.SetSize(dwSize);
-		nY.SetSize(dwSize);
-		do
-		{
-			dwStart = s_Timer.GetMicroseconds();
-			for(i=0;i<nIterates;i++)
-			{
-#if(_CollectDetailedTimingData)
-				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace(),dwLowThresholdTime);
-#else
-				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace());
-#endif
-			}
-			dwLowThresholdTime = s_Timer.GetMicroseconds()-dwStart;
-			if(100000<dwLowThresholdTime)
-			{
-				break;
-			}
-			nIterates = nIterates<<1;
-		}
-		while(1);
-        c_pnMultiplicationThresholds[eThresholdToTest]++;
-		dwStart = s_Timer.GetMicroseconds();
-		for(i=0;i<nIterates;i++)
-		{
-#if(_CollectDetailedTimingData)
-				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace(),dwHighThresholdTime);
-#else
-				MultUBackend(nX.GetSize(),nY.GetSize(),nX.GetValue(),nY.GetValue(),nZ.GetValue(),Work.GetSpace());
-#endif
-		}
-		dwHighThresholdTime = s_Timer.GetMicroseconds()-dwStart;
-		fprintf(pOutput,
-			    "Size: %i Iterations: %i\tLow-order alg: %I64u  High-order alg: %I64u\n",
-			    dwSize,
-                nIterates,
-                dwHighThresholdTime,
-                dwLowThresholdTime);
-		if(dwLowThresholdTime<dwHighThresholdTime)
-        {
-            nCnt++;
-            if(!bFoundFast)
-            {
-                // fill in gap skipped
-                bSearchDown = true;
-                bFoundFast  = true;
-            }
-            if(bSearchDown)
-            {
-                dwHoldSize = dwSize;
-				if(dwSize<100)
-				{
-					dwSize -= 1;
-				}
-				else if(dwSize<1000)
-				{
-					dwSize -= 10;
-				}
-				else if(dwSize<10000)
-				{
-					dwSize -= 100;
-				}
-				else if(dwSize<100000)
-				{
-					dwSize -= 1000;
-				}
-				else
-				{
-					dwSize -= 10000;
-				}
-            }
-            else
-            {
-				if(dwSize<100)
-				{
-					dwSize += 1;
-				}
-				else if(dwSize<1000)
-				{
-					dwSize += 10;
-				}
-				else if(dwSize<10000)
-				{
-					dwSize += 100;
-				}
-				else if(dwSize<100000)
-				{
-					dwSize += 1000;
-				}
-				else
-				{
-					dwSize += 10000;
-				}
-            }
-        }
-		else
-        {
-            if(bSearchDown)
-            {
-                // found "bottom" of the array if fast zone
-                dwSize      = dwHoldSize+nCnt;
-                bSearchDown = false;
-            }
-            else
-            {
-                nCnt       =  0;
-                bFoundFast =  false;
-				if(dwSize<100)
-				{
-					dwSize += 6;
-				}
-				else if(dwSize<1000)
-				{
-					dwSize += 60;
-				}
-				else if(dwSize<10000)
-				{
-					dwSize += 600;
-				}
-				else if(dwSize<100000)
-				{
-					dwSize += 6000;
-				}
-				else
-				{
-					dwSize += 60000;
-				}
-            }
-        }
-		if(2000000<dwHighThresholdTime && 1<nIterates)
-        {
-            nIterates = nIterates>>1;
-        }
-	}
-	while(nCnt<6);
-    c_pnMultiplicationThresholds[eThresholdToTest] = dwHoldSize;
-	//printf("The compile-time parameter \"c_pnMultiplicationThresholds[%s]\" should be set to %i\n", c_szMultiplicationAlgorithmNames[eThresholdToTest], c_pnMultiplicationThresholds[eThresholdToTest]);
-}
-
-void CArithmeticTuner::GetFFTThreshold()
-{
-	// for simplicity, only look at the smallest sizes for which a given field size is
-	// needed
-	CBigInteger        nX,nY,nZ;
-	CWorkspace         cWork;
-	DWORD64            dwStart, dwTime2NByN, dwTimeFFT, dwMin, dwMax, dwTime;
-	size_t             nFFTLength,nFieldSize,nChunkSize, nFFTLength_old, nFieldSize_old;
-	BYTE               byMaxOverflowSize;
-	SBitShift          nRootUnity;
-	DWORD              dwSize, dwSizeMiddle;
-	DWORD              dwSizePrevious = 5; // FAR smaller than we expect the cuttoff to be!
-	const unsigned int c_nIterations  = 18;
-#if(_CollectDetailedTimingData)
-	DWORD64     dwTimestamp;
-#endif
-	c_pnMultiplicationThresholds[e2NByN] = (DWORD) -1;
-	GetFFTSize(dwSizePrevious,dwSizePrevious,nFFTLength_old,nFieldSize_old,nChunkSize,byMaxOverflowSize,nRootUnity);
-	do
-	{
-		// first, find the next minimum size
-		dwSize = dwSizePrevious;
-		do
-		{
-			dwSize++;
-			GetFFTSize(dwSize, dwSize, nFFTLength, nFieldSize, nChunkSize, byMaxOverflowSize, nRootUnity);
-		}
-		while(nFFTLength == nFFTLength_old || nFieldSize == nFieldSize_old);
-		// next, determine which is faster: standard recursive multiply, or FFT
-		cWork.Reserve(4*MultiplyMemoryNeeds(dwSize,dwSize)); // allocate extra memory -- thresholds in flux -> might not get right memory needs
-		nZ.Reserve(((size_t) dwSize)<<1);
-		nY.Reserve(dwSize);
-		nX.Reserve(dwSize);
-		nX.SetSize(dwSize);
-		nY.SetSize(dwSize);
-		for(DWORD i=0;i<dwSize;i++)
-		{
-			nX.GetValue()[i] = (DIGIT) -1;
-			nY.GetValue()[i] = (DIGIT) -1;
-		}
-		// time using standard multiply
-		dwMin       = (DWORD64)-1;
-		dwMax       = 0;
-		dwTime2NByN = 0;
-		for (int i=0; i<c_nIterations; i++)
-		{
-			dwStart = s_Timer.GetMicroseconds();
-#if(_CollectDetailedTimingData)
-			MultUBackend(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp, &nChunkSize);
-#else
-			MultUBackend(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), &nChunkSize);
-#endif
-			dwTime      =  s_Timer.GetMicroseconds() - dwStart;
-			dwTime2NByN += dwTime;
-			if(dwMax<dwTime) dwMax = dwTime;
-			if(dwMin>dwTime) dwMin = dwTime;
-		}
-		dwTime2NByN -= (dwMax + dwMin);
-		// repeat using FFT multiply
-		cWork.Reserve(FFTMultiplyMemoryNeeds(nFFTLength, nFieldSize, false));
-		dwMin     = (DWORD64)-1;
-		dwMax     = 0;
-		dwTimeFFT = 0;
-		for (int i=0; i<c_nIterations; i++)
-		{
-			dwStart = s_Timer.GetMicroseconds();
-#if(_CollectDetailedTimingData)
-			MultFFT(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp);
-#else
-			MultFFT(dwSize, dwSize, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace());
-#endif
-			dwTime    =  s_Timer.GetMicroseconds() - dwStart;
-			dwTimeFFT += dwTime;
-			if (dwMax < dwTime) dwMax = dwTime;
-			if (dwMin > dwTime) dwMin = dwTime;
-		}
-		dwTimeFFT -= (dwMax + dwMin);
-		printf("Doubling: Size: %i\tStandard multiply: %I64u\tFFT Multiply: %I64u\n",dwSize,dwTime2NByN,dwTimeFFT);
-		if(dwTimeFFT<dwTime2NByN)
-		{
-			break;
-		}
-		nFieldSize_old = nFieldSize;
-		nFFTLength_old = nFFTLength;
-		dwSizePrevious = dwSize;
-	}
-	while(1);
-	// Now: the minimum problem size for a given FFT size is where FFT does worst relative to the basic algorithms.  So,
-	// should do better for anything larger.  But FFT is constant time over a large range of problem sizes.  Back up
-	// to see where basic catches up
-	do
-	{
-		dwSizeMiddle = (dwSize + dwSizePrevious)>>1;
-		GetFFTSize(dwSizeMiddle, dwSizeMiddle, nFFTLength, nFieldSize, nChunkSize, byMaxOverflowSize, nRootUnity);
-		cWork.Reserve(FFTMultiplyMemoryNeeds(nFFTLength, nFieldSize, false));
-		// time using standard multiply
-		dwMin       = (DWORD64)-1;
-		dwMax       = 0;
-		dwTime2NByN = 0;
-		for (int i=0; i<c_nIterations; i++)
-		{
-			dwStart = s_Timer.GetMicroseconds();
-#if(_CollectDetailedTimingData)
-			MultUBackend(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp, &nChunkSize);
-#else
-			MultUBackend(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), &nChunkSize);
-#endif
-			dwTime = s_Timer.GetMicroseconds() - dwStart;
-			dwTime2NByN += dwTime;
-			if (dwMax < dwTime) dwMax = dwTime;
-			if (dwMin > dwTime) dwMin = dwTime;
-		}
-		dwTime2NByN -= (dwMax + dwMin);
-		// repeat using FFT multiply
-		dwMin     = (DWORD64)-1;
-		dwMax     = 0;
-		dwTimeFFT = 0;
-		for (int i=0; i<c_nIterations; i++)
-		{
-			dwStart = s_Timer.GetMicroseconds();
-#if(_CollectDetailedTimingData)
-			MultFFT(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace(), dwTimestamp);
-#else
-			MultFFT(dwSizeMiddle, dwSizeMiddle, nX.GetValue(), nY.GetValue(), nZ.GetValue(), cWork.GetSpace());
-#endif
-			dwTime = s_Timer.GetMicroseconds() - dwStart;
-			dwTimeFFT += dwTime;
-			if (dwMax < dwTime) dwMax = dwTime;
-			if (dwMin > dwTime) dwMin = dwTime;
-		}
-		dwTimeFFT -= (dwMax + dwMin);
-		printf("Binary: Size: %i\tStandard multiply: %I64u\tFFT Multiply: %I64u\n", dwSizeMiddle, dwTime2NByN, dwTimeFFT);
-		if (dwTimeFFT < dwTime2NByN) dwSize         = dwSizeMiddle;
-		else                         dwSizePrevious = dwSizeMiddle;
-	}
-	while(dwSize != (dwSize + dwSizePrevious)>>1);
-	// this is the spot!
-	c_pnMultiplicationThresholds[e2NByN] = dwSize;
+    *pnThreshold = dwHoldSize;
 }
 
 /*
@@ -959,33 +674,81 @@ The compile-time parameter "c_pnMultiplicationThresholds[e7By4]" should be set t
 The compile-time parameter "c_pnMultiplicationThresholds[e9By5]" should be set to 1990006
 The compile-time parameter "c_pnMultiplicationThresholds[e2NByN]" should be set to 12232
 */
-void CArithmeticTuner::FindBestThresholds()
+
+// first, calculate the thresholds for eBasicMultiply through e7by4 (if 16 bit) or e9by5 (otherwise).
+// Next, calculate the 5:6 switchover point for e2nbyn.
+// Assuming this is the only switchover that matters, compute the 2NByN threshold.
+// If this is below the 5:6 switchover, done.
+// If not, compute the 6:7 switchover and recompute the 2NByN threshold.
+// Repeat until either the fft threshold is less than the highest calculated switchover point, or we
+// reach the 11:12 switchover (last one with a slot).
+
+void CArithmeticTuner::FindBestMultiplicationThresholds()
 {
-	FILE *pOutput;
-	fopen_s(&pOutput, "BestThresholds", "w");
-	CWorkspace cWork;
-	c_pnMultiplicationThresholds[eBasicMultiply] = 15; // likely lower than need be
-	for(DWORD i=e3By2;i<eNumMultiplyAlgorithms;i++) c_pnMultiplicationThresholds[i] = 1000000000; // make sure only testing expected algorithm
-#if(_DIGIT_SIZE_IN_BITS<32)
-	for(DWORD i=eBasicMultiply;i<e7By4;i++)
-#else
-	for(DWORD i=eBasicMultiply;i<e9By5;i++)
-#endif
-	{
-		if(eBasicMultiply!=i)
-		{
-			c_pnMultiplicationThresholds[i] = c_pnMultiplicationThresholds[i-1]+1;
-		}
-		GetSimpleThreshold((EMultiplyAlgorithm) i,cWork,pOutput);
-	}
-	Compute2NByNGrowthParameters();
-	GetFFTThreshold();
-	for(int i=0; i<eNumMultiplyAlgorithms-2; i++)
-	{
-		printf("The compile-time parameter \"c_pnMultiplicationThresholds[%s]\" should be set to %i\n", c_szMultiplicationAlgorithmNames[i], c_pnMultiplicationThresholds[i]);
-	}
-	fclose(pOutput);
+    const unsigned int c_nTwoBILLION                   = 2000000000;
+    const unsigned int c_nOneMILLION                   = 1000000;
+    const DWORD        c_dwSmallImportantThresholdTime = 10000; // min time in milliseconds for a timing run
+    const DWORD        c_dwLargeVagueThresholdTime     = 1000;  // min time in milliseconds for a timing run
+    int                i;
+    CBigIntegerForTest nX, nY, nZ;
+    CWorkspace         cWork;
+    unsigned int       nPureFFTThreshold;
+    // note that we MUST test for the regular multiplication thresholds before testing for square -- 3x2 square multiplication calls regular mult, not just square
+    for(int nType = 0; nType<2; nType++)
+    {
+        unsigned int       nStartingSize           = 4; // minimum size Mult3By2 can handle
+        unsigned int       *pnAlgorithmBreakpoints = (nType) ? c_pnSquareThresholds         : c_pnMultiplicationThresholds;
+        unsigned int       *pn2NByNBreakpoints     = (nType) ? c_pn2NByNSquareBreakpoints   : c_pn2NByNBreakpoints;
+        const char         *szAlgorithmBreakName   = (nType) ? "c_pnSquareThresholds"       : "c_pnMultiplicationThresholds";
+        const char         *sz2NByNBreakName       = (nType) ? "c_pn2NByNSquareBreakpoints" : "c_pn2NByNBreakpoints";
+        nX.Reserve(c_nOneMILLION);
+        nY.Reserve(c_nOneMILLION);
+        nZ.Reserve(c_nOneMILLION*2);
+        cWork.Reserve(4*MultiplyMemoryNeeds(c_nOneMILLION, c_nOneMILLION) + 1024);  // *4, +1024: might not be using the expected algorithm; be generous with space
+        // first, thresholds for the basic algorithms
+        for(i=eBasicMultiply; i<eNumMultiplyAlgorithms; i++) pnAlgorithmBreakpoints[i] = c_nTwoBILLION; // make sure only testing expected algorithm
+        for(i=0; i<c_n2NBynSizeBreakpoints; i++)             pn2NByNBreakpoints[i]     = c_nTwoBILLION;
+        for(i=eBasicMultiply; i<e2NByN-1; i++)
+        {
+            printf("computing \"%s[%s]\"\n", szAlgorithmBreakName, c_szMultiplicationAlgorithmNames[i]);
+            ComputeThreshold(pnAlgorithmBreakpoints+i, nStartingSize, nType, nX, nY, nZ, cWork, c_dwSmallImportantThresholdTime, stdout, false);
+            nStartingSize = pnAlgorithmBreakpoints[i];
+        }
+        // The 2NByN algorithm might or might not be used -- depending on your machine and the DIGIT size, it might be that the threshold for FFT is below that for
+        // 2NByN, or it might not.  SO:
+        // Find the internal thresholds for 2NByN.  No need for great precision (and they are in general quite large); just use binary search.  Anthing
+        // below the size will use lower-order algorithms
+        // Compute the switchover between 2NByN and FFT, assumng everything below will use lower-order algorithms
+        // Compute the threshold to switch from lower-order to 2NByN/FFT.  If it is greater than the 2NByN threshold, set the latter to 0 to make it clear it is unused
+        for(i=0; i<c_n2NBynSizeBreakpoints; i++)
+        {
+            printf("%i:%i switch\n",i+5,i+6);
+            ComputeThreshold(pn2NByNBreakpoints + i, nStartingSize, nType, nX, nY, nZ, cWork, c_dwLargeVagueThresholdTime, stdout, true, pnAlgorithmBreakpoints + e2NByN - 1, 0);
+            nStartingSize = pn2NByNBreakpoints[i];
+        }
+        // compute 2NByN/FFT switchover
+        nStartingSize = pnAlgorithmBreakpoints[e2NByN-2];
+        printf("computing \"%s[%s]\"\n", szAlgorithmBreakName, c_szMultiplicationAlgorithmNames[e2NByN]);
+        ComputeThreshold(pnAlgorithmBreakpoints + e2NByN, nStartingSize, nType, nX, nY, nZ, cWork, c_dwLargeVagueThresholdTime, stdout, false, pnAlgorithmBreakpoints + e2NByN - 1, 0);
+        printf("computing \"%s[%s]\"\n", szAlgorithmBreakName, c_szMultiplicationAlgorithmNames[e2NByN-1]);
+        ComputeThreshold(pnAlgorithmBreakpoints + e2NByN - 1, nStartingSize, nType, nX, nY, nZ, cWork, c_dwLargeVagueThresholdTime, stdout, false, NULL, 0);
+        // check: is 2NByN useful?
+        if (pnAlgorithmBreakpoints[e2NByN] <= pnAlgorithmBreakpoints[e2NByN - 1])
+        {
+            pnAlgorithmBreakpoints[e2NByN] = 0; // e2NByN not used
+        }
+        printf("Set the following parameters both in CUnsignedArithmeticHelper.cpp (top of file; static definitions) AND in CArithmeticTestHelper::ResetThresholdsForOptimization()\n");
+        for(int i=0; i<eFFTMult; i++)
+        {
+            printf("The compile-time parameter \"%s[%s]\" should be set to %i\n", szAlgorithmBreakName, c_szMultiplicationAlgorithmNames[i], pnAlgorithmBreakpoints[i]);
+        }
+        for(int i=0; i<c_n2NBynSizeBreakpoints; i++)
+        {
+            printf("The compile time parameter \"%s[%i]\" should be set to %i\n", sz2NByNBreakName, i, pn2NByNBreakpoints[i]);
+        }
+    }
 }
+
 /*
 32-bit DIGITs
 Recursive (lower threshold):
@@ -1051,139 +814,138 @@ Recursive (upper threshold):
 */
 void CArithmeticTuner::FindBestDivideThresholds()
 {
-	CRandomGenerator   cRandom;
-	DWORD64            dwTimestamp, dwTimestamp2;
-	CBigInteger        nX, nY, nXCopy, nYCopy, nXDivY;
-	unsigned int       nTime1, nTime2, nSize, nIterations;
-	const unsigned int c_nTenMILLION             = 10000000;
-	const unsigned int c_nSmallProblemIterations = 100000000;
-	const unsigned int c_nLargeProblemIterations = 1000000;
-	DIGIT              *pWorkspace               = (DIGIT *) malloc(sizeof(DIGIT)*c_nTenMILLION);
+    CRandomGenerator   cRandom;
+    DWORD64            dwTimestamp, dwTimestamp2;
+    CBigInteger        nX, nY, nXCopy, nYCopy, nXDivY;
+    unsigned int       nTime1, nTime2, nSize, nIterations;
+    const unsigned int c_nTenMILLION             = 10000000;
+    const unsigned int c_nSmallProblemIterations = 100000000;
+    const unsigned int c_nLargeProblemIterations = 1000000;
+    DIGIT              *pWorkspace               = (DIGIT *) malloc(sizeof(DIGIT)*c_nTenMILLION);
 
-	ResetThresholdsForOptimization(); // just to makie sure we have the right multiplication thresholds set
+    printf("Are the multiplication thresholds optimized already?  Do those first!  Also make sure you're running a retail build\n");
+    cRandom.RandomBits(1048576, 0, true, nX); // should be big enough to test the thresholds -- a million DIGITs
+    cRandom.RandomBits(524288, 0, true, nY);
+    nXDivY.Reserve(nX.GetSize() - nY.GetSize() + 1);
+    nXCopy = nX;
+    nYCopy = nY;
 
-	cRandom.RandomBits(1048576, 0, true, nX); // should be big enough to test the thresholds -- a million DIGITs
-	cRandom.RandomBits(524288, 0, true, nY);
-	nXDivY.Reserve(nX.GetSize() - nY.GetSize() + 1);
-	nXCopy = nX;
-	nYCopy = nY;
-
-	// find best divide thresholds for recursive
-	printf("Recursive (lower threshold):\n");
-	c_nDivideThresholdSmall = 4;
-	nIterations             = c_nSmallProblemIterations;
+    // find best divide thresholds for recursive
+    printf("Recursive (lower threshold):\n");
+    c_nDivideThresholdSmall = 4;
+    nIterations             = c_nSmallProblemIterations;
 #if _CollectDetailedTimingData
-	dwTimestamp = s_Timer.GetMicroseconds();
+    dwTimestamp = s_Timer.GetMicroseconds();
 #endif
-	do
-	{
-		nXCopy.SetSize(2*c_nDivideThresholdSmall);
-		nYCopy.SetSize(c_nDivideThresholdSmall);
-		nTime1 = ::GetTickCount();
-		for(int i=0; i<nIterations; i++)
-		{
-			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
-			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+    do
+    {
+        nXCopy.SetSize(2*c_nDivideThresholdSmall);
+        nYCopy.SetSize(c_nDivideThresholdSmall);
+        nTime1 = ::GetTickCount();
+        for(int i=0; i<nIterations; i++)
+        {
+            memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+            memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 #if _CollectDetailedTimingData
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
 #else
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
 #endif
-		}
-		nTime1 = ::GetTickCount() - nTime1;
-		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdSmall, nTime1, nIterations);
-		c_nDivideThresholdSmall++;
-		nTime2 = ::GetTickCount();
-		for(int i=0; i<nIterations; i++)
-		{
-			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
-			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+        }
+        nTime1 = ::GetTickCount() - nTime1;
+        printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdSmall, nTime1, nIterations);
+        c_nDivideThresholdSmall++;
+        nTime2 = ::GetTickCount();
+        for(int i=0; i<nIterations; i++)
+        {
+            memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+            memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 #if _CollectDetailedTimingData
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
 #else
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
 #endif
-		}
-		nTime2 = ::GetTickCount() - nTime2;
-		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdSmall, nTime2, nIterations);
-		if(30000<nTime2) nIterations = (nIterations+1)/2; // too much time!
-	}
-	while(nTime1>nTime2);
-	printf("Recursive (upper threshold):\n");
-	c_nDivideThresholdSmall--; // best lower threshold
-	c_nDivideThresholdDiff  = 4;
-	nIterations             = c_nSmallProblemIterations;
-	do
-	{
-		nXCopy.SetSize(2*(c_nDivideThresholdSmall+c_nDivideThresholdDiff));
-		nYCopy.SetSize(c_nDivideThresholdSmall+c_nDivideThresholdDiff);
-		nTime1 = ::GetTickCount();
-		for(int i=0; i<nIterations; i++)
-		{
-			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
-			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+        }
+        nTime2 = ::GetTickCount() - nTime2;
+        printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdSmall, nTime2, nIterations);
+        if(30000<nTime2) nIterations = (nIterations+1)/2; // too much time!
+    }
+    while(nTime1>nTime2);
+    printf("Recursive (upper threshold):\n");
+    c_nDivideThresholdSmall--; // best lower threshold
+    c_nDivideThresholdDiff  = 4;
+    nIterations             = c_nSmallProblemIterations;
+    do
+    {
+        nXCopy.SetSize(2*(c_nDivideThresholdSmall+c_nDivideThresholdDiff));
+        nYCopy.SetSize(c_nDivideThresholdSmall+c_nDivideThresholdDiff);
+        nTime1 = ::GetTickCount();
+        for(int i=0; i<nIterations; i++)
+        {
+            memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+            memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 #if _CollectDetailedTimingData
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
 #else
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
 #endif
-		}
-		nTime1 = ::GetTickCount() - nTime1;
-		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime1, nIterations);
-		c_nDivideThresholdDiff++;
-		nTime2 = ::GetTickCount();
-		for(int i=0; i<nIterations; i++)
-		{
-			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
-			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+        }
+        nTime1 = ::GetTickCount() - nTime1;
+        printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime1, nIterations);
+        c_nDivideThresholdDiff++;
+        nTime2 = ::GetTickCount();
+        for(int i=0; i<nIterations; i++)
+        {
+            memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+            memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 #if _CollectDetailedTimingData
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
 #else
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
 #endif
-		}
-		nTime2 = ::GetTickCount() - nTime2;
-		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime2, nIterations);
-		if(30000<nTime2) nIterations = (nIterations+1)/2; // too much time!
-	}
-	while(nTime1>nTime2);
-	printf("Recursive (upper threshold):\n");
-	c_nDivideThresholdDiff = 4;
-	nIterations            = c_nLargeProblemIterations;
-	do
-	{
-		nXCopy.SetSize(10000+c_nDivideThresholdDiff);
-		nYCopy.SetSize(10000);
-		nTime1 = ::GetTickCount();
-		for(int i=0; i<nIterations; i++)
-		{
-			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
-			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+        }
+        nTime2 = ::GetTickCount() - nTime2;
+        printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime2, nIterations);
+        if(30000<nTime2) nIterations = (nIterations+1)/2; // too much time!
+    }
+    while(nTime1>nTime2);
+    printf("Recursive (upper threshold):\n");
+    c_nDivideThresholdDiff = 4;
+    nIterations            = c_nLargeProblemIterations;
+    do
+    {
+        nXCopy.SetSize(10000+c_nDivideThresholdDiff);
+        nYCopy.SetSize(10000);
+        nTime1 = ::GetTickCount();
+        for(int i=0; i<nIterations; i++)
+        {
+            memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+            memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 #if _CollectDetailedTimingData
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
 #else
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
 #endif
-		}
-		nTime1 = ::GetTickCount() - nTime1;
-		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime1, nIterations);
-		c_nDivideThresholdDiff++;
-		nTime2 = ::GetTickCount();
-		for(int i=0; i<nIterations; i++)
-		{
-			memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
-			memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+        }
+        nTime1 = ::GetTickCount() - nTime1;
+        printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime1, nIterations);
+        c_nDivideThresholdDiff++;
+        nTime2 = ::GetTickCount();
+        for(int i=0; i<nIterations; i++)
+        {
+            memcpy(nXCopy.GetValue(), nX.GetValue(), nXCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
+            memcpy(nYCopy.GetValue(), nY.GetValue(), nYCopy.GetSize()*sizeof(DIGIT)*sizeof(DIGIT));
 #if _CollectDetailedTimingData
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), dwTimestamp, pWorkspace);
 #else
-			DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
+            DivideRecursive(nXCopy.GetSize(), nYCopy.GetSize(), nXCopy.GetValue(), nYCopy.GetValue(), nXDivY.GetValue(), pWorkspace);
 #endif
-		}
-		nTime2 = ::GetTickCount() - nTime2;
-		printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime2, nIterations);
-		if(30000<nTime2) nIterations = (nIterations+1)/2; // too much time!
-	}
-	while(nTime1>nTime2);
+        }
+        nTime2 = ::GetTickCount() - nTime2;
+        printf("%i-DIGIT divided by %i-DIGIT, threshold %i: %i milliseconds (%i iterations)\n", nXCopy.GetSize(), nYCopy.GetSize(), c_nDivideThresholdDiff, nTime2, nIterations);
+        if(30000<nTime2) nIterations = (nIterations+1)/2; // too much time!
+    }
+    while(nTime1>nTime2);
 }
 
 
@@ -1615,64 +1377,64 @@ Size: 128  Digits: 1  Iterations: 16    Basic: 1500 milliseconds  Strassen: 1375
 */
 void CArithmeticTuner::FindBestStrassenThreshold()
 {
-	CArithmeticBox     cBox;
-	unsigned int       nTimeBasic, nTimeStrassen;
-	CBigIntegerForTest nBigInt;
-	size_t             nDigits;
-	size_t             nSize = 2;
-	// For each matrix size 2, 4, 8, 16, etc. find smallest DIGIT size for which matrix multiplication using Strassen for the
-	// first step and basic below that is faster than using basic throughout.  Quite when we reach the point where Strassen is
-	// faster for single-DIGIT values in the matrices.
-	ResetThresholdsForOptimization();
-	do
-	{
-		CBigIntegerMatrix nMat1(nSize), nMat2(nSize), nProduct(nSize);
-		nDigits = 1;
-		do
-		{
-			int nIterations = 1;
-			// initialize the matrices to multiply with suitably-sized values
-			for (int i=0; i<nSize; i++)
-			{
-				for(int j=0; j<nSize; j++)
-				{
-					nBigInt.SetRandom(nDigits*_DIGIT_SIZE_IN_BITS);
-					nBigInt.SetNegative(rand()%2);
-					nBigInt.Copy(nMat1[i][j]);
-					nBigInt.SetRandom(nDigits*_DIGIT_SIZE_IN_BITS);
-					nBigInt.SetNegative(rand()%2);
-					nBigInt.Copy(nMat2[i][j]);
-				}
-			}
-			// first, using basic
-			CBigIntegerMatrix::SetStrassenThreshold(nSize+1);
-			do
-			{
-				nTimeBasic = ::GetTickCount();
-				for (int i=0; i<nIterations; i++)
-				{
-					CBigIntegerMatrix::Multiply(nMat1, nMat2, nProduct, 0, 0, nSize, nSize, 0, 0, nSize, 0, 0, cBox);
-				}
-				nTimeBasic = ::GetTickCount() - nTimeBasic;
-				if(1000<nTimeBasic) break;
-				nIterations *= 2;
-			}
-			while(true);
-			// next, Strassen
-			CBigIntegerMatrix::SetStrassenThreshold(nSize);
-			nTimeStrassen = ::GetTickCount();
-			for (int i=0; i<nIterations; i++)
-			{
-				CBigIntegerMatrix::Multiply(nMat1, nMat2, nProduct, 0, 0, nSize, nSize, 0, 0, nSize, 0, 0, cBox);
-			}
-			nTimeStrassen = ::GetTickCount() - nTimeStrassen;
-			printf("Size: %u  Digits: %u  Iterations: %u\tBasic: %u milliseconds  Strassen: %u milliseconds\n",nSize,nDigits,nIterations,nTimeBasic,nTimeStrassen);
-			if (nTimeStrassen <= nTimeBasic) break;
-			nDigits++;
-		}
-		while(true);
-		nSize *= 2;
-	}
-	while(1 != nDigits);
+    CArithmeticBox     cBox;
+    unsigned int       nTimeBasic, nTimeStrassen;
+    CBigIntegerForTest nBigInt;
+    size_t             nDigits;
+    size_t             nSize = 2;
+    // For each matrix size 2, 4, 8, 16, etc. find smallest DIGIT size for which matrix multiplication using Strassen for the
+    // first step and basic below that is faster than using basic throughout.  Quite when we reach the point where Strassen is
+    // faster for single-DIGIT values in the matrices.
+    ResetThresholdsForOptimization();
+    do
+    {
+        CBigIntegerMatrix nMat1(nSize), nMat2(nSize), nProduct(nSize);
+        nDigits = 1;
+        do
+        {
+            int nIterations = 1;
+            // initialize the matrices to multiply with suitably-sized values
+            for (int i=0; i<nSize; i++)
+            {
+                for(int j=0; j<nSize; j++)
+                {
+                    nBigInt.SetRandom(nDigits*_DIGIT_SIZE_IN_BITS);
+                    nBigInt.SetNegative(rand()%2);
+                    nBigInt.Copy(nMat1[i][j]);
+                    nBigInt.SetRandom(nDigits*_DIGIT_SIZE_IN_BITS);
+                    nBigInt.SetNegative(rand()%2);
+                    nBigInt.Copy(nMat2[i][j]);
+                }
+            }
+            // first, using basic
+            CBigIntegerMatrix::SetStrassenThreshold(nSize+1);
+            do
+            {
+                nTimeBasic = ::GetTickCount();
+                for (int i=0; i<nIterations; i++)
+                {
+                    CBigIntegerMatrix::Multiply(nMat1, nMat2, nProduct, 0, 0, nSize, nSize, 0, 0, nSize, 0, 0, cBox);
+                }
+                nTimeBasic = ::GetTickCount() - nTimeBasic;
+                if(1000<nTimeBasic) break;
+                nIterations *= 2;
+            }
+            while(true);
+            // next, Strassen
+            CBigIntegerMatrix::SetStrassenThreshold(nSize);
+            nTimeStrassen = ::GetTickCount();
+            for (int i=0; i<nIterations; i++)
+            {
+                CBigIntegerMatrix::Multiply(nMat1, nMat2, nProduct, 0, 0, nSize, nSize, 0, 0, nSize, 0, 0, cBox);
+            }
+            nTimeStrassen = ::GetTickCount() - nTimeStrassen;
+            printf("Size: %u  Digits: %u  Iterations: %u\tBasic: %u milliseconds  Strassen: %u milliseconds\n",nSize,nDigits,nIterations,nTimeBasic,nTimeStrassen);
+            if (nTimeStrassen <= nTimeBasic) break;
+            nDigits++;
+        }
+        while(true);
+        nSize *= 2;
+    }
+    while(1 != nDigits);
 }
 #endif

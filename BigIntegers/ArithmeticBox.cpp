@@ -18,7 +18,6 @@ EArithmeticOperationResult CArithmeticBox::Add(const CBigInteger &nX,
                                                const CBigInteger &nY,
                                                CBigInteger       &nXPlusY)
 {
-    size_t nOldSumSize = 0; // debug remove todo
     EArithmeticOperationResult eResult = eOperationSucceeded;
     size_t                     nXSize, nYSize, nSumSize;
     bool                       bSumNegative;
@@ -129,7 +128,7 @@ EArithmeticOperationResult CArithmeticBox::Subtract(const CBigInteger &nX,
         goto exit;
     }
     nSumSize = (nXSize<nYSize) ? nYSize+1 : nXSize+1;
-    if(!nXMinusY.Reserve(nSumSize + 1, &nX==&nXMinusY || &nY==&nXMinusY)) // + 1: debug remove todo
+    if(!nXMinusY.Reserve(nSumSize, &nX==&nXMinusY || &nY==&nXMinusY))
     {
         eResult = eOutOfMemory;
         goto exit;
@@ -231,7 +230,7 @@ EArithmeticOperationResult CArithmeticBox::Square(const CBigInteger &nX,
             nSquare.SetSize(0);
         }
         else if(!nSquare.Reserve(nXSize<<1) ||
-                !m_Workspace.Reserve(CUnsignedArithmeticHelper::MultiplyMemoryNeeds(nXSize,nXSize)))
+                !m_Workspace.Reserve(CUnsignedArithmeticHelper::SquareMemoryNeeds(nXSize,nXSize)))
         {
             eResult = eOutOfMemory;
         }
@@ -274,7 +273,7 @@ EArithmeticOperationResult CArithmeticBox::MultiplyAdd(const CBigInteger &nX,
     else
     {
         bool   bProdNeg  = (nX.IsNegative()!=nY.IsNegative());
-        bool   bDoingAdd = (bProdNeg == nRunningSum.IsNegative());
+        bool   bDoingAdd = (nRunningSum.IsZero() || (bProdNeg == nRunningSum.IsNegative()));
         size_t nXSize    = nX.GetSize();
         size_t nYSize    = nY.GetSize();
         size_t nSumSize  = nRunningSum.GetSize();
@@ -335,8 +334,8 @@ EArithmeticOperationResult CArithmeticBox::MultiplyAdd(const CBigInteger &nX,
                                                          nRunningSum.IsNegative(),
                                                          bProdNeg);
                     nRunningSum.SetSize(nSumSize);
-                    nRunningSum.SetNegative(bProdNeg);
                 }
+                nRunningSum.SetNegative(bProdNeg);
             }
         }
     }

@@ -1,5 +1,34 @@
 #pragma once
 //#define _CollectDetailedTimingData 1
+/* with detailed timing data turned on, you will get perf results (when requested) that loo like this:
+1 calls to multiply
+  1032156 calls to Basic multiply:
+    Basic multiply time:        816304 microseconds (0.790873 average)
+  9 calls to 3 by 2 multiply:
+    Construct subproblems time: 1 microseconds (0.111111 average)
+    Combine subproblems time:   1 microseconds (0.111111 average)
+  147447 calls to 7 by 4 multiply:
+    Construct subproblems time: 58464 microseconds (0.396509 average)
+    Combine subproblems time:   209420 microseconds (1.420307 average)
+  16384 calls to 9 by 5 multiply:
+    Construct subproblems time: 55997 microseconds (3.417786 average)
+    Combine subproblems time:   154920 microseconds (9.455566 average)
+  1 calls to FFT multiply:
+    Construct subproblems time: 284072 microseconds (284072.000000 average)
+    Combine subproblems time:   235555 microseconds (235555.000000 average)
+Total multiply time: 1820531 microseconds (1820531.000000 average)
+
+(this result was for multiplying two 8000000-BYTEs numbers)
+
+or
+Total calls to divide: 65536
+  Time in recursive divide: 1808351 microseconds (27.593246 average)
+  Time in multiplication:   5529082 microseconds (84.367096 average)
+  Time in basic divide:     2174885 microseconds (33.186111 average)
+  Total divide time:        10109892 microseconds (154.264709 average)
+
+Note that the high performance timer call is an expensive operation; using it notably degrades performance!
+*/
 #ifdef _DEBUG
 #define _BUFFERGUARD_SLOTS 1024
 #endif

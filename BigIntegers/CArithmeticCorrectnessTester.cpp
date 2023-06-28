@@ -995,7 +995,7 @@ bool CArithmeticCorrectnessTester::TestBasicMultiply(bool bVerbose)
                         }
                         else
                         {
-                            // even iterations: mult-add; odd: simple mult
+                            // even iterations: mult-add; even: simple mult
                             // make sure pTestProduct has leading 0s
                             for(size_t m=nSmallSize+nLargeSize;m<i+j+1;m++)
                             {
@@ -1096,6 +1096,54 @@ bool CArithmeticCorrectnessTester::TestBasicMultiply(bool bVerbose)
                                 goto exit;
                             }
                         }
+                        // striped multiply: reset test product
+                        // even iterations: mult-add; even: simple mult
+                        if(0 != (k&2))
+                        {
+                            nTestProduct = nAdd;
+                            // make sure pTestProduct has leading 0s
+                            for(size_t m=nTestProduct.GetSize();m<i+j+2;m++)
+                            {
+                                nTestProduct.GetValue()[m] = 0;
+                            }
+                        }
+                        else
+                        {
+                            // make sure pTestProduct has leading 0s
+                            for(size_t m=nSmallSize+nLargeSize;m<i+j+1;m++)
+                            {
+                                nTestProduct.GetValue()[m] = 0;
+                            }
+                        }
+                        MultUStriped(nSmallSize, nLargeSize, pnSmaller, pnLarger, nTestProduct.GetValue(), (0 != (k&2)));
+                        nProductSize = nXSize+nYSize+1;
+                        if(0==nTestProduct.GetValue()[nProductSize-1])
+                        {
+                            nProductSize--;
+                            if(0==nTestProduct.GetValue()[nProductSize-1])
+                            {
+                                nProductSize--;
+                            }
+                        }
+                        nTestProduct.SetSize(nProductSize);
+                        if(nTestProduct != nValidatedProduct || bVerbose)
+                        {
+                            printf("Multiply operands:\n");
+                            nX.PrintHexToFile();
+                            printf("\n");
+                            nY.PrintHexToFile();
+                            printf("\n");
+                            printf("Expected product:\n");
+                            nValidatedProduct.PrintHexToFile();
+                            printf("\nComputed product:\n");
+                            nTestProduct.PrintHexToFile();
+                            printf("\n");
+                            if(nTestProduct != nValidatedProduct)
+                            {
+                                printf("Multiply test failed: striped algorithm\n");
+                                goto exit;
+                            }
+                        }
                     }
                 }
             }
@@ -1110,28 +1158,20 @@ bool CArithmeticCorrectnessTester::TestRecursiveMultiply(bool bVerbose)
 {
     CArithmeticBox        cBox;
     size_t                nProductSize;
-    const int             c_nMaxSize         = 300;
-    bool                  bTestWorked        = false;
-    CBigIntegerForTest    *pX                = new CBigIntegerForTest();
-    CBigIntegerForTest    *pY                = new CBigIntegerForTest();
-    CBigIntegerForTest    *pValidatedProduct = new CBigIntegerForTest();
-    CBigIntegerForTest    *pTestProduct      = new CBigIntegerForTest();
-    CBigIntegerForTest    *pAdd              = new CBigIntegerForTest();
-    DIGIT                 *pnWorkspace       = new DIGIT[200000]; // plenty for this test, I hope
+    CBigIntegerForTest    nX, nY, nValidatedProduct, nTestProduct, nAdd;
+    const int             c_nMaxSize   = 300;
+    bool                  bTestWorked  = false;
+    DIGIT                 *pnWorkspace = (DIGIT *) malloc(sizeof(DIGIT)*200000); // plenty for this test, I hope
     ResetThresholdsForTest();
-    pX->Reserve(c_nMaxSize);
-    pY->Reserve(c_nMaxSize);
+    nX.Reserve(c_nMaxSize);
+    nY.Reserve(c_nMaxSize);
     c_pnMultiplicationThresholds[e2NByN] = c_nMaxSize + 1;
-    // Then, test the larger multiplication algorithms against the oracle
-#if(32<=_DIGIT_SIZE_IN_BITS) // use algorithm names -- debug resolve todo
-    for(int nAlgorithm=0;nAlgorithm<4;nAlgorithm++)
-#else
-    for(int nAlgorithm=0;nAlgorithm<3;nAlgorithm++)
-#endif
+    // Test the larger multiplication algorithms against the oracle
+    for(int nAlgorithm=1;nAlgorithm<e2NByN;nAlgorithm++)
     {
         for(size_t i=20;i<=c_nMaxSize;i++)
         {
-            printf("algorithm %i: %i x (%i to %i)\n", nAlgorithm, i, i, c_nMaxSize);
+            printf("algorithm %s: %i x (%i to %i)\n", GetMultiplicationAlgorithmName((EMultiplyAlgorithm) nAlgorithm), i, i, c_nMaxSize);
             for(size_t j=20;j<=c_nMaxSize;j++)
             {
                 for(size_t k=0;k<5;k++)
@@ -1140,176 +1180,137 @@ bool CArithmeticCorrectnessTester::TestRecursiveMultiply(bool bVerbose)
                     {
                     case 0:
                         // random values
-                        pX->SetRandom(i*_DIGIT_SIZE_IN_BITS);
-                        pY->SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                        nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                        nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
                         break;
                     case 1:
                         // max values
                         for(size_t n=0;n<i;n++)
                         {
-                            pX->GetValue()[n] = (DIGIT) -1;
+                            nX.GetValue()[n] = (DIGIT) -1;
                         }
                         for(size_t n=0;n<j;n++)
                         {
-                            pY->GetValue()[n] = (DIGIT) -1;
+                            nY.GetValue()[n] = (DIGIT) -1;
                         }
-                        pX->SetSize(i);
-                        pY->SetSize(j);
+                        nX.SetSize(i);
+                        nY.SetSize(j);
                         break;
                     case 2:
                         // min values
                         for(size_t n=0;n<i-1;n++)
                         {
-                            pX->GetValue()[n] = 0;
+                            nX.GetValue()[n] = 0;
                         }
-                        pX->GetValue()[i-1] = 1;
+                        nX.GetValue()[i-1] = 1;
                         for(size_t n=0;n<j-1;n++)
                         {
-                            pY->GetValue()[n] = 0;
+                            nY.GetValue()[n] = 0;
                         }
-                        pY->GetValue()[j-1] = 1;
-                        pX->SetSize(i);
-                        pY->SetSize(j);
+                        nY.GetValue()[j-1] = 1;
+                        nX.SetSize(i);
+                        nY.SetSize(j);
                         break;
                     case 3:
                         // mixed values
                         for(size_t n=0;n<i;n++)
                         {
-                            pX->GetValue()[n] = (DIGIT) -1;
+                            nX.GetValue()[n] = (DIGIT) -1;
                         }
                         for(size_t n=0;n<j-1;n++)
                         {
-                            pY->GetValue()[n] = 0;
+                            nY.GetValue()[n] = 0;
                         }
-                        pY->GetValue()[j-1] = 1;
-                        pX->SetSize(i);
-                        pY->SetSize(j);
+                        nY.GetValue()[j-1] = 1;
+                        nX.SetSize(i);
+                        nY.SetSize(j);
                         break;
                     case 4:
                         // sparse vs random
                         for(size_t n=0; n<i; n++)
                         {
-                            pX->GetValue()[n] = (DIGIT) (n&1);
+                            nX.GetValue()[n] = (DIGIT) (n&1);
                         }
-                        if (0 == pX->GetValue()[i - 1]) pX->SetSize(i - 1);
-                        else                            pX->SetSize(i);
-                        pY->SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                        if (0 == nX.GetValue()[i - 1]) nX.SetSize(i - 1);
+                        else                            nX.SetSize(i);
+                        nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
                     }
-                    size_t nXSize = pX->GetSize();
-                    size_t nYSize = pY->GetSize();
-                    if(0<pX->GetSize() && 0<pY->GetSize())
+                    size_t nXSize = nX.GetSize();
+                    size_t nYSize = nY.GetSize();
+                    if(0<nX.GetSize() && 0<nY.GetSize())
                     {
-                        pValidatedProduct->Reserve(nXSize+nYSize);
-                        pTestProduct->Reserve(nXSize+nYSize+1);
-                        pTestProduct->GetValue()[nXSize + nYSize] = TEST_BUFFERGUARD;
-                        pValidatedProduct->SetSize(CUnsignedArithmeticHelper::MultOracle(nXSize,
-                                                                                         nYSize,
-                                                                                         pX->GetValue(),
-                                                                                         pY->GetValue(),
-                                                                                         pValidatedProduct->GetValue()));
+                        nValidatedProduct.Reserve(nXSize+nYSize);
+                        nTestProduct.Reserve(nXSize+nYSize+1);
+                        nTestProduct.GetValue()[nXSize + nYSize] = TEST_BUFFERGUARD;
+                        nValidatedProduct.SetSize(CUnsignedArithmeticHelper::MultOracle(nXSize,
+                                                                                        nYSize,
+                                                                                        nX.GetValue(),
+                                                                                        nY.GetValue(),
+                                                                                        nValidatedProduct.GetValue()));
                         size_t nSmallSize, nLargeSize;
                         DIGIT  *pnSmaller, *pnLarger;
-                        if(*pX<*pY)
+                        if(nX<nY)
                         {
                             // X is smaller
-                            pnSmaller  = pX->GetValue();
-                            nSmallSize = pX->GetSize();
-                            pnLarger   = pY->GetValue();
-                            nLargeSize = pY->GetSize();
+                            pnSmaller  = nX.GetValue();
+                            nSmallSize = nX.GetSize();
+                            pnLarger   = nY.GetValue();
+                            nLargeSize = nY.GetSize();
                         }
                         else
                         {
                             // Y is smaller (or they are the same size)
-                            pnSmaller  = pY->GetValue();
-                            nSmallSize = pY->GetSize();
-                            pnLarger   = pX->GetValue();
-                            nLargeSize = pX->GetSize();
+                            pnSmaller  = nY.GetValue();
+                            nSmallSize = nY.GetSize();
+                            pnLarger   = nX.GetValue();
+                            nLargeSize = nX.GetSize();
                         }
                         c_pnMultiplicationThresholds[eBasicMultiply] = nSmallSize;
-                        switch(nAlgorithm)
-                        {
-                        case 0:
-                            c_pnMultiplicationThresholds[e3By2] = nLargeSize+1;
-                            break;
-                        case 1:
-                            c_pnMultiplicationThresholds[e3By2] = nSmallSize;
-                            c_pnMultiplicationThresholds[e5By3] = nLargeSize+1;
-                            break;
-                        case 2:
-                            c_pnMultiplicationThresholds[e3By2] = nSmallSize;
-                            c_pnMultiplicationThresholds[e5By3] = nSmallSize;
-                            c_pnMultiplicationThresholds[e7By4] = nLargeSize+1;
-                            break;
-#if(32<=_DIGIT_SIZE_IN_BITS)
-                        case 3:
-                            c_pnMultiplicationThresholds[e3By2] = nSmallSize;
-                            c_pnMultiplicationThresholds[e5By3] = nSmallSize;
-                            c_pnMultiplicationThresholds[e7By4] = nSmallSize;
-                            c_pnMultiplicationThresholds[e9By5] = nLargeSize + 1;
-                            break;
-#endif
-                        default:
-                            printf("Well shucks; somebody screwed up...\n");
-                        }
+                        for(int ii=0; ii<nAlgorithm; ii++) c_pnMultiplicationThresholds[ii] = nSmallSize;
+                        c_pnMultiplicationThresholds[nAlgorithm] = nLargeSize+1;
                         int nMemoryNeeded = MultiplyMemoryNeeds(nXSize, nYSize);
                         pnWorkspace[nMemoryNeeded] = TEST_BUFFERGUARD;
-#if _CollectDetailedTimingData
-                        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                        MultUBackend(nXSize,
-                                     nYSize,
-                                     pX->GetValue(),
-                                     pY->GetValue(),
-                                     pTestProduct->GetValue(),
-                                     pnWorkspace,
-                                     dwTimestamp);
-#else
-                        MultUBackend(nXSize,
-                                     nYSize,
-                                     pX->GetValue(),
-                                     pY->GetValue(),
-                                     pTestProduct->GetValue(),
-                                     pnWorkspace);
-#endif
+                        Multiply(nXSize, nYSize, nX.GetValue(), nY.GetValue(), nTestProduct.GetValue(), pnWorkspace);
                         if(TEST_BUFFERGUARD != pnWorkspace[nMemoryNeeded])
                         {
-                            printf("Overflowed supposed workspace memory needs for algorithm %i, size %ix%i type %i\n",
-                                   nAlgorithm,
+                            printf("Overflowed supposed workspace memory needs for %s, size %ix%i type %i\n",
+                                   GetMultiplicationAlgorithmName((EMultiplyAlgorithm) nAlgorithm),
                                    nXSize,
                                    nYSize,
                                    k);
                             goto exit;
                         }
-                        if(pTestProduct->GetValue()[nXSize + nYSize] != TEST_BUFFERGUARD)
+                        if(nTestProduct.GetValue()[nXSize + nYSize] != TEST_BUFFERGUARD)
                         {
-                            printf("Overflowed product for algorithm %i, size %ix%i type %i\n",
-                                   nAlgorithm,
+                            printf("Overflowed product for %s, size %ix%i type %i\n",
+                                   GetMultiplicationAlgorithmName((EMultiplyAlgorithm) nAlgorithm),
                                    nXSize,
                                    nYSize,
                                    k);
                             goto exit;
                         }
                         nProductSize = nXSize+nYSize;
-                        if(0==pTestProduct->GetValue()[nProductSize-1])
+                        if(0==nTestProduct.GetValue()[nProductSize-1])
                         {
                             nProductSize--;
                         }
-                        pTestProduct->SetSize(nProductSize);
-                        if(*pTestProduct != *pValidatedProduct || bVerbose)
+                        nTestProduct.SetSize(nProductSize);
+                        if(nTestProduct != nValidatedProduct || bVerbose)
                         {
                             printf("Multiply operands:\n");
-                            pX->PrintHexToFile();
+                            nX.PrintHexToFile();
                             printf("\n");
-                            pY->PrintHexToFile();
+                            nY.PrintHexToFile();
                             printf("\n");
                             printf("Expected product:\n");
-                            pValidatedProduct->PrintHexToFile();
+                            nValidatedProduct.PrintHexToFile();
                             printf("\nComputed product:\n");
-                            pTestProduct->PrintHexToFile();
+                            nTestProduct.PrintHexToFile();
                             printf("\n");
-                            if(*pTestProduct != *pValidatedProduct)
+                            if(nTestProduct != nValidatedProduct)
                             {
-                                printf("Multiply test failed: multiplication algorithm %i, size %ix%i type %i\n",
-                                       nAlgorithm,
+                                printf("Multiply test failed: multiplication %s, size %ix%i type %i\n",
+                                       GetMultiplicationAlgorithmName((EMultiplyAlgorithm) nAlgorithm),
                                        nXSize,
                                        nYSize,
                                        k);
@@ -1323,12 +1324,7 @@ bool CArithmeticCorrectnessTester::TestRecursiveMultiply(bool bVerbose)
     }
     bTestWorked = true;
 exit:
-    delete pX;
-    delete pY;
-    delete pTestProduct;
-    delete pValidatedProduct;
-    delete pnWorkspace;
-    delete pAdd;
+    free(pnWorkspace);
     return bTestWorked;
 }
 
@@ -2107,7 +2103,7 @@ bool CArithmeticCorrectnessTester::TestBigGCD(bool bVerbose)
                 goto exit;
             }
             // try again, this time just asking for the x coef.  Should get the same value
-            nHold.Reserve(nYSize + 1); // +1 : slot for TEST_BUFFERGUARD
+            nHold.Reserve(nYSize + 2); // +2 : slot for TEST_BUFFERGUARD, one extra DIGIT for internal computations
             nHold.GetValue()[nYSize]  = TEST_BUFFERGUARD; // set buffer guard -- one extra digit used for overflow
             CUnsignedArithmeticHelper::GCD(nX.GetSize(),
                                            nY.GetSize(),
@@ -3160,6 +3156,88 @@ exit:
     return bTestWorked;
 }
 
+bool FFTForwardBackMatchesOriginal(DIGIT *pOriginal, DIGIT *pFFT_Inverse, size_t nOriginalSize, size_t nFFTLength, size_t nFieldSize)
+{
+    int  i, j, k;
+    bool bEqual = true;
+    // first part of FFT_Inverse should match the original value (with padding 0s)
+    // first, the first full-sized pieces
+    k = 0;
+    for(i=0;i<nOriginalSize/((nFieldSize>>1)-1);i++)
+    {
+        for(j=0;j<(nFieldSize>>1)-1;j++)
+        {
+            if(pOriginal[k++] != pFFT_Inverse[i*(nFieldSize+1)+j])
+            {
+                bEqual = false;
+                break;
+            }
+        }
+        if(!bEqual)
+        {
+            break;
+        }
+        for(;j<nFieldSize+1;j++)
+        {
+            if(0 != pFFT_Inverse[i*(nFieldSize+1)+j])
+            {
+                bEqual = false;
+                break;
+            }
+        }
+        if(!bEqual)
+        {
+            break;
+        }
+    }
+    if(bEqual)
+    {
+        // check the last, smaller piece
+        if(nOriginalSize != i*((nFieldSize>>1)-1))
+        {
+            j = 0;
+            for(;k<nOriginalSize;k++)
+            {
+                if(pOriginal[k] != pFFT_Inverse[i*(nFieldSize+1)+j])
+                {
+                    bEqual = false;
+                    break;
+                }
+                j++;
+            }
+        }
+        // the rest of the FFT_Inverse should be 0
+        if(bEqual)
+        {
+            for(;j<nFieldSize+1;j++)
+            {
+                if(0 != pFFT_Inverse[i*(nFieldSize+1)+j])
+                {
+                    bEqual = false;
+                    break;
+                }
+            }
+            if(bEqual)
+            {
+                i++;
+                // rest of FFT_Inverse should be 0
+                for(;i<nFFTLength;i++)
+                {
+                    for(j=0;j<nFieldSize+1;j++)
+                    {
+                        if(0 != pFFT_Inverse[i*(nFieldSize+1)+j])
+                        {
+                            bEqual = false;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return bEqual;
+}
+
 bool CArithmeticCorrectnessTester::TestFFT(bool bVerbose)
 {
 #if(16==_DIGIT_SIZE_IN_BITS)
@@ -3169,7 +3247,7 @@ bool CArithmeticCorrectnessTester::TestFFT(bool bVerbose)
     const size_t       c_MaxElementSizeInDigits = 2048;
 #endif
     CBigIntegerForTest nX,nFFT,nFFT_Inverse,nFFT2,nFFT_Inverse2;
-    size_t             nFFTLength,nComputeSize,nChunkSize,nFFTMemoryNeeds;
+    size_t             nFFTLength,nComputeSize,nChunkSize,nFFTMemoryNeeds,nFFTSize;
     SBitShift          nRootUnity;
     size_t             i,j,k;
     DIGIT              *pWorkspace = new DIGIT[2000000000];
@@ -3184,15 +3262,17 @@ bool CArithmeticCorrectnessTester::TestFFT(bool bVerbose)
         {
             nChunkSize = (nFieldSize>>1)-1;
             // set up the number whose FFT/FFT inverse we wish to compute
-            nX.Reserve(nFFTLength*nFieldSize);
-            nFFT.Reserve(nFFTLength*(1+nFieldSize));
-            nFFT.SetSize(nFFTLength*(1+nFieldSize));
-            nFFT_Inverse.Reserve(nFFTLength*(1+nFieldSize));
-            nFFT_Inverse.SetSize(nFFTLength*(1+nFieldSize));
-            nFFT2.Reserve(nFFTLength*(1+nFieldSize));
-            nFFT2.SetSize(nFFTLength*(1+nFieldSize));
-            nFFT_Inverse2.Reserve(nFFTLength*(1+nFieldSize));
-            nFFT_Inverse2.SetSize(nFFTLength*(1+nFieldSize));
+            nFFTSize =  nFFTLength*nFieldSize;
+            nX.Reserve(nFFTSize);
+            nFFTSize += nFFTLength;
+            nFFT.Reserve(nFFTSize);
+            nFFT.SetSize(nFFTSize);
+            nFFT_Inverse.Reserve(nFFTSize);
+            nFFT_Inverse.SetSize(nFFTSize);
+            nFFT2.Reserve(nFFTSize);
+            nFFT2.SetSize(nFFTSize);
+            nFFT_Inverse2.Reserve(nFFTSize);
+            nFFT_Inverse2.SetSize(nFFTSize);
             DIGIT *pToCompute    = nX.GetValue();
             DIGIT *pFFT          = nFFT.GetValue();
             DIGIT *pFFT_Inverse  = nFFT_Inverse.GetValue();
@@ -3240,88 +3320,11 @@ bool CArithmeticCorrectnessTester::TestFFT(bool bVerbose)
                                   pFFT_Inverse,
                                   pWorkspace);
                 nFFTInverseTime = s_Timer.GetMicroseconds()-nFFTInverseTime;
-                bEqual = true;
-                k      = 0;
-                // first part of FFT_Inverse should match the original value (with padding 0s)
-                // first, the first full-sized pieces
-                for(i=0;i<nComputeSize/((nFieldSize>>1)-1);i++)
-                {
-                    for(j=0;j<(nFieldSize>>1)-1;j++)
-                    {
-                        if(pToCompute[k++] != pFFT_Inverse[i*(nFieldSize+1)+j])
-                        {
-                            bEqual = false;
-                            break;
-                        }
-                    }
-                    if(!bEqual)
-                    {
-                        break;
-                    }
-                    for(;j<nFieldSize+1;j++)
-                    {
-                        if(0 != pFFT_Inverse[i*(nFieldSize+1)+j])
-                        {
-                            bEqual = false;
-                            break;
-                        }
-                    }
-                    if(!bEqual)
-                    {
-                        break;
-                    }
-                }
-                if(bEqual)
-                {
-                    // check the last, smaller piece
-                    if(nComputeSize != i*((nFieldSize>>1)-1))
-                    {
-                        j = 0;
-                        for(;k<nComputeSize;k++)
-                        {
-                            if(pToCompute[k] != pFFT_Inverse[i*(nFieldSize+1)+j])
-                            {
-                                bEqual = false;
-                                break;
-                            }
-                            j++;
-                        }
-                    }
-                    // the rest of the FFT_Inverse should be 0
-                    if(bEqual)
-                    {
-                        for(;j<nFieldSize+1;j++)
-                        {
-                            if(0 != pFFT_Inverse[i*(nFieldSize+1)+j])
-                            {
-                                bEqual = false;
-                                break;
-                            }
-                        }
-                        if(bEqual)
-                        {
-                            i++;
-                            // rest of FFT_Inverse should be 0
-                            for(;i<nFFTLength;i++)
-                            {
-                                for(j=0;j<nFieldSize+1;j++)
-                                {
-                                    if(0 != pFFT_Inverse[i*(nFieldSize+1)+j])
-                                    {
-                                        bEqual = false;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                bEqual = FFTForwardBackMatchesOriginal(pToCompute, pFFT_Inverse, nComputeSize, nFFTLength, nFieldSize);
                 printf("Length %i Field %i\tBit shift %i Digit shift %i\n",nFFTLength,nFieldSize,nRootUnity.m_nBitShift,nRootUnity.m_nDigitShift);
                 printf("  Basic: forward:     %I64u microseconds\tInverse: %I64u microseconds\n",nFFTTime,nFFTInverseTime);
                 if(!bEqual)
                 {
-                    FILE *pFoo;
-                    fopen_s(&pFoo, "Error", "w");
                     fprintf(stderr,"FFT/FFT inverse failure for FFT length %i, element size %i:\n",nFFTLength,nFieldSize);
                     fprintf(stderr,"Base:\n");
                     nX.PrintHexToFile();
@@ -3329,14 +3332,6 @@ bool CArithmeticCorrectnessTester::TestFFT(bool bVerbose)
                     nFFT.PrintHexToFile();
                     fprintf(stderr,"FFT inverse:\n");
                     nFFT_Inverse.PrintHexToFile();
-                    fprintf(pFoo,"FFT/FFT inverse failure for FFT length %i, element size %i:\n",nFFTLength,nFieldSize);
-                    fprintf(pFoo,"Base:\n");
-                    nX.PrintHexToFile(pFoo);
-                    fprintf(pFoo,"FFT:\n");
-                    nFFT.PrintHexToFile(pFoo);
-                    fprintf(pFoo,"FFT inverse:\n");
-                    nFFT_Inverse.PrintHexToFile(pFoo);
-                    fclose(pFoo);
                     goto exit;
                 }
                 // repeat for optimized versions
@@ -3397,7 +3392,7 @@ bool CArithmeticCorrectnessTester::TestFFTMult(bool bVerbose)
     CArithmeticBox     cBox;
     CBigIntegerForTest nX,nY,nProd,nProdComputed;
     size_t             nXBits,nYBits,nFFTMemoryNeeds;
-    DIGIT *pnWorkspace = new DIGIT[100000];
+    DIGIT *pnWorkspace = (DIGIT *) malloc(sizeof(DIGIT)*100000);
     bool  bTestWorked  = false;
     // Next, check fft & fft inverse
     nProd.Reserve(3*c_nMaxFFTTest+1);
@@ -3531,7 +3526,7 @@ bool CArithmeticCorrectnessTester::TestFFTMult(bool bVerbose)
             nProdComputed.m_pnValue[nSize+nSize] = TEST_BUFFERGUARD;
             nProd.m_pnValue[nSize+nSize]         = TEST_BUFFERGUARD;
             c_pnMultiplicationThresholds[e2NByN] = nSize-1; // force single level of FFT
-            nFFTMemoryNeeds = FFTMultiplyMemoryNeeds(nX.GetSize(), nY.GetSize(), false);
+            nFFTMemoryNeeds                      = FFTMultiplyMemoryNeeds(nX.GetSize(), nY.GetSize(), false);
             cBox.m_Workspace.Reserve(nFFTMemoryNeeds + 1);
             cBox.m_Workspace.GetSpace()[nFFTMemoryNeeds] = TEST_BUFFERGUARD;
             cBox.Multiply(nX,nY,nProdComputed);
@@ -3577,35 +3572,29 @@ bool CArithmeticCorrectnessTester::TestFFTMult(bool bVerbose)
     }
     bTestWorked = true;
 exit:
-    delete pnWorkspace;
+    free(pnWorkspace);
     return bTestWorked;
 }
 
 bool CArithmeticCorrectnessTester::TestSquare()
 {
     CArithmeticBox        cBox;
+    CBigIntegerForTest    nX, nValidatedProduct, nTestProduct, nAdd;
     size_t                nProductSize;
-    const int             c_nMaxSize         = 300;
-    bool                  bTestWorked        = false;
-    CBigIntegerForTest    *pX                = new CBigIntegerForTest();
-    CBigIntegerForTest    *pValidatedProduct = new CBigIntegerForTest();
-    CBigIntegerForTest    *pTestProduct      = new CBigIntegerForTest();
-    CBigIntegerForTest    *pAdd              = new CBigIntegerForTest();
-    DIGIT                 *pnWorkspace       = new DIGIT[200000]; // plenty for this test, I hope
+    const int             c_nMaxSize   = 300;
+    bool                  bTestWorked  = false;
+    DIGIT                 *pnWorkspace = (DIGIT *) malloc(sizeof(DIGIT)*20000); // plenty for this test, I hope
     ResetThresholdsForTest();
-    pX->Reserve(c_nMaxSize);
-    c_pnMultiplicationThresholds[e2NByN] = c_nMaxSize + 1;
+    nX.Reserve(c_nMaxSize);
+    c_pnSquareThresholds[e2NByN]                 = c_nMaxSize + 1;
+    c_pnMultiplicationThresholds[eBasicMultiply] = c_nMaxSize + 1; // only used by 3by2 -- just make sure not doing anything silly with sub-multiplications
     // Then, test the larger multiplication algorithms against the oracle
-#if(32<=_DIGIT_SIZE_IN_BITS) // use names as in multiply test -- debug resolve todo
-    for(int nAlgorithm=0; nAlgorithm<6; nAlgorithm++)
-#else
-    for(int nAlgorithm=0; nAlgorithm<5; nAlgorithm++)
-#endif
+    for(int nAlgorithm=1; nAlgorithm<eNumMultiplyAlgorithms; nAlgorithm++)
     {
         for(size_t i=20;i<=c_nMaxSize;i++)
         {
             if (c_nMaxSize == i) i = 500; // try big value
-            printf("algorithm %i: %i x %i\n", nAlgorithm, i, i);
+            printf("%s: %ix%i\n", GetMultiplicationAlgorithmName((EMultiplyAlgorithm) nAlgorithm), i, i);
             for (int nTrials=0; nTrials<100; nTrials++)
             {
                 int nSeed = rand();
@@ -3617,159 +3606,84 @@ bool CArithmeticCorrectnessTester::TestSquare()
                     {
                     case 0:
                         // random values
-                        pX->SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                        nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
                         break;
                     case 1:
                         // max values
                         for (size_t n=0; n<i; n++)
                         {
-                            pX->GetValue()[n] = (DIGIT)-1;
+                            nX.GetValue()[n] = (DIGIT)-1;
                         }
-                        pX->SetSize(i);
+                        nX.SetSize(i);
                         break;
                     case 2:
                         // min values
                         for (size_t n=0; n<i-1; n++)
                         {
-                            pX->GetValue()[n] = 0;
+                            nX.GetValue()[n] = 0;
                         }
-                        pX->GetValue()[i - 1] = 1;
-                        pX->SetSize(i);
+                        nX.GetValue()[i - 1] = 1;
+                        nX.SetSize(i);
                         break;
                     case 3:
                         // mixed values
                         for (size_t n=0; n<i/2; n++)
                         {
-                            pX->GetValue()[n] = 0;
+                            nX.GetValue()[n] = 0;
                         }
                         for (size_t n =i/2; n<i; n++)
                         {
-                            pX->GetValue()[n] = (DIGIT) -1;
+                            nX.GetValue()[n] = (DIGIT) -1;
                         }
-                        pX->SetSize(i);
+                        nX.SetSize(i);
                         break;
                     case 4:
                         // sparse values
                         size_t n = 0;
                         for (; n<i-1; n++)
                         {
-                            pX->GetValue()[n] = (DIGIT) (n&1);
+                            nX.GetValue()[n] = (DIGIT) (n&1);
                         }
-                        pX->GetValue()[n] = 1;
-                        pX->SetSize(i);
+                        nX.GetValue()[n] = 1;
+                        nX.SetSize(i);
                     }
-                    size_t nXSize = pX->GetSize();
-                    if (0<pX->GetSize())
+                    size_t nXSize = nX.GetSize();
+                    if (0<nX.GetSize())
                     {
-                        pValidatedProduct->Reserve(nXSize + nXSize);
-                        pTestProduct->Reserve(nXSize + nXSize);
-                        pValidatedProduct->SetSize(CUnsignedArithmeticHelper::MultOracle(nXSize,
-                                                   nXSize,
-                                                   pX->GetValue(),
-                                                   pX->GetValue(),
-                                                   pValidatedProduct->GetValue()));
-                        c_pnMultiplicationThresholds[eBasicMultiply] = nXSize;
-                        switch (nAlgorithm)
-                        {
-                        case 0:
-                            // 3 by 2 multiply
-                            c_pnMultiplicationThresholds[e3By2]  = nXSize + 1;
-                            c_pnMultiplicationThresholds[e2NByN] = nXSize + 1;
-                            break;
-                        case 1:
-                            // 5 by 3 multiply
-                            c_pnMultiplicationThresholds[e3By2]  = nXSize;
-                            c_pnMultiplicationThresholds[e5By3]  = nXSize + 1;
-                            c_pnMultiplicationThresholds[e2NByN] = nXSize + 1;
-                            break;
-                        case 2:
-                            // 7 by 4 multiply
-                            c_pnMultiplicationThresholds[e3By2]  = nXSize;
-                            c_pnMultiplicationThresholds[e5By3]  = nXSize;
-                            c_pnMultiplicationThresholds[e7By4]  = nXSize + 1;
-                            c_pnMultiplicationThresholds[e2NByN] = nXSize + 1;
-                            break;
-#if(32<=_DIGIT_SIZE_IN_BITS)
-                        case 3:
-                            // 9 by 5 multiply
-                            c_pnMultiplicationThresholds[e3By2]  = nXSize;
-                            c_pnMultiplicationThresholds[e5By3]  = nXSize;
-                            c_pnMultiplicationThresholds[e7By4]  = nXSize;
-                            c_pnMultiplicationThresholds[e9By5]  = nXSize + 1;
-                            c_pnMultiplicationThresholds[e2NByN] = nXSize + 1;
-                            break;
-                        case 4:
-                            // 2n-1 by n multiply
-                            c_pnMultiplicationThresholds[e3By2]  = nXSize;
-                            c_pnMultiplicationThresholds[e5By3]  = nXSize;
-                            c_pnMultiplicationThresholds[e7By4]  = nXSize;
-                            c_pnMultiplicationThresholds[e9By5]  = nXSize;
-                            c_pnMultiplicationThresholds[e2NByN] = nXSize + 1;
-                            break;
-                        case 5:
-                            // fft multiply
-                            c_pnMultiplicationThresholds[e3By2]    = nXSize;
-                            c_pnMultiplicationThresholds[e5By3]    = nXSize;
-                            c_pnMultiplicationThresholds[e7By4]    = nXSize;
-                            c_pnMultiplicationThresholds[e9By5]    = nXSize;
-                            c_pnMultiplicationThresholds[e2NByN]   = nXSize;
-                            c_pnMultiplicationThresholds[eFFTMult] = nXSize + 1;
-                            break;
-#else
-                        case 3:
-                            c_pnMultiplicationThresholds[e3By2]  = nXSize;
-                            c_pnMultiplicationThresholds[e5By3]  = nXSize;
-                            c_pnMultiplicationThresholds[e7By4]  = nXSize;
-                            c_pnMultiplicationThresholds[e2NByN] = nXSize + 1;
-                            break;
-                        case 4:
-                            // fft multiply
-                            c_pnMultiplicationThresholds[e3By2]    = nXSize;
-                            c_pnMultiplicationThresholds[e5By3]    = nXSize;
-                            c_pnMultiplicationThresholds[e7By4]    = nXSize;
-                            c_pnMultiplicationThresholds[e2NByN]   = nXSize;
-                            c_pnMultiplicationThresholds[eFFTMult] = nXSize + 1;
-                            break;
-#endif
-                        default:
-                            printf("Well shucks; SOMEBODY screwed up...\n");
-                        }
-                        int nMemoryNeeded = MultiplyMemoryNeeds(nXSize, nXSize);
+                        nValidatedProduct.Reserve(nXSize + nXSize);
+                        nTestProduct.Reserve(nXSize + nXSize);
+                        nValidatedProduct.SetSize(CUnsignedArithmeticHelper::MultOracle(nXSize,
+                                                                                        nXSize,
+                                                                                        nX.GetValue(),
+                                                                                        nX.GetValue(),
+                                                                                        nValidatedProduct.GetValue()));
+                        c_pnSquareThresholds[eBasicMultiply] = nXSize;
+                        for(int ii=0; ii<nAlgorithm; ii++) c_pnSquareThresholds[ii] = nXSize;
+                        c_pnSquareThresholds[nAlgorithm] = nXSize+1;
+                        int nMemoryNeeded = SquareMemoryNeeds(nXSize, nXSize);
                         pnWorkspace[nMemoryNeeded] = TEST_BUFFERGUARD;
-#if(_CollectDetailedTimingData)
-                        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
-                        SquareUBackend(nXSize,
-                                       pX->GetValue(),
-                                       pTestProduct->GetValue(),
-                                       pnWorkspace,
-                                       dwTimestamp);
-#else
-                        SquareUBackend(nXSize,
-                                       pX->GetValue(),
-                                       pTestProduct->GetValue(),
-                                       pnWorkspace);
-#endif
+                        Square(nXSize, nX.GetValue(), nTestProduct.GetValue(), pnWorkspace);
                         if (TEST_BUFFERGUARD != pnWorkspace[nMemoryNeeded])
                         {
-                            printf("Overflowed supposed memory needs for algorithm %i, size %ix%i type %i\n",
-                                   nAlgorithm,
+                            printf("Overflowed supposed memory needs for %s, size %ix%i type %i\n",
+                                   GetMultiplicationAlgorithmName((EMultiplyAlgorithm) nAlgorithm),
                                    nXSize,
                                    nXSize,
                                    k);
                             goto exit;
                         }
                         nProductSize = nXSize + nXSize;
-                        if (0 == pTestProduct->GetValue()[nProductSize - 1])
+                        if (0 == nTestProduct.GetValue()[nProductSize - 1])
                         {
                             nProductSize--;
                         }
-                        pTestProduct->SetSize(nProductSize);
-                        if (*pTestProduct != *pValidatedProduct)
+                        nTestProduct.SetSize(nProductSize);
+                        if (nTestProduct != nValidatedProduct)
                         {
                             printf("Expected product:\n");
-                            pValidatedProduct->PrintHexToFile();
+                            nValidatedProduct.PrintHexToFile();
                             printf("\nComputed product:\n");
-                            pTestProduct->PrintHexToFile();
+                            nTestProduct.PrintHexToFile();
                             printf("\n");
                             printf("Multiply test failed: square algorithm %i, size %i type %i\n",
                                     nAlgorithm,
@@ -3784,11 +3698,7 @@ bool CArithmeticCorrectnessTester::TestSquare()
     }
     bTestWorked = true;
 exit:
-    delete pX;
-    delete pTestProduct;
-    delete pValidatedProduct;
-    delete pnWorkspace;
-    delete pAdd;
+    free(pnWorkspace);
     return bTestWorked;
 }
 

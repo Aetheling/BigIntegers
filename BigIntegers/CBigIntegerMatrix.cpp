@@ -148,9 +148,9 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
             j = pnPermutation[jj];
             if(!m_ppData[j][ii].IsZero())  // is, indeed, work to do
             {
-                // Set pCoef4 to the GCD of [i][i] and [j][i].
-                // Set pCoef1 to [i][i]/pCoef4 and pCoef2 to [j][i]/pCoef4.
-                // Subtract pCoef2*(row i) from pCoef1*(row j)
+                // Set nCoef4 to the GCD of [i][ii] and [j][ii].
+                // Set nCoef1 to [i][ii]/pCoef4 and pCoef2 to [j][ii]/pCoef4.
+                // Subtract nCoef2*(row i) from nCoef1*(row j)
                 if(eOperationSucceeded != cArithmeticBox.GCD(m_ppData[i][ii],
                                                              m_ppData[j][ii],
                                                              nCoef4))
@@ -160,11 +160,6 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
                 }
                 if(1 != nCoef4.GetSize() || 1 != nCoef4.GetValue()[0])  // GCD is interesting
                 {
-                    // Divide is destructive, so copy [i][i] before
-                    // computing pCoef1.  But we don't care about [j][i]
-                    // after this point, so it can be destroyed (it will
-                    // in fact be set to 0, as it should be, since the remainder
-                    // of the division is, by design, 0).
                     if(eOperationSucceeded != cArithmeticBox.Divide(m_ppData[i][ii],
                                                                     nCoef4,
                                                                     nCoef1,
@@ -177,7 +172,7 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
                         eStatus = eOutOfMemory;  // ran out of memory
                         goto Cleanup;
                     }
-                    // Subtract pCoef2*(row i) from pCoef1*(row j)
+                    // Subtract nCoef2*(row i) from nCoef1*(row j)
                     // first, the base matrix
                     for(k=ii+1;k<m_nCols;k++)
                     {
@@ -322,7 +317,6 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
         eStatus = eSingular;
         goto Cleanup;
     }
-
     // Backwards elimination
     for(ii=m_nRows-1;ii>0;ii--)
     {
@@ -404,7 +398,7 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
                     // Note that while we still care about [i][i] -- it
                     // gives the diagonal for the matrix -- we don't care
                     // about [j][i]
-                    nCoef3 = m_ppData[i][ii];
+                    nCoef3 = m_ppData[i][ii]; // no need to copy; just use -- debug resolve todo
                     if(eOperationSucceeded != cArithmeticBox.Divide(nCoef3,
                                                                     nCoef4,
                                                                     nCoef1,
@@ -539,6 +533,7 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
             }
         }
     }
+//    nQuasiInverse.Print();
     // Now, nQuasiInverse contains the sort-of inverse of the original
     // matrix, the diagonal elements of the original matrix contain the
     // D matrix, and the rest of the values of the original matrix are
@@ -546,7 +541,6 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
     for(i=0;i<m_nCols;i++)
     {
         vD[i] = m_ppData[pnPermutation[i]][i];
-   //     vD.Assign(i, m_ppData[pnPermutation[i]][i]);
     }
     for(i=0;i<m_nCols;i++)
     {
@@ -604,6 +598,11 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
         if (!bAllOkay)
         {
             printf("oops\n");
+            nbimCopy.Print();
+            printf("inverse\n");
+            Print();
+            printf("product\n");
+            nProd.Print();
         }
     }
 #endif

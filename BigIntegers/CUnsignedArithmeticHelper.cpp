@@ -11,45 +11,53 @@ SSystemDataNode *g_pInversionStructures = NULL;
 // class variable definitions/initializations
 #ifndef _UsingVariableThresholdsForTest
 #if(32==_DIGIT_SIZE_IN_BITS)
-const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 16384;         // or whatever is found to be best in testing thresholds -- this is good
-const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                = 65536;         // or whatever is found to be best in testing thresholds -- this is good
+const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 16384;         // or whatever is found to be best in testing thresholds -- this is good
+const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 65536;         // or whatever is found to be best in testing thresholds -- this is good
 // note that the ABSOLUTE MINIMUM for c_pnMultiplicationThresholds[e2NByN] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
-const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 123, 487, 896, 1048, 1122, 1468, 10829 };     // or whatever values the test deems Worthy
+const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1] = { 54, 100, 100, 160, 40789, 0 };     // or whatever values the test deems Worthy
+const unsigned int CUnsignedArithmeticHelper::c_pnSquareThresholds[eNumMultiplyAlgorithms-1]         = { 26, 186, 186, 190, 11573, 0 };     // or whatever values the test deems Worthy
 // note that the ABSOLUTE MINIMUM for c_pn2NByNBreakpoints[nPieces-5] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
-const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 123, 487, 896, 1048, 1122, 1468, 10829 };     // or whatever values the test deems Worthy
-const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 16;       // at least 4 to insure correctness; 22 is heuristically good
-const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               =  4;       // at least 4 to insure correctness; 22 is heuristically good
-const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               =  3;       // 3 is the minimum for correctness -- and also seems to be the best
+const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]          = { 160, 644, 3499, 3500, 13545, 13546, 19471 }; // Not really important to get right -- in practice, 2nbyn is never used
+const unsigned int CUnsignedArithmeticHelper::c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints]    = { 356, 2333, 17964, 23264, 28659, 28660, 28661 }; // Not really important to get right -- in practice, 2nbyn is never used
+const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                                = 16;       // at least 4 to insure correctness; 22 is heuristically good
+const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 =  4;       // at least 4 to insure correctness; 22 is heuristically good
+const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 =  3;       // 3 is the minimum for correctness -- and also seems to be the best
 #elif(16==_DIGIT_SIZE_IN_BITS)
-const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 8192;         // or whatever is found to be best in testing thresholds -- this is good
-const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                = 32768;         // or whatever is found to be best in testing thresholds -- this is good
+const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 8192;         // or whatever is found to be best in testing thresholds -- this is good
+const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 32768;         // or whatever is found to be best in testing thresholds -- this is good
 // note that the ABSOLUTE MINIMUM for c_pnMultiplicationThresholds[e2NByN] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
-const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 34, 68, 76, 161, 1990006, 12232 };     // or whatever values the test deems Worthy
+const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1] = { 52, 152, 152, 39211, 0 };     // or whatever values the test deems Worthy
+const unsigned int CUnsignedArithmeticHelper::c_pnSquareThresholds[eNumMultiplyAlgorithms-1]         = { 34, 154, 154, 18956, 0 };     // or whatever values the test deems Worthy
+const unsigned int CUnsignedArithmeticHelper::c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints]    = { 9947, 12563, 12597, 44304, 89971, 275688, 2000000000 }; // Not really important to get right -- in practice, 2nbyn is never used
 // note that the ABSOLUTE MINIMUM for c_pn2NByNBreakpoints[nPieces-5] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
-const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 14481, 34001, 135915, 543863, 779232, 1765454, 1917176 };     // or whatever values the test deems Worthy
-const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 12;       // at least 4 to insure correctness; 22 is heuristically good
-const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               =  4;       // at least 4 to insure correctness; 22 is heuristically good
-const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               =  3;       // 3 is the minimum for correctness -- and also seems to be the best
+const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]          = { 101233, 182042, 201275, 231567, 1692095, 2254277, 33154301 }; // Not really important to get right -- in practice, 2nbyn is never used
+const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                                = 7;       // at least 4 to insure correctness; 22 is heuristically good
+const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 = 4;       // at least 4 to insure correctness; 22 is heuristically good
+const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 = 3;       // 3 is the minimum for correctness -- and also seems to be the best
 #endif
 #else
 #if(16==_DIGIT_SIZE_IN_BITS)
-unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 16384;         // or whatever is found to be best in testing thresholds -- this is good
-unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                = 65536;         // or whatever is found to be best in testing thresholds -- this is good
+unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 16384;         // or whatever is found to be best in testing thresholds -- this is good
+unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 65536;         // or whatever is found to be best in testing thresholds -- this is good
 // note that the ABSOLUTE MINIMUM for c_pnMultiplicationThresholds[e2NByN] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
-unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 15, 43, 58, 423327, 5633, 0 };     // or whatever values the test deems Worthy
+unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1] = { 52, 152, 152, 39211, 0 };     // or whatever values the test deems Worthy
+unsigned int CUnsignedArithmeticHelper::c_pnSquareThresholds[eNumMultiplyAlgorithms-1]         = { 34, 154, 154, 18956, 0 };     // or whatever values the test deems Worthy
 // note that the ABSOLUTE MINIMUM for c_pn2NByNBreakpoints[nPieces-5] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
-unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 91, 2639, 4366, 6920, 18377, 26457, 239783 };     // or whatever values the test deems Worthy
-unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 16;       // at least 4 to insure correctness; 6 or 7 is heuristically good
-unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               = 4;        // at least 4 to insure correctness; 4 is heuristically good
-unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               = 3;        // 3 is the minimum for correctness -- and also seems to be the best
+unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]          = { 101233, 182042, 201275, 231567, 1692095, 2254277, 33154301 }; // Not really important to get right -- in practice, 2nbyn is never used
+unsigned int CUnsignedArithmeticHelper::c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints]    = { 9947, 12563, 12597, 44304, 89971, 275688, 2000000000 }; // Not really important to get right -- in practice, 2nbyn is never used
+unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                                = 7;        // at least 4 to insure correctness; 6 or 7 is heuristically good
+unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 = 4;        // at least 4 to insure correctness; 4 is heuristically good
+unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 = 3;        // 3 is the minimum for correctness -- and also seems to be the best
 #elif(32==_DIGIT_SIZE_IN_BITS)
-unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                 = 8192;
-unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                = 32768; // ignored
-unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms] = { 34, 68, 76, 161, 1990006, 12232, 0 };
-unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]        = { 14481, 34001, 135915, 543863, 779232, 1765454, 1917176 };
-unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                              = 12;       // at least 4 to insure correctness; 6 is heuristically good
-unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                               = 4;        // at least 4 to insure correctness; 4 is heuristically good
-unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                               = 3;        // 3 is the minimum for correctness -- and also seems to be the best
+unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 8192;
+unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 32768; // ignored
+unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1] = { 54, 100, 100, 160, 40789, 0 };
+unsigned int CUnsignedArithmeticHelper::c_pnSquareThresholds[eNumMultiplyAlgorithms-1]         = { 26, 186, 186, 190, 11573, 0 };
+unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]          = { 160, 644, 3499, 3500, 13545, 13546, 19471 }; // Not really important to get right -- in practice, 2nbyn is never used
+unsigned int CUnsignedArithmeticHelper::c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints]    = { 356, 2333, 17964, 23264, 28659, 28660, 28661 }; // Not really important to get right -- in practice, 2nbyn is never used
+unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                                = 12;       // at least 4 to insure correctness; 6 is heuristically good
+unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 = 4;        // at least 4 to insure correctness; 4 is heuristically good
+unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 = 3;        // 3 is the minimum for correctness -- and also seems to be the best
 #endif
 #endif
 
@@ -379,9 +387,9 @@ size_t CUnsignedArithmeticHelper::MultiplyMemoryNeedsBackend(size_t nXSize, size
         return nNeeds + (nXSize<<1) + (nYSize%nXSize); // nXSize + nXSize + (nLarge%nXSize) to hold intermediate value for mult/add
     }
 #if(32<=_DIGIT_SIZE_IN_BITS)
-    else if (nXSize < c_pnMultiplicationThresholds[e9By5] && nXSize < c_pnMultiplicationThresholds[e2NByN])
+    else if (nXSize < c_pnMultiplicationThresholds[e9By5])
 #else
-    else if (nXSize < c_pnMultiplicationThresholds[e7By4] && nXSize < c_pnMultiplicationThresholds[e2NByN])
+    else if (nXSize < c_pnMultiplicationThresholds[e7By4])
 #endif
     {
         // tighter bounds can be computed, obviously; but this is reasonable
@@ -400,6 +408,39 @@ size_t CUnsignedArithmeticHelper::MultiplyMemoryNeedsBackend(size_t nXSize, size
     else
     {
         return FFTMultiplyMemoryNeeds(nXSize,nYSize,false);
+    }
+}
+
+size_t CUnsignedArithmeticHelper::SquareMemoryNeeds(size_t nXSize, size_t nSum)
+{
+    if(nXSize<c_pnSquareThresholds[eBasicMultiply])
+    {
+        // Needs to be kept in sync with MultUBasic, MultUShortLong, MultAddUShortLong
+        return nSum;
+    }
+#if(32<=_DIGIT_SIZE_IN_BITS)
+    else if (nXSize < c_pnSquareThresholds[e9By5])
+#else
+    else if (nXSize < c_pnSquareThresholds[e7By4])
+#endif
+    {
+        // tighter bounds can be computed, obviously; but this is reasonable
+        // and fast.  It also has the advantage of being nondecreasing, which
+        // has its advantages.
+        // Tighter still -- this uses the general multiplication needs -- not square -- which is larger.  Debug resolve todo!
+        return nSum + nXSize*6;
+    }
+    else if (nXSize < c_pnSquareThresholds[e2NByN])
+    {
+        // tighter bounds can be computed, obviously; but this is reasonable
+        // and fast.  It also has the advantage of being nondecreasing, which
+        // has its advantages.  Note this assumes the e2NbyN multiply is not
+        // passed small numbers with big piece counts!
+        return nSum + nXSize*12;
+    }
+    else
+    {
+        return nSum + FFTSquareMemoryNeeds(nXSize,false);
     }
 }
 
@@ -649,28 +690,33 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultUBackend(size_t             nX
         pnSmallValue = pYValue;
         pnLargeValue = pXValue;
     }
-    if(nSmallSize <= 2*_REGISTER_BLOCK_SIZE)
+#if(16 ==_DIGIT_SIZE_IN_BITS)
+    // in 16 bit, basic multiply is faster than striped for 1 == nSmallSize and 16 <= nLargeSize.  In this case ONLY.  But the difference is significant.
+    if(1 == nSmallSize && 32 <= nLargeSize)
     {
 #if(_CollectDetailedTimingData)
         DWORD64 dwStart = dwTimestamp;
-        MultUShortLong(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue);
+        MultUBasic(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, false);
         dwTimestamp = s_Timer.GetMicroseconds();
         g_nMultiplyCalls[eBasicMultiply]++;
         g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
 #else
-        MultUShortLong(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue);
+        MultUBasic(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, false);
 #endif
     }
     else if(nSmallSize < c_pnMultiplicationThresholds[eBasicMultiply])
+#else
+    if(nSmallSize < c_pnMultiplicationThresholds[eBasicMultiply])
+#endif
     {
 #if(_CollectDetailedTimingData)
         DWORD64 dwStart = dwTimestamp;
-        MultUBasic(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, false);
+        MultUStriped(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, false);
         dwTimestamp = s_Timer.GetMicroseconds();
         g_nMultiplyCalls[eBasicMultiply]++;
         g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
 #else
-        MultUBasic(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, false);
+        MultUStriped(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, false);
 #endif
     }
     else if(nSmallSize<<1 <= nLargeSize)
@@ -690,24 +736,11 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultUBackend(size_t             nX
     }
     else if(nSmallSize < c_pnMultiplicationThresholds[e3By2])
     {
-        /*int nHalf = (nLargeSize + 1)>>1;
-        if (nSmallSize <= nHalf)
-        {
-            // unbalanced -- can't use this algorithm on the given full problem size
 #if(_CollectDetailedTimingData)
-            UNBALANCED_MULT(MultU3by2, nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp, e3By2, NULL)
+        MultU3by2(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace,dwTimestamp);
 #else
-            UNBALANCED_MULT(MultU3by2, nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, NULL)
+        MultU3by2(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace);
 #endif
-        }
-        else*/
-        {
-#if(_CollectDetailedTimingData)
-            MultU3by2(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace,dwTimestamp);
-#else
-            MultU3by2(nSmallSize,nLargeSize,pnSmallValue,pnLargeValue,pZValue,pnWorkspace);
-#endif
-        }
         eAlg = e3By2;
     }
     else if(nSmallSize < c_pnMultiplicationThresholds[e5By3])
@@ -719,7 +752,6 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultUBackend(size_t             nX
 #endif
         eAlg = e5By3;
     }
-#if(32<=_DIGIT_SIZE_IN_BITS)
     else if (nSmallSize < c_pnMultiplicationThresholds[e7By4])
     {
 #if(_CollectDetailedTimingData)
@@ -729,7 +761,8 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultUBackend(size_t             nX
 #endif
         eAlg = e7By4;
     }
-    else if (nSmallSize < c_pnMultiplicationThresholds[e9By5] && nSmallSize < c_pnMultiplicationThresholds[e2NByN])
+#if(32<=_DIGIT_SIZE_IN_BITS)
+    else if (nSmallSize < c_pnMultiplicationThresholds[e9By5])
     {
 #if(_CollectDetailedTimingData)
         MultU9by5(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp);
@@ -738,17 +771,6 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultUBackend(size_t             nX
 #endif
         eAlg = e9By5;
     }
-#else
-    else if(nSmallSize < c_pnMultiplicationThresholds[e7By4] && nSmallSize < c_pnMultiplicationThresholds[e2NByN])
-    {
-#if(_CollectDetailedTimingData)
-        MultU7by4(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace, dwTimestamp);
-#else
-        MultU7by4(nSmallSize, nLargeSize, pnSmallValue, pnLargeValue, pZValue, pnWorkspace);
-#endif
-        eAlg = e7By4;
-    }
-
 #endif
     else if(nSmallSize < c_pnMultiplicationThresholds[e2NByN])
     {
@@ -789,14 +811,14 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultUBackend(size_t             nX
     return eAlg;
 }
 
-EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t             nXSize,
-                                                             const DIGIT        *pXValue,
-                                                             DIGIT              *pZValue,
-                                                             DIGIT              *pnWorkspace,
+EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t       nXSize,
+                                                             const DIGIT  *pXValue,
+                                                             DIGIT        *pZValue,
+                                                             DIGIT        *pnWorkspace,
 #if(_CollectDetailedTimingData)
-                                                             DWORD64            &dwTimestamp,
+                                                             DWORD64      &dwTimestamp,
 #endif
-                                                             size_t             *pnZSize)
+                                                             size_t       *pnZSize)
 {
     EMultiplyAlgorithm eAlg = eBasicMultiply;
     if(NULL!=pnZSize)
@@ -818,31 +840,19 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t             
             }
         }
     }
-    if(nXSize <= 2*_REGISTER_BLOCK_SIZE)
+    if(nXSize < c_pnSquareThresholds[eBasicMultiply])
     {
 #if(_CollectDetailedTimingData)
         DWORD64 dwStart = dwTimestamp;
-        MultUShortLong(nXSize, nXSize, pXValue, pXValue, pZValue);
+        MultUStriped(nXSize, nXSize, pXValue, pXValue, pZValue, false);
         dwTimestamp = s_Timer.GetMicroseconds();
         g_nMultiplyCalls[eBasicMultiply]++;
         g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
 #else
-        MultUShortLong(nXSize, nXSize, pXValue, pXValue, pZValue);
+        MultUStriped(nXSize, nXSize, pXValue, pXValue, pZValue, false);
 #endif
     }
-    else if(nXSize < c_pnMultiplicationThresholds[eBasicMultiply])
-    {
-#if(_CollectDetailedTimingData)
-        DWORD64 dwStart = dwTimestamp;
-        MultUBasic(nXSize, nXSize, pXValue, pXValue, pZValue, false);
-        dwTimestamp = s_Timer.GetMicroseconds();
-        g_nMultiplyCalls[eBasicMultiply]++;
-        g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
-#else
-        MultUBasic(nXSize, nXSize, pXValue, pXValue, pZValue, false);
-#endif
-    }
-    else if(nXSize < c_pnMultiplicationThresholds[e3By2])
+    else if(nXSize < c_pnSquareThresholds[e3By2])
     {
         SquareU3by2(nXSize,
                     pXValue,
@@ -853,7 +863,7 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t             
                     pnWorkspace);
         eAlg = e3By2;
     }
-    else if(nXSize < c_pnMultiplicationThresholds[e5By3])
+    else if(nXSize < c_pnSquareThresholds[e5By3])
     {
         SquareU5by3(nXSize,
                     pXValue,
@@ -864,8 +874,7 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t             
                     pnWorkspace);
         eAlg = e5By3;
     }
-#if(32<=_DIGIT_SIZE_IN_BITS)
-    else if (nXSize < c_pnMultiplicationThresholds[e7By4])
+    else if (nXSize < c_pnSquareThresholds[e7By4])
     {
         SquareU7by4(nXSize,
                     pXValue,
@@ -876,7 +885,8 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t             
                     pnWorkspace);
         eAlg = e7By4;
     }
-    else if (nXSize < c_pnMultiplicationThresholds[e9By5] && nXSize < c_pnMultiplicationThresholds[e2NByN])
+#if(32<=_DIGIT_SIZE_IN_BITS)
+    else if (nXSize < c_pnSquareThresholds[e9By5])
     {
        SquareU9by5(nXSize,
                    pXValue,
@@ -887,23 +897,10 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::SquareUBackend(size_t             
                    pnWorkspace);
        eAlg = e9By5;
     }
-#else
-    else if(nXSize < c_pnMultiplicationThresholds[e7By4] && nXSize < c_pnMultiplicationThresholds[e2NByN])
-    {
-        SquareU7by4(nXSize,
-                    pXValue,
-                    pZValue,
-#if(_CollectDetailedTimingData)
-                    dwTimestamp,
 #endif
-                    pnWorkspace);
-        eAlg = e7By4;
-    }
-
-#endif
-    else if(nXSize < c_pnMultiplicationThresholds[e2NByN])
+    else if(nXSize < c_pnSquareThresholds[e2NByN])
     {
-        size_t      nPieces       = PiecesByProblemSize(nXSize);
+        size_t      nPieces       = PiecesByProblemSizeSquare(nXSize);
         SSystemData *pSystemToUse = GenerateSystem(nPieces);
         SquareU2NByN(nXSize,
                      pXValue,
@@ -965,48 +962,53 @@ EMultiplyAlgorithm CUnsignedArithmeticHelper::MultAddUBackend(size_t            
         pnSmallData = pYValue;
         pnLargeData = pXValue;
     }
-    if(nSmallSize <= 2*_REGISTER_BLOCK_SIZE)
+#if(16 ==_DIGIT_SIZE_IN_BITS)
+    // in 16 bit, basic multiply-add is faster than striped for 1 == nSmallSize and 2 <= nLargeSize.  In this case ONLY.  But the difference is significant.
+    if (1 == nSmallSize)// && 2 <= nLargeSize)
     {
 #if(_CollectDetailedTimingData)
         DWORD64 dwStart = dwTimestamp;
-        MultAddUShortLong(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue);
+        MultUBasic(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue, true);
         dwTimestamp = s_Timer.GetMicroseconds();
         g_nMultiplyCalls[eBasicMultiply]++;
         g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
 #else
-        MultAddUShortLong(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue);
+        MultUBasic(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue, true);
 #endif
         // get the final size
-        if(nXSize+nYSize>nZSize)
+        if (nXSize + nYSize > nZSize)
         {
-            if(0!=pZValue[nXSize+nYSize])
+            if (0 != pZValue[nXSize + nYSize])
             {
-                nZSize = nXSize+nYSize+1;
+                nZSize = nXSize + nYSize + 1;
             }
-            else if(0!=pZValue[nXSize+nYSize-1])
+            else if (0 != pZValue[nXSize + nYSize - 1])
             {
-                nZSize = nXSize+nYSize;
+                nZSize = nXSize + nYSize;
             }
             else
             {
-                nZSize = nXSize+nYSize-1;
+                nZSize = nXSize + nYSize - 1;
             }
-        }
-        else if(0!=pZValue[nZSize])
+    }
+        else if (0 != pZValue[nZSize])
         {
             nZSize++;
         }
     }
-    else if(nSmallSize < c_pnMultiplicationThresholds[eBasicMultiply])
+    else if (nSmallSize < c_pnMultiplicationThresholds[eBasicMultiply])
+#else
+    if (nSmallSize < c_pnMultiplicationThresholds[eBasicMultiply])
+#endif
     {
 #if(_CollectDetailedTimingData)
         DWORD64 dwStart = dwTimestamp;
-        MultUBasic(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue, true);
+        MultUStriped(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue, true);
         dwTimestamp = s_Timer.GetMicroseconds();
         g_nMultiplyCalls[eBasicMultiply]++;
         g_nProcessTimes[eBasicMultiply] += (dwTimestamp - dwStart);
 #else
-        MultUBasic(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue, true);
+        MultUStriped(nSmallSize, nLargeSize, pnSmallData, pnLargeData, pZValue, true);
 #endif
         // get the final size
         if(nXSize+nYSize>nZSize)
@@ -1277,7 +1279,6 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
     DOUBLEDIGIT nY0,nY1,nY2,nY3,nY4,nY5,nY6,nY7,nY8,nY9,nY10,nY11;
     const DIGIT *pTop;
     size_t      i;
-    C_ASSERT(_REGISTER_BLOCK_SIZE <= 6);
 
     switch(nXSize)
     {
@@ -1285,8 +1286,10 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
         {
 #if(1)
             nX0    = *pXValue;
-            pTop   = pYValue+nYSize;
             nCarry = 0;
+#if 0
+            // faster for y 1, 2, 0r 4 DIGITs; slower for y 8+ DIGITs
+            pTop   = pYValue+nYSize;
             do
             {
                 // note that we don't have to clear the high-order
@@ -1304,6 +1307,18 @@ void CUnsignedArithmeticHelper::MultUShortLong(size_t      nXSize,
             }
             while(pYValue<pTop);
             *pZValue = (DIGIT) nCarry;
+#else
+            int i=0;
+            for(;i<nYSize;i++)
+            {
+                nY0        = pYValue[i];
+                nProd      = nX0*nY0;
+                nSum       = nProd+nCarry;
+                nCarry     = nSum>>_DIGIT_SIZE_IN_BITS;
+                pZValue[i] = nSum;
+            }
+            pZValue[i] = nCarry;
+#endif
 #endif
         }
         break;
@@ -3670,7 +3685,6 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
     DOUBLEDIGIT nY0,nY1,nY2,nY3,nY4,nY5,nY6,nY7,nY8,nY9,nY10,nY11;
     const DIGIT *pTop;
     size_t      i;
-    C_ASSERT(_REGISTER_BLOCK_SIZE <= 6);
 
     switch(nXSize)
     {
@@ -3678,24 +3692,16 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
         {
 #if(1)
             nX0    = *pXValue;
-            pTop   = pYValue+nYSize;
             nCarry = 0;
-            do
+            for(i=0; i<nYSize; i++)
             {
-                // note that we don't have to clear the high-order
-                // bits in this case, as there is guaranteed to
-                // be no overflow -- think of each DIGIT being
-                // the last: a 1-DIGIT multiplied by an n-DIGIT
-                // can have at most n+1 digits, therefore the
-                // nCarry can be at most one DIGIT, therefore
-                // it cannot overflow a DOUBLEDIGIT
-                nY0        = *pYValue++;
-                nProd      = nY0*nX0;
-                nSum       = (nProd&c_nClearHigh)+nCarry+*pZValue;
-                nCarry     = (DIGIT) ((nSum>>_DIGIT_SIZE_IN_BITS) + (nProd>>_DIGIT_SIZE_IN_BITS));
-                *pZValue++ = (DIGIT) nSum;
+                nY0        = pYValue[i];
+                nProd      = nX0*nY0;
+                nSum       = nCarry + pZValue[i] + (nProd&c_nClearHigh);
+                nCarry     = (nProd>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
+                pZValue[i] = nSum;
             }
-            while(pYValue<pTop);
+            pZValue += i;
 #endif
         }
         break;
@@ -6071,6 +6077,40 @@ void CUnsignedArithmeticHelper::MultAddUShortLong(size_t      nXSize,
     }
 }
 
+void CUnsignedArithmeticHelper::MultUStriped(size_t       nXSize,
+                                             size_t       nYSize,
+                                             const DIGIT  *pX,
+                                             const DIGIT  *pY,
+                                             DIGIT        *pZ,
+                                             bool         bAddInitialZValueToProduct)
+{
+    size_t i, nXPieceSize;
+    // if adding initial value, all calls are to multaddushortlong.  If not, the first
+    // call is to multushortlong and the rest to multaddushortlong.  Perf testing shows that
+    // multushortlong is faster than multaddushortlong (no surprise there) and that the fewer
+    // rows, the bigger the advantage -- so we do the residual rows FIRST.
+    nXPieceSize = nXSize%12;
+    if(0==nXPieceSize) nXPieceSize = 12;
+    if(!bAddInitialZValueToProduct)
+    {
+        MultUShortLong(nXPieceSize, nYSize, pX, pY, pZ);
+        for(i=nXPieceSize+nYSize; i<nXSize+nYSize; i++) pZ[i] = 0; // zero out the rest of Z
+    }
+    else
+    {
+        MultAddUShortLong(nXPieceSize, nYSize, pX, pY, pZ);
+    }
+    nXSize -= nXPieceSize;
+    pX     += nXPieceSize;
+    pZ     += nXPieceSize;
+    for(i=0; i<nXSize; i += 12)
+    {
+        MultAddUShortLong(12, nYSize, pX, pY, pZ);
+        pX += 12;
+        pZ += 12;
+    }
+}
+
 // Synopsis:	Sets the value of the third operand to
 //              the product of the first two operands.  It
 //				assumes all the space it needs is properly
@@ -6296,6 +6336,29 @@ void CUnsignedArithmeticHelper::MultU3by2(size_t             nXSize,
     }
 }
 
+// Two choices here: we can compute (a+b)*(a+b) and subtract off a*a and b*b to get 2ab, or
+// we can just compute ab directly.  The former is obviously more work up front -- but does
+// a square for the subproblem, whereas the latter needs a full multiply.
+// If the subproblem is solved using basic multiply, square or multiply -- all the same.
+// If 3by2 is called, however, multiply uses 3 half-sized linear ops -- a+b, y+z, and
+// (a+b)(y+z) - ay - bz.  Further it calls multiply 3 times on quarter-sized multiplies, etc.
+// So:
+// Immediate subproblem uses basic:
+//    square subproblem: 3 linear ops
+//    multiply subproblem: 0 linear ops  <- take this one!
+// One level of 3by2:
+//    square subproblem: 3 linear ops + 0 linear ops
+//    multiply subproblem: 0 linear ops + 3/2 linear ops <- take this one!
+// Two levels of 3by2:
+//    square subproblem: 3 linear ops + 3/2 linear ops = 18/4 linear ops
+//    multiply subproblem: 0 linear ops + 3/2 linear ops + 9/4 linear ops = 15/4 linear ops <- take this one!
+// Three levels of 3by2:
+//    square subproblem: 3 linear ops + 15/8 linear ops = 39/8 linear ops <- take this one!
+//    multiply subproblem: 0 linear ops + 3/2 linear ops + 9/4 linear ops + 27/8 linear ops = 57 linear ops
+// So: if the next 3 levels will ALSO use 3By2, we should compute ab using (a+b)^2; otherwise, compute it directly
+//
+// Practically speaking, the band in which 3by2 is optimal is not wide enough to get that deep a call stack on 3by2
+// alone, so I haven't bothered to code up the (a+b)*(a+b) option.
 void CUnsignedArithmeticHelper::SquareU3by2(size_t             nXSize,
                                             const DIGIT        *pXValue,
                                             DIGIT              *pZValue,
@@ -9207,7 +9270,7 @@ void CUnsignedArithmeticHelper::DivideBackend(size_t  nXSize,
         }
     }
 #if _CollectDetailedTimingData
-    dwTimestamp                                                =  s_Timer.GetMicroseconds();
+    dwTimestamp                     =  s_Timer.GetMicroseconds();
     g_nDivideTime[eTotalDivideTime] += dwTimestamp - dwTimestamp2;
     g_nDivideTime[eTotalDivideCalls]++;
 #endif
@@ -9535,7 +9598,7 @@ size_t CUnsignedArithmeticHelper::DivideSubproblemSize(size_t nXSize, size_t nYS
 // multiplication div1*(y mod (1<<bitshift))
 // Here, it's clear that the local work is the multiplication, plus the recursive work of the two divides.  Lower bitshift
 // gives less local work -- but makes the subproblems larger.
-// NEVER call this function when X has more than twice as many digits as y!
+// NEVER call this function when X has twice as many digits as y or more!
 void CUnsignedArithmeticHelper::DivideRecursive(size_t  nXSize,
                                                 size_t  nYSize,
                                                 DIGIT   *pXValue,
@@ -9697,6 +9760,53 @@ size_t CUnsignedArithmeticHelper::PiecesByProblemSize(size_t nSize)
     else if(nSize<c_pn2NByNBreakpoints[4])
     {
         nPieces = 9;
+    }
+    else if(nSize<c_pn2NByNBreakpoints[5])
+    {
+        nPieces = 10;
+    }
+    else if(nSize<c_pn2NByNBreakpoints[6])
+    {
+        nPieces = 11;
+    }
+    else
+    {
+        // more than 10 pieces will doubtless not be used -- used FFT mult for such large problems!
+        nPieces = 12;
+    }
+    return nPieces;
+}
+
+size_t CUnsignedArithmeticHelper::PiecesByProblemSizeSquare(size_t nSize)
+{
+    size_t nPieces;
+    if(nSize<c_pn2NByNSquareBreakpoints[0])
+    {
+        nPieces = 5;
+    }
+    else if(nSize<c_pn2NByNSquareBreakpoints[1])
+    {
+        nPieces = 6;
+    }
+    else if(nSize<c_pn2NByNSquareBreakpoints[2])
+    {
+        nPieces = 7;
+    }
+    else if(nSize<c_pn2NByNSquareBreakpoints[3])
+    {
+        nPieces = 8;
+    }
+    else if(nSize<c_pn2NByNSquareBreakpoints[4])
+    {
+        nPieces = 9;
+    }
+    else if(nSize<c_pn2NByNSquareBreakpoints[5])
+    {
+        nPieces = 10;
+    }
+    else if(nSize<c_pn2NByNSquareBreakpoints[6])
+    {
+        nPieces = 11;
     }
     else
     {
@@ -12133,9 +12243,9 @@ void CUnsignedArithmeticHelper::FFTInverse(const DIGIT *pFFT,
     bool        bOpEndedOutsideField;
     DIGIT       *pFFT_Even, *pFFT_Odd;
     SBitShift   nRootIterator;
-    size_t      i, j;
-    nLength = nLength>>1; // length of subproblems for this stage
-    size_t nSubFFTSize = nLength*(nFieldSize+1); // used repeatedly
+    size_t      i, j, nSubFFTSize;
+    nLength     = nLength>>1; // length of subproblems for this stage
+    nSubFFTSize = nLength*(nFieldSize+1); // used repeatedly
     if(1 != nLength)
     {
         SBitShift nRootSquared;
@@ -12220,437 +12330,6 @@ void CUnsignedArithmeticHelper::FFTInverse(const DIGIT *pFFT,
     }
 }
 
-void CUnsignedArithmeticHelper::FFT_opt_wrapper(DIGIT       *pFFT,
-                                                size_t      nLength,
-                                                size_t      nFieldSize,
-                                                SBitShift   nRootUnity,
-                                                DIGIT       *pnWorkspace)
-{
-    DIGIT nLengthPower = 0;
-    do
-    {
-        nLengthPower++;
-    }
-    while(((size_t) 1)<<nLengthPower != nLength);
-    if(0==(nLengthPower&1))
-    {
-        // power of 4
-        FFT_opt(pFFT,nLength,nFieldSize,nRootUnity,pnWorkspace);
-    }
-    else
-    {
-        // power of 2, but NOT a power of 4.  Use the power-of-4 version for the sub problems,
-        // but use the basic FFT algorithm at this level
-        DOUBLEDIGIT nSum, nDifference, nCarry, nBorrow, nEven, nOdd;
-        bool        bOpEndedOutsideField;
-        size_t      i, j;
-        SBitShift   nRootIterator;
-        SBitShift   nRootSquared;
-        nLength = nLength>>1;
-        size_t nSubFFTSize = nLength*(nFieldSize+1); // used repeatedly
-        DIGIT  *pFFT_Even  = pFFT;
-        DIGIT  *pFFT_Odd   = pFFT + nSubFFTSize;
-        if(1!=nLength)
-        {
-            nRootSquared.m_nBitShift   = nRootUnity.m_nBitShift;
-            nRootSquared.m_nDigitShift = nRootUnity.m_nDigitShift;
-            nRootSquared.Double();
-            FFT_opt(pFFT_Even,nLength,nFieldSize,nRootSquared,pnWorkspace);
-            FFT_opt(pFFT_Odd,nLength,nFieldSize,nRootSquared,pnWorkspace);
-        }
-        for(j=0;j<nSubFFTSize;j+=(nFieldSize+1))
-        {
-            // mult each odd element by w^j
-            Mult2toMmodOnePlus2toN(pFFT_Odd+j,nFieldSize,nRootIterator,pnWorkspace);
-            nRootIterator.Add(nRootUnity); // move iterator to the next power of the root of unity
-            nCarry  = 0;
-            nBorrow = 0;
-            // V[j]     = V_even[j] + w^j*V_odd[j] and
-            // V[j+m/2] = V_even[j] - w^j*V_odd[j]
-            for(i=0;i<nFieldSize+1;i++)
-            {
-                nEven                 = pFFT_Even[j+i];
-                nOdd                  = pnWorkspace[i];
-                nSum                  = nCarry+nEven+nOdd;
-                pFFT[j+i]             = (DIGIT) nSum;
-                nDifference           = nOdd+nBorrow;
-                pFFT[nSubFFTSize+j+i] = (DIGIT) (nEven-nDifference);
-                nCarry                = nSum>>_DIGIT_SIZE_IN_BITS;
-                nBorrow               = (nEven<nDifference) ? 1 : 0;
-            }
-            // check for overflow on the add
-            if(0<pFFT[j+nFieldSize])
-            {
-                bOpEndedOutsideField = false;
-                if(1<pFFT[j+nFieldSize])
-                {
-                    bOpEndedOutsideField = true;
-                }
-                else
-                {
-                    for(i=0;i<nFieldSize;i++)
-                    {
-                        if(0<pFFT[j+i])
-                        {
-                            bOpEndedOutsideField = true;
-                            break;
-                        }
-                    }
-                }
-                if(bOpEndedOutsideField)
-                {
-                    // need to subtract off (1+2^nFieldSize)
-                    pFFT[j+nFieldSize]--;
-                    i = 0;
-                    do
-                    {
-                        ;
-                    }
-                    while(0==pFFT[j+i++]--);
-                }
-            }
-            // check for overflow on the subtract
-            if(0<nBorrow)
-            {
-                // need to add in (1+2^nFieldSize)
-                pFFT[nSubFFTSize+j+nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                                    // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                                    // largest possible number in the field -> no borrowing necessary!)
-                i                              = 0;
-                do
-                {
-                    ;
-                }
-                while(0==++pFFT[nSubFFTSize+j+i++]);
-            }
-        }
-    }
-}
-
-/*
-Let A be array of length m, w be primitive mth root of unity.
-Goal: produce DFT F(A): evaluation of A at 1, w, w^2,...,w^{m-1}.
-FFT(A, m, w)
-{
-  if (m==1)
-  {
-     return vector (a_0)
-  }
-  else
-  {
-    A_even = (a_0, a_2, ..., a_{m-2})
-    A_odd  = (a_1, a_3, ..., a_{m-1})
-    V_even = FFT(A_even, m/2, w^2)    //w^2 is a primitive m/2-th root of unity
-    V_odd  = FFT(A_odd, m/2, w^2)
-    V      = new vector of length m
-    for (j=0; j < m/2; ++j)
-    {
-      V[j]     = V_even[j] + w^j*V_odd[j]
-      V[j+m/2] = V_even[j] - w^j*V_odd[j]
-    }
-  }
-  return V
-}
-
-A_0 = (a_0, a_4, a_8, ..., a_{m-4})
-A_1 = (a_1, a_5, a_9, ..., a_{m-3})
-A_2 = (a_2, a_6, a_10, ..., a_{m-2})
-A_3 = (a_3, a_7, a_11, ..., a_{m-1})
-V_0 = FFT(A_0,m/4,w^4)
-etc
-
-V_even = FFT(A_even, m/2, w^2):
-for(j=0;j<m/4;j++)
-{
-    V_even[j]     = V_0[j] + w^{2j}*V_2[j]
-    v_even[j+m/4] = V_0[j] - w^{2j}*V_2[j]
-}
-
-v_odd = FFT(A_odd, m/2, w^2):
-for(j=0;j<m/4;j++)
-{
-    V_odd[j]     = V_1[j] + w^{2j}*V_3[j]
-    v_odd[j+m/4] = V_1[j] - w^{2j}*V_3[j]
-}
-
-for(j=0;j<m/4;j++)
-{
-    V[j]      = V_0[j] + w^{2j}*V_2[j] + w^j*V_1[j] + w^{3j}*V_3[j]
-    V[j+m/4]  = V_0[j] - w^{2j}*V_2[j] + w^j*V_1[j] - w^{3j}*V_3[j]
-    V[j+m/2]  = V_0[j] + w^{2j}*V_2[j] - w^j*V_1[j] - w^{3j}*V_3[j]
-    V[j+3m/4] = V_0[j] - w^{2j}*V_2[j] - w^j*V_1[j] + w^{3j}*V_3[j]
-}
-
-*/
-void CUnsignedArithmeticHelper::FFT_opt(DIGIT       *pFFT,
-                                        size_t      nLength,
-                                        size_t      nFieldSize,
-                                        SBitShift   nRoot,
-                                        DIGIT       *pnWorkspace)
-{
-    DOUBLEDIGIT nSum, nDifference, nCarry0, nCarry1, nCarry2, nCarry3, nBorrow1, nBorrow2, nBorrow3, n0, n1, n2, n3;
-    bool        bOpEndedOutsideField;
-    size_t      i, j;
-    SBitShift nRootIterator;
-    SBitShift nRootSquared;
-    nLength = nLength>>2;
-    size_t nSubFFTSize = nLength*(nFieldSize+1); // used repeatedly
-    DIGIT  *pFFT_0  = pFFT;
-    DIGIT  *pFFT_1  = pFFT_0 + nSubFFTSize;
-    DIGIT  *pFFT_2  = pFFT_1 + nSubFFTSize;
-    DIGIT  *pFFT_3  = pFFT_2 + nSubFFTSize;
-    if(1!=nLength)
-    {
-        nRootSquared.m_nBitShift   = nRoot.m_nBitShift;
-        nRootSquared.m_nDigitShift = nRoot.m_nDigitShift;
-        nRootSquared.Double();
-        nRootSquared.Double();
-        FFT_opt(pFFT_0,nLength,nFieldSize,nRootSquared,pnWorkspace);
-        FFT_opt(pFFT_1,nLength,nFieldSize,nRootSquared,pnWorkspace);
-        FFT_opt(pFFT_2,nLength,nFieldSize,nRootSquared,pnWorkspace);
-        FFT_opt(pFFT_3,nLength,nFieldSize,nRootSquared,pnWorkspace);
-    }
-    for(j=0;j<nSubFFTSize;j+=(nFieldSize+1))
-    {
-        // mult each odd element by w^j
-        Mult2toMmodOnePlus2toN(pFFT_1+j,nFieldSize,nRootIterator,pnWorkspace);
-        nRootSquared.m_nBitShift   = nRootIterator.m_nBitShift;
-        nRootSquared.m_nDigitShift = nRootIterator.m_nDigitShift;
-        nRootSquared.Double();
-        Mult2toMmodOnePlus2toN(pFFT_2+j,nFieldSize,nRootSquared,pnWorkspace+nFieldSize+1);
-        nRootSquared.Add(nRootIterator);
-        Mult2toMmodOnePlus2toN(pFFT_3+j,nFieldSize,nRootSquared,pnWorkspace+((nFieldSize+1)<<1));
-        nRootIterator.Add(nRoot); // move iterator to the next power of the root of unity
-        nCarry0  = 0;
-        nCarry1  = 0;
-        nCarry2  = 0;
-        nCarry3  = 0;
-        nBorrow1 = 0;
-        nBorrow2 = 0;
-        nBorrow3 = 0;
-        // V[j]      = V_0[j] + w^j*V_1[j] + w^{2j}*V_2[j] + w^{3j}*V_3[j]
-        // V[j+m/4]  = V_0[j] + w^j*V_1[j] - w^{2j}*V_2[j] - w^{3j}*V_3[j]
-        // V[j+m/2]  = V_0[j] - w^j*V_1[j] + w^{2j}*V_2[j] - w^{3j}*V_3[j]
-        // V[j+3m/4] = V_0[j] - w^j*V_1[j] - w^{2j}*V_2[j] + w^{3j}*V_3[j]
-        for(i=0;i<nFieldSize+1;i++)
-        {
-            n0           = pFFT_0[j+i];
-            n1           = pnWorkspace[i];
-            n2           = pnWorkspace[nFieldSize+1+i];
-            n3           = pnWorkspace[((nFieldSize+1)<<1)+i];
-            // V[j]      = V_0[j] + w^j*V_1[j] + w^{2j}*V_2[j] + w^{3j}*V_3[j]
-            nSum         = n0+n1+n2+n3+nCarry0;
-            pFFT_0[j+i]  = (DIGIT) nSum;
-            nCarry0      = nSum>>_DIGIT_SIZE_IN_BITS;
-            // V[j+m/4]  = V_0[j] + w^j*V_1[j] - w^{2j}*V_2[j] - w^{3j}*V_3[j]
-            nSum         = n0+n1+nCarry1;
-            nDifference  = n2+n3+nBorrow1;
-            pFFT_1[j+i]  = (DIGIT) (nSum-nDifference);
-            if(nSum<nDifference)
-            {
-                nCarry1  = 0;
-                nBorrow1 = (nDifference-nSum)>>_DIGIT_SIZE_IN_BITS;
-            }
-            else
-            {
-                nCarry1  = (nSum-nDifference)>>_DIGIT_SIZE_IN_BITS;
-                nBorrow1 = 0;
-            }
-            // V[j+m/2]  = V_0[j] - w^j*V_1[j] + w^{2j}*V_2[j] - w^{3j}*V_3[j]
-            nSum        = n0+n2+nCarry2;
-            nDifference = n1+n3+nBorrow2;
-            pFFT_2[j+i] = (DIGIT) (nSum-nDifference);
-            if(nSum<nDifference)
-            {
-                nCarry2  = 0;
-                nBorrow2 = (nDifference-nSum)>>_DIGIT_SIZE_IN_BITS;
-            }
-            else
-            {
-                nCarry2  = (nSum-nDifference)>>_DIGIT_SIZE_IN_BITS;
-                nBorrow2 = 0;
-            }
-            // V[j+3m/4] = V_0[j] - w^j*V_1[j] - w^{2j}*V_2[j] + w^{3j}*V_3[j]
-            nSum        = n0+n3+nCarry3;
-            nDifference = n1+n2+nBorrow3;
-            pFFT_3[j+i] = (DIGIT) (nSum-nDifference);
-            if(nSum<nDifference)
-            {
-                nCarry3  = 0;
-                nBorrow3 = (nDifference-nSum)>>_DIGIT_SIZE_IN_BITS;
-            }
-            else
-            {
-                nCarry3  = (nSum-nDifference)>>_DIGIT_SIZE_IN_BITS;
-                nBorrow3 = 0;
-            }
-        }
-        // check for overflow on V[j] = V_0[j] + w^j*V_1[j] + w^{2j}*V_2[j] + w^{3j}*V_3[j]
-        if(0<pFFT_0[j+nFieldSize])
-        {
-            bOpEndedOutsideField = false;
-            if(1<pFFT_0[j+nFieldSize])
-            {
-                bOpEndedOutsideField = true;
-            }
-            else
-            {
-                for(i=0;i<nFieldSize;i++)
-                {
-                    if(0<pFFT_0[j+i])
-                    {
-                        bOpEndedOutsideField = true;
-                        break;
-                    }
-                }
-            }
-            if(bOpEndedOutsideField)
-            {
-                // need to subtract off (1+2^nFieldSize)
-                pFFT_0[j+nFieldSize]--;
-                i = 0;
-                do
-                {
-                    ;
-                }
-                while(0==pFFT_0[j+i++]--);
-            }
-        }
-        // check for overflow on V[j+m/4]  = V_0[j] + w^j*V_1[j] - w^{2j}*V_2[j] - w^{3j}*V_3[j]
-        if(0<nBorrow1)
-        {
-            // need to add in (1+2^nFieldSize)
-            pFFT_1[j+nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                      // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                      // largest possible number in the field -> no borrowing necessary!)
-            i                    = 0;
-            do
-            {
-                ;
-            }
-            while(0==++pFFT_1[j+i++]);
-        }
-        else if(0<pFFT_1[j+nFieldSize])
-        {
-            bOpEndedOutsideField = false;
-            if(1<pFFT_1[j+nFieldSize])
-            {
-                bOpEndedOutsideField = true;
-            }
-            else
-            {
-                for(i=0;i<nFieldSize;i++)
-                {
-                    if(0<pFFT_1[j+i])
-                    {
-                        bOpEndedOutsideField = true;
-                        break;
-                    }
-                }
-            }
-            if(bOpEndedOutsideField)
-            {
-                // need to subtract off (1+2^nFieldSize)
-                pFFT_1[j+nFieldSize]--;
-                i = 0;
-                do
-                {
-                    ;
-                }
-                while(0==pFFT_1[j+i++]--);
-            }
-        }
-        // check for overflow on V_0[j] - w^j*V_1[j] + w^{2j}*V_2[j] - w^{3j}*V_3[j]
-        if(0<nBorrow2)
-        {
-            // need to add in (1+2^nFieldSize)
-            pFFT_2[j+nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                      // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                      // largest possible number in the field -> no borrowing necessary!)
-            i                    = 0;
-            do
-            {
-                ;
-            }
-            while(0==++pFFT_2[j+i++]);
-        }
-        else if(0<pFFT_2[j+nFieldSize])
-        {
-            bOpEndedOutsideField = false;
-            if(1<pFFT_2[j+nFieldSize])
-            {
-                bOpEndedOutsideField = true;
-            }
-            else
-            {
-                for(i=0;i<nFieldSize;i++)
-                {
-                    if(0<pFFT_2[j+i])
-                    {
-                        bOpEndedOutsideField = true;
-                        break;
-                    }
-                }
-            }
-            if(bOpEndedOutsideField)
-            {
-                // need to subtract off (1+2^nFieldSize)
-                pFFT_2[j+nFieldSize]--;
-                i = 0;
-                do
-                {
-                    ;
-                }
-                while(0==pFFT_2[j+i++]--);
-            }
-        }
-        // check for overflow on V_0[j] - w^j*V_1[j] - w^{2j}*V_2[j] + w^{3j}*V_3[j]
-        if(0<nBorrow3)
-        {
-            // need to add in (1+2^nFieldSize)
-            pFFT_3[j+nFieldSize] = 0; // note that if we had borrow out, the value for the first digit MUST be -1 -- the largest
-                                      // value we can subtract is 10000...  from 0.  (If the first digit started as 1, it was the
-                                      // largest possible number in the field -> no borrowing necessary!)
-            i                    = 0;
-            do
-            {
-                ;
-            }
-            while(0==++pFFT_3[j+i++]);
-        }
-        else if(0<pFFT_3[j+nFieldSize])
-        {
-            bOpEndedOutsideField = false;
-            if(1<pFFT_3[j+nFieldSize])
-            {
-                bOpEndedOutsideField = true;
-            }
-            else
-            {
-                for(i=0;i<nFieldSize;i++)
-                {
-                    if(0<pFFT_3[j+i])
-                    {
-                        bOpEndedOutsideField = true;
-                        break;
-                    }
-                }
-            }
-            if(bOpEndedOutsideField)
-            {
-                // need to subtract off (1+2^nFieldSize)
-                pFFT_3[j+nFieldSize]--;
-                i = 0;
-                do
-                {
-                    ;
-                }
-                while(0==pFFT_3[j+i++]--);
-            }
-        }
-    }
-}
-
 void CUnsignedArithmeticHelper::FFT_Inverse_basic(const DIGIT *pToCompute,
                                                   size_t      nLength,
                                                   SBitShift   nRootUnity,
@@ -12725,6 +12404,21 @@ void CUnsignedArithmeticHelper::FFT_Inverse(const DIGIT *pFFT,
         memcpy(pFFT_FFTInverse,pnWorkspace,(nFieldSize+1)*sizeof(DIGIT));
         pFFT_FFTInverse += (nFieldSize+1);
     }
+}
+
+// FFT, FFT inverse compute the values at the lowest (length 0) level in a "strange" order, giving poor performance.  Instead:
+// do the input at the lowest level sequentially, and the OUTPUT in the strange order.  Might be faster (check) -- don't have
+// to wait on writes; need to wait on reads
+// this function takes as parameters the top bit in the index (e.g. for a length 16 FFT, the top bit is (1<<3) -- 8) and the
+// index.  It replaces the index with the next in the sequence.  NOTE: it will reset to 0 if passed the last value in the sequence!
+__forceinline void NextInSequence(size_t &nIndex, size_t nTopBit)
+{
+    while(nIndex&nTopBit)
+    {
+        nIndex &= ~nTopBit;
+        nTopBit = nTopBit>>1;
+    }
+    nIndex |= nTopBit;
 }
 
 void CUnsignedArithmeticHelper::GetFFTSize(size_t nXSize, size_t nYSize, size_t &nFFTLength, size_t &nFieldSize, size_t &nChunkSize, BYTE &byMaxOverflowSize, SBitShift &nRootUnity)
@@ -12878,6 +12572,23 @@ size_t CUnsignedArithmeticHelper::FFTMultiplyMemoryNeeds(size_t nXSize, size_t n
     SBitShift   nRootUnity;
     BYTE        byMaxOverflowSize;
     GetFFTSize(nXSize,nYSize,nFFTLength,nFieldSize,nChunkSize,byMaxOverflowSize,nRootUnity);
+    if(bMultAdd)
+    {
+        return 4*((nFieldSize>>1) + 1)*nFFTLength;
+    }
+    else
+    {
+        return 2*(nFieldSize + 1)*nFFTLength;
+    }
+}
+
+size_t CUnsignedArithmeticHelper::FFTSquareMemoryNeeds(size_t nXSize, bool bMultAdd)
+{
+    size_t      nFFTLength,nFieldSize;
+    size_t      nChunkSize;
+    SBitShift   nRootUnity;
+    BYTE        byMaxOverflowSize;
+    GetFFTSize(nXSize,nXSize,nFFTLength,nFieldSize,nChunkSize,byMaxOverflowSize,nRootUnity);
     if(bMultAdd)
     {
         return 4*((nFieldSize>>1) + 1)*nFFTLength;
@@ -15176,3 +14887,171 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
     dwTimestamp                                      =  dwTimestamp2;
 #endif
 }
+
+// stuff
+/*
+
+new:  w^4 = -1
+{a b c d e f g h}  w
+  { a b c d}       w^2
+    { a b }
+    <- {a+b, a-b}
+    { c d}
+    <- {c+d, c-d}
+  <- {(a+b) + (c+d),
+      (a-b) + (c-d)w^2,
+      (a+b) - (c+d),
+      (a-b) - (c-d)w^2}
+  { e f g h}
+    { e f }
+    <- {e+f, e-f}
+    { g h }
+    <- {g+h, g-h}
+  <- {(e+f) + (g+h),
+      (e-f) + (g-h)w^2,
+      (e+f) - (g+h),
+      (e-f) - (g-h)w^2}
+order in FFT: a, e, c, g, b, f, d, h.  Note w^4 == -1!
+<- {((a+b) + (c+d))    + ((e+f) + (g+h)),          : a + b    + c    + d    + e    + f    + g + h       : a + e    + c     + g     + b     + f     + d     + h      : x0
+    ((a-b) + (c-d)w^2) + ((e-f) + (g-h)w^2)w,      : a + bw^4 + cw^2 + dw^6 + ew   + fw^5 + gw^3 + hw^7 : a + ew   + cw^2  + gw^3  + bw^4  + fw^5  + dw^6  + hw^7   : x1
+    ((a+b) - (c+d))    + ((e+f) - (g+h))w*2,       : a + b    - c    - d    + ew^2 + fw^2 - gw^2 - hw^2 : a + ew^2 + cw^4  + gw^6  + bw^8  + fw^10 + dw^12 + hw^14  : x2
+    ((a-b) - (c-d)w^2) + ((e-f) - (g-h)w^2)w^3,    : a - b    - cw^2 + dw^2 + ew^3 - fw^3 - gw^5 + hw^5 : a + ew^3 + cw^6  + gw^9  + bw^12 + fw^15 + dw^18 + hw^21  : x3
+    ((a+b) + (c+d))    - ((e+f) + (g+h)),          : a + b    + c    + d    - e    - f    - g    - h    : a + ew^4 + cw^8  + gw^12 + bw^16 + fw^20 + dw^24 + hw^28  : x4
+    ((a-b) + (c-d)w^2) - ((e-f) + (g-h)w^2)w,      : a - b    + cw^2 - dw^2 - ew   + fw   - gw^3 + hw^3 : a + ew^5 + cw^10 + gw^15 + bw^20 + fw^25 + dw^30 + hw^35  : x5
+    ((a+b) - (c+d))    - ((e+f) - (g+h))w*2,       : a + b    - c    - d    - ew^2 - fw^2 + gw^2 + hw^2 : a + ew^6 + cw^12 + gw^18 + bw^24 + fw^30 + dw^36 + hw^42  : x6
+    ((a-b) - (c-d)w^2) - ((e-f) - (g-h)w^2)w^3}    : a - b    - cw^2 + dw^2 - ew^3 + fw^3 + gw^5 - hw^5 : a + ew^7 + cw^14 + gw^21 + bw^28 + fw^35 + dw^42 + hw^49  : x7
+
+Own inverse, as DFT standard is?
+{x0 x1 x2 x3 x4 x5 x6 x7}
+<- ((x0+x1) + (x2+x3))    + ((x4+x5) + (x6+x7)),
+   ((x0-x1) + (x2-x3)W^2) + ((x4-x5) + (x6-x7)W^2)W,
+   ((x0+x1) - (x2+x3))    + ((x4+x5) - (x6+x7))W*2,
+   ((x0-x1) - (x2-x3)W^2) + ((x4-x5) - (x6-x7)W^2)W^3,
+   ((x0+x1) + (x2+x3))    - ((x4+x5) + (x6+x7)),
+   ((x0-x1) + (x2-x3)W^2) - ((x4-x5) + (x6-x7)W^2)W,
+   ((x0+x1) - (x2+x3))    - ((x4+x5) - (x6+x7))W*2,
+   ((x0-x1) - (x2-x3)W^2) - ((x4-x5) - (x6-x7)W^2)W^3}
+consider line 6:
+((x0-x1) + (x2-x3)W^2) - ((x4-x5) + (x6-x7)W^2)W:
+  +(a + e    + c     + g     + b     + f     + d     + h)
+  -(a + ew   + cw^2  + gw^3  + bw^4  + fw^5  + dw^6  + hw^7)
+  +(a + ew^2 + cw^4  + gw^6  + bw^8  + fw^10 + dw^12 + hw^14)W^2
+  -(a + ew^3 + cw^6  + gw^9  + bw^12 + fw^15 + dw^18 + hw^21)W^2
+  -(a + ew^4 + cw^8  + gw^12 + bw^16 + fw^20 + dw^24 + hw^28)W
+  +(a + ew^5 + cw^10 + gw^15 + bw^20 + fw^25 + dw^30 + hw^35)W
+  -(a + ew^6 + cw^12 + gw^18 + bw^24 + fw^30 + dw^36 + hw^42)W^3
+  +(a + ew^7 + cw^14 + gw^21 + bw^28 + fw^35 + dw^42 + hw^49)W^3
+a: 1 - 1   + 1       - 1       - 1     + 1     - 1       + 1       : 0
+b: 1 - w^4 + w^8W^2  - w^12W^2 - w^16W + w^20W - w^24W^3 + w^28W^3
+   1 + 1   - w^2     - w^2     + w^3   + w^3   + w       + w       : 2(1 + w - w^2 + w^3)
+c: 1 - w^2 + w^4W^2  - w^6W^2  - w^8W  + w^10W - w^12W^3 + w^14W^3
+   1 - w^2 + w^2     + 1       + w^3   + w     - w       + w^3     : 2w^3
+d: 1 - w^6 + w^12W^2 - w^18W^2 - w^24W + w^30W - w^36W^3 + w^42W^3
+   1 + w^2 + w^2     - 1       + w^3   - w     - w       - w^3     : -2(w - w^2)
+
+    order: a, a+4, a+2, a+6, a+1, a+5, a+3, a+7
+
+Now reorder for inverse same way: y0 == x0
+                                  y1 == x4
+                                  y2 == x2
+                                  y3 == x6
+                                  y4 == x1
+                                  y5 == x5
+                                  y6 == x3
+                                  y7 == x7
+{y0 y1 y2 y3 y4 y5 y6 y7}
+<- ((y0+y1) + (y2+y3))    + ((y4+y5) + (y6+y7)),
+   ((y0-y1) + (y2-y3)W^2) + ((y4-y5) + (y6-y7)W^2)W,
+   ((y0+y1) - (y2+y3))    + ((y4+y5) - (y6+y7))W*2,
+   ((y0-y1) - (y2-y3)W^2) + ((y4-y5) - (y6-y7)W^2)W^3,
+   ((y0+y1) + (y2+y3))    - ((y4+y5) + (y6+y7)),
+   ((y0-y1) + (y2-y3)W^2) - ((y4-y5) + (y6-y7)W^2)W,
+   ((y0+y1) - (y2+y3))    - ((y4+y5) - (y6+y7))W*2,
+   ((y0-y1) - (y2-y3)W^2) - ((y4-y5) - (y6-y7)W^2)W^3}
+
+<- ((x0+x4) + (x2+x6))    + ((x1+x5) + (x3+x7)),
+   ((x0-x4) + (x2-x6)W^2) + ((x1-x5) + (x3-x7)W^2)W,
+   ((x0+x4) - (x2+x6))    + ((x1+x5) - (x3+x7))W*2,
+   ((x0-x4) - (x2-x6)W^2) + ((x1-x5) - (x3-x7)W^2)W^3,
+   ((x0+x4) + (x2+x6))    - ((x1+x5) + (x3+x7)),
+   ((x0-x4) + (x2-x6)W^2) - ((x1-x5) + (x3-x7)W^2)W,
+   ((x0+x4) - (x2+x6))    - ((x1+x5) - (x3+x7))W*2,
+   ((x0-x4) - (x2-x6)W^2) - ((x1-x5) - (x3-x7)W^2)W^3}
+
+Look at line 7:
+((x0-x4) - (x2-x6)W^2) - ((x1-x5) - (x3-x7)W^2)W^3}
+== a + e    + c     + g     + b     + f     + d     + h
+  -(a + ew^4 + cw^8  + gw^12 + bw^16 + fw^20 + dw^24 + hw^28)
+  -(a + ew^2 + cw^4  + gw^6  + bw^8  + fw^10 + dw^12 + hw^14)W^2
+  (a + ew^6 + cw^12 + gw^18 + bw^24 + fw^30 + dw^36 + hw^42)W^2
+  -(a + ew   + cw^2  + gw^3  + bw^4  + fw^5  + dw^6  + hw^7)W^3
+  (a + ew^5 + cw^10 + gw^15 + bw^20 + fw^25 + dw^30 + hw^35)W^3
+  (a + ew^3 + cw^6  + gw^9  + bw^12 + fw^15 + dw^18 + hw^21)W^5
+  -(a + ew^7 + cw^14 + gw^21 + bw^28 + fw^35 + dw^42 + hw^49)W^5
+
+a: a - a     - aW^2     + aW^2     - aW^3    + aW^3     + aW^5     - aW^5      = 0
+b: b - bw^16 - bw^8W^2  + bw^24W^2 - bw^4W^3 + bw^20W^3 + bw^12W^5 - bw^28W^5
+   b - b     + bw^2     - bw^2     - bw      + bw       - bw^3     + bw^3      = 0
+c: c - cw^8  - cw^4W^2  + cw^12W^2 - cw^2W^3 + cw^10W^3 + cw^6W^5  - cw^14W^5
+   c - c     - cw^2     + cw^2     + cw^3    - cw^3     + cw       - cw        = 0
+d: d - dw^24 - dw^12W^2 + dw^36W^2 - dw^6W^3 + dw^30W^3 + dw^18W^5 - dw^42W^5
+   d - d     - dw^2     + dw^2     - dw^3    + dw^3     - dw       + dw        = 0
+e: e - ew^4  - ew^2W^2  + ew^6W^2  - ewW^3   + ew^5W^3  + ew^3W^5  - ew^7W^5
+   e + e     - e        - e        + ew^2    + ew^2     - ew^2     + ew^2      = 0
+...
+h: h - hw^28 - hw^14W^2 + hw^42W^2 - hw^7W^3 + hw^35W^3 + hw^21W^5 - hw^49W^5
+   h + h     + h        + h        + h       + h        + h        + h         = 8h
+
+looks good
+
+How about line 5:
+((x0-x4) + (x2-x6)W^2) - ((x1-x5) + (x3-x7)W^2)W
+==  (a + e    + c     + g     + b     + f     + d     + h)
+   -(a + ew^4 + cw^8  + gw^12 + bw^16 + fw^20 + dw^24 + hw^28)
+    (a + ew^2 + cw^4  + gw^6  + bw^8  + fw^10 + dw^12 + hw^14)W^2
+   -(a + ew^6 + cw^12 + gw^18 + bw^24 + fw^30 + dw^36 + hw^42)W^2
+   -(a + ew   + cw^2  + gw^3  + bw^4  + fw^5  + dw^6  + hw^7)W^3
+    (a + ew^5 + cw^10 + gw^15 + bw^20 + fw^25 + dw^30 + hw^35)W^3
+    (a + ew^3 + cw^6  + gw^9  + bw^12 + fw^15 + dw^18 + hw^21)W^5
+   -(a + ew^7 + cw^14 + gw^21 + bw^28 + fw^35 + dw^42 + hw^49)W^5
+a:                                                                            : 0
+e: e - ew^4  + ew^2W^2  - ew^6W^2  - ewW^3   + ew^5W^3  + ew^3W^5  - ew^7W^5
+   e + e     + e        + e        + ew^2    + ew^2     - ew^2     - ew^2     : 4e.  4???
+c: c - cw^8  + cw^4W^2  - cw^12W^2 - cw^2W^3 + cw^10W^3 + cw^6W^5  - cw^14W^5
+   c - c     + cw^2     - cw^2     + cw^3    - cw^3     + cw       - cw       : 0
+g: g - gw^12 + gw^6W^2  - gw^18W^2 - gw^3W^3 + gw^15W^3 + gw^9W^5  - gw^21W^5
+   g + g     - g        - g        - g       - g        - g        - g        : -4g ???
+b: b - bw^16 + bw^8W^2  - bw^24W^2 - bw^4W^3 + bW^20W^3 + bw^12W^5 - bw^28W^5
+   b - b     - bw^2     + bw^2     - bw      + bw       - bw^3     + bw^3     : 0
+f: f - fw^20 + fw^10W^2 - fw^30W^2 - fw^5W^3 + fw^25W^3 + fw^15W^5 + fw^35W^5
+   f + f     + f        + f        - fw^2    - fw^2     + fw^2     + fw^2     : 4f
+d: d - dw^24 + dw^12W^2 - dw^36W^2 - dw^6W^3 + dw^30W^3 + dw^18W^5 - dw^42W^5
+   d - d     + dw^2     - dw^2     - dw^3    + dw^3     - dw       + dw       : 0
+h: h - hw^28 + hw^14W^2 - hw^42W^2 - hw^7W^3 + hw^35W^3 + hw^21W^5 - hw^49W^5
+   h + h     - h        - h        + h       + h        + h        + h        : 4h
+
+suppose we use old for inverse:
+x0 x1 x2 x3 x4 x5 x6 x7
+  x0 x2 x4 x6
+     x0 x4
+     <-{x0+x4, x0-x4}
+     x2 x6
+     <-{x2+x6, x2-x6}
+  <-((x0+x4) + (x2+x6),
+     (x0-x4) + (x2-x6)W^2,
+     (x0+x4) - (x2+x6),
+     (x0-x4) - (x2-x6)W^2}
+  x1 x3 x5 x7
+  <-((x1+x5) + (x3+x7),
+     (x1-x5) + (x3-x7)W^2,
+     (x1+x5) - (x3+x7),
+     (x1-x5) - (x3-x7)W^2}
+<-{((x0+x4) + (x2+x6))    + ((x1+x5) + (x3+x7)),
+   ((x0-x4) + (x2-x6)W^2) + ((x1-x5) + (x3-x7)W^2)W,
+   ((x0+x4) - (x2+x6))    + ((x0+x4) - (x2+x6))W^2,
+   ((x0-x4) - (x2-x6)W^2) + ((x1-x5) - (x3-x7)W^2)W^3,
+   ((x0+x4) + (x2+x6))    - ((x1+x5) + (x3+x7)),
+   ((x0-x4) + (x2-x6)W^2) - ((x1-x5) + (x3-x7)W^2)W,
+   ((x0+x4) - (x2+x6))    - ((x0+x4) - (x2+x6))W^2,
+   ((x0-x4) - (x2-x6)W^2) - ((x1-x5) - (x3-x7)W^2)W^3}
+*/

@@ -87,66 +87,64 @@ running Windows 10 Home.
 Unless otherwise noted, all tests use 32-bit DIGITs because it's faster that way.
 Multiplication:
 Multiplying two 2,000,000-BYTE numbers:
-  Oracle:                      302,511,895 microseconds
-  Optimized multiplication:        266,725 microseconds
-  Optimized square:                204,069 microseconds
+  Oracle:                      308,394,876 microseconds
+  Optimized multiplication:        251,673 microseconds
+  Optimized square:                192,092 microseconds
 Multiplying two 4,000,000-BYTE numbers:
-  Oracle:                    1,208,085,110 microseconds
-  Optimized multiplication:        544,087 microseconds
-  Optimized square:                430,137 microseconds
+  Oracle:                    1,252,677,395 microseconds
+  Optimized multiplication:        557,002 microseconds
+  Optimized square:                427,502 microseconds
 Multiplying two 8,000,000-BYTE numbers:
   Oracle:                   <not tested>
-  Optimized multiplication:      1,236,293 microseconds
-  Optimized square:              1,068,859 microseconds
+  Optimized multiplication:      1,123,330 microseconds
+  Optimized square:                948,789 microseconds
 Multiplying two 128,000,000-BYTE numbers:
   Oracle:                   <not tested>
-  Optimized multiplication:     40,685,548 microseconds
-  Optimized square:             37,907,852 microseconds
+  Optimized multiplication:     29,405,942 microseconds
+  Optimized square:             23,790,187 microseconds
   
 Divide:
-  Multiply two 10,000,000-BYTE numbers:                          7,802,610 microseconds
-  Divide 20,000,000 BYTE number by 10,000,000 BYTE number:      50,148,490 microseconds (divide:multiply ratio: 6.427143)
-  Multiply 10,000,000-BYTE by 20,000,000-BYTE:                  15,439,938 microseconds
-  Divide 30,000,000 BYTE number by 10,000,000 BYTE number:      98,853,049 microseconds (divide:multiply ratio: 6.402425)
-  Divide 30,000,000 BYTE number by 20,000,000 BYTE number:      56,814,540 microseconds (divide:multiply ratio: 3.679713)
-  Multiply two 100,000,000-BYTE numbers:                       103,448,897 microseconds
-  Divide 200,000,000 BYTE number by 100,000,000 BYTE number:   725,978,837 microseconds (divide:multiply ratio: 7.017753)
-  Multiply 100,000,000-BYTE by 200,000,000-BYTE:               232,934,948 microseconds
-  Divide 300,000,000 BYTE number by 100,000,000 BYTE number: 1,387,310,472 microseconds (divide:multiply ratio: 5.955785)
-  Divide 300,000,000 BYTE number by 200,000,000 BYTE number:   939,119,649 microseconds (divide:multiply ratio: 4.031682)
+  Multiply two 10,000,000-BYTE numbers:                          6,143,587 microseconds
+  Divide 20,000,000 BYTE number by 10,000,000 BYTE number:      39,616,527 microseconds (divide:multiply ratio: 6.448436)
+  Multiply 10,000,000-BYTE by 20,000,000-BYTE:                  11,816,029 microseconds
+  Divide 30,000,000 BYTE number by 10,000,000 BYTE number:      74,134,939 microseconds (divide:multiply ratio: 6.274099)
+  Divide 30,000,000 BYTE number by 20,000,000 BYTE number:      44,677,393 microseconds (divide:multiply ratio: 3.781084)
+  Multiply two 100,000,000-BYTE numbers:                        79,057,210 microseconds
+  Divide 200,000,000 BYTE number by 100,000,000 BYTE number:   484,658,657 microseconds (divide:multiply ratio: 6.130480)
+  Multiply 100,000,000-BYTE by 200,000,000-BYTE:               159,440,073 microseconds
+  Divide 300,000,000 BYTE number by 100,000,000 BYTE number: 1,047,474,405 microseconds (divide:multiply ratio: 6.569706)
+  Divide 300,000,000 BYTE number by 200,000,000 BYTE number:   664,104,722 microseconds (divide:multiply ratio: 4.165231)
 
 GCD (extended): Note these times are in milliseconds, not microseconds
-  Time to get the GCD of 65536 pairs of 1024-BYTE numbers:        164,969 milliseconds
-  Time to get the GCD of 32768 pairs of 2048-BYTE numbers:        313,062 milliseconds
-  Time to get the GCD of 16384 pairs of 4096-BYTE numbers:        594,406 milliseconds
-  Time to get the GCD of 8192 pairs of 8192-BYTE numbers:       1,171,313 milliseconds
-  Time to get the GCD of 4096 pairs of 16384-BYTE numbers:      2,314,609 milliseconds
+  Time to get the GCD of 65536 pairs of 1024-BYTE numbers:         73,062 milliseconds
+  Time to get the GCD of 32768 pairs of 2048-BYTE numbers:        136,141 milliseconds
+  Time to get the GCD of 16384 pairs of 4096-BYTE numbers:        257,609 milliseconds
+  Time to get the GCD of 8192 pairs of 8192-BYTE numbers:         505,531 milliseconds
+  Time to get the GCD of 4096 pairs of 16384-BYTE numbers:      1,029,625 milliseconds
 
 Square root:
-  524288 square roots of a 128 bit number:                             62 milliseconds (0.000118 average)
+  524288 square roots of a 128 bit number:                             63 milliseconds (0.000118 average)
   524288 divides of a 128 bit number by its square root:               31 milliseconds (0.000059 average)
   131072 square roots of a 512 bit number:                             78 milliseconds (0.000595 average)
   131072 divides of a 512 bit number by its square root:               47 milliseconds (0.000359 average)
   32768 square roots of a 2048 bit number:                             94 milliseconds (0.002869 average)
-  32768 divides of a 2048 bit number by its square root:               78 milliseconds (0.002380 average)
-  8192 square roots of a 8192 bit number:                             141 milliseconds (0.017212 average)
-  8192 divides of a 8192 bit number by its square root:               141 milliseconds (0.017212 average)
-  2048 square roots of a 32768 bit number:                            297 milliseconds (0.145020 average)
-  2048 divides of a 32768 bit number by its square root:              265 milliseconds (0.129395 average)
-  512 square roots of a 131072 bit number:                            594 milliseconds (1.160156 average)
-  512 divides of a 131072 bit number by its square root:              563 milliseconds (1.099609 average)
-  128 square roots of a 524288 bit number:                            985 milliseconds (7.695312 average)
-  128 divides of a 524288 bit number by its square root:             1000 milliseconds (7.812500 average)
-  1 square root of a 33554432 bit (4,194,304 BYTE) number:           2610 milliseconds
-  1 divide of a 33554432 bit number by its square root:              2640 milliseconds
+  32768 divides of a 2048 bit number by its square root:               62 milliseconds (0.002380 average)
+  8192 square roots of a 8192 bit number:                             140 milliseconds (0.017212 average)
+  8192 divides of a 8192 bit number by its square root:               125 milliseconds (0.017212 average)
+  2048 square roots of a 32768 bit number:                            281 milliseconds (0.145020 average)
+  2048 divides of a 32768 bit number by its square root:              313 milliseconds (0.129395 average)
+  512 square roots of a 131072 bit number:                            516 milliseconds (1.160156 average)
+  512 divides of a 131072 bit number by its square root:              547 milliseconds (1.099609 average)
+  128 square roots of a 524288 bit number:                            921 milliseconds (7.695312 average)
+  128 divides of a 524288 bit number by its square root:              891 milliseconds (7.812500 average)
+  1 square root of a 33554432 bit (4,194,304 BYTE) number:           2375 milliseconds
+  1 divide of a 33554432 bit number by its square root:              2281 milliseconds
 
 RSA: times based on a 100,000-BYTE message
-  modulus of 64 BYTES:  353 kb/sec encrypt/decrypt cycle
-  modulus of 128 BYTEs: 113.5 kb/sec encrypt/decrypt cycle
-  modulus of 256 BYTEs:  36.44 kb/sec encrypt/decrypt cycle
-  modulus of 512 BYTEs:  11.70 kb/sec encrypt/decrypt cycle
-  modulus of 1024 BYTEs:  3.941 kb/sec encrypt/decrypt cycle
+  modulus of 64 BYTES:   398.3   kb/sec encrypt/decrypt cycle
+  modulus of 128 BYTEs:  147.4   kb/sec encrypt/decrypt cycle
+  modulus of 256 BYTEs:   45.56  kb/sec encrypt/decrypt cycle
+  modulus of 512 BYTEs:   13.96  kb/sec encrypt/decrypt cycle
+  modulus of 1024 BYTEs:   4.765 kb/sec encrypt/decrypt cycle
 
-Matrix multiplication: For these tests, only ran with 16-bit DIGITs
-  Multiply two 1536x1536 matrices with 32-BYTE entries -- oracle:    1,415,406 milliseconds
-  Multiply two 1536x1536 matrices with 32-BYTE entries -- optimized:   557,266 milliseconds
+Contact me: https://www.linkedin.com/in/joshua-landrum-24082714a/

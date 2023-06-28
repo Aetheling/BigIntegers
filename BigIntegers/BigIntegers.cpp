@@ -153,7 +153,7 @@ bool PrintDecimalToFileHelper(FILE *pFile, bool bIsNegative, size_t nDigits, DIG
     }
     if (0 == nDigits)
     {
-        bAllOkay = (0 < fprintf(pFile, "%c\0\n", '0'));
+        bAllOkay = (0 < fprintf(pFile, "0\n"));
     }
     else
     {

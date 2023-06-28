@@ -28,6 +28,7 @@ void CUnsignedArithmeticHelper::MultUBasic(size_t       nXSize,
                                            DIGIT        *pZ,
                                            bool         bAddInitialZValueToProduct)
 {
+    C_ASSERT(_REGISTER_BLOCK_SIZE <= 6);
     DOUBLEDIGIT	nProd,nCarry,nSum;
     size_t  	i,j;
     DIGIT       *pLast = pZ+nXSize+nYSize-1;

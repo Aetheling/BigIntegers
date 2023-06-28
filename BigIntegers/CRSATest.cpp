@@ -301,31 +301,31 @@ exit:
 /*
 16-bit DIGITs
 Finding 128 BYTE prime:
-  Use get next: 1094 milliseconds (tried 157 numbers) -- 6.968153 ms/try
-  Use uniform:  640 milliseconds (tried 71 numbers) -- 9.014085 ms/try
+  Use get next: 859 milliseconds (tried 141 numbers) -- 6.092198 ms/try
+  Use uniform:  469 milliseconds (tried 51 numbers) -- 9.196078 ms/try
 Finding 256 BYTE prime:
-  Use get next: 3453 milliseconds (tried 66 numbers) -- 52.318180 ms/try
-  Use uniform:  1610 milliseconds (tried 10 numbers) -- 161.000000 ms/try
+  Use get next: 9641 milliseconds (tried 330 numbers) -- 29.215151 ms/try
+  Use uniform:  4734 milliseconds (tried 144 numbers) -- 32.875000 ms/try
 Finding 512 BYTE prime:
-  Use get next: 72890 milliseconds (tried 330 numbers) -- 220.878784 ms/try
-  Use uniform:  125250 milliseconds (tried 596 numbers) -- 210.151001 ms/try
+  Use get next: 342328 milliseconds (tried 2212 numbers) -- 154.759491 ms/try
+  Use uniform:  78828 milliseconds (tried 432 numbers) -- 182.472229 ms/try
 Finding 1024 BYTE prime:
-  Use get next: 3462360 milliseconds (tried 3049 numbers) -- 1135.572266 ms/try
-  Use uniform:  1397062 milliseconds (tried 1231 numbers) -- 1134.900024 ms/try
+  Use get next: 4607141 milliseconds (tried 5216 numbers) -- 883.270874 ms/try
+  Use uniform:  2919078 milliseconds (tried 3700 numbers) -- 788.940002 ms/try
 
-32-bit DIGITs
+32-bit DIGITs:
 Finding 128 BYTE prime:
-  Use get next: 156 milliseconds (tried 80 numbers) -- 1.950000 ms/try
-  Use uniform:  297 milliseconds (tried 102 numbers) -- 2.911765 ms/try
+  Use get next: 1047 milliseconds (tried 660 numbers) -- 1.586364 ms/try
+  Use uniform:  281 milliseconds (tried 164 numbers) -- 1.713415 ms/try
 Finding 256 BYTE prime:
-  Use get next: 12203 milliseconds (tried 2004 numbers) -- 6.089321 ms/try
-  Use uniform:  875 milliseconds (tried 41 numbers) -- 21.341463 ms/try
+  Use get next: 6562 milliseconds (tried 767 numbers) -- 8.555410 ms/try
+  Use uniform:  2516 milliseconds (tried 266 numbers) -- 9.458647 ms/try
 Finding 512 BYTE prime:
-  Use get next: 30031 milliseconds (tried 767 numbers) -- 39.153847 ms/try
-  Use uniform:  20250 milliseconds (tried 346 numbers) -- 58.526012 ms/try
+  Use get next: 36141 milliseconds (tried 646 numbers) -- 55.945820 ms/try
+  Use uniform:  11187 milliseconds (tried 218 numbers) -- 51.316513 ms/try
 Finding 1024 BYTE prime:
-  Use get next: 681422 milliseconds (tried 3392 numbers) -- 200.890915 ms/try
-  Use uniform:  835578 milliseconds (tried 2548 numbers) -- 327.934845 ms/try
+  Use get next: 226172 milliseconds (tried 747 numbers) -- 302.773773 ms/try
+  Use uniform:  29703 milliseconds (tried 61 numbers) -- 486.934418 ms/try
 */
 void CRSATest::PerfTestGetPrime()
 {
@@ -352,19 +352,6 @@ void CRSATest::PerfTestGetPrime()
 	CRSADecrypt::PrintTestsToReject();
 }
 
-/*
-Sample run: 16-bit DIGITs
-Time to check 10000000 consecutive odd numbers of 2048 bits for divisibility by small primes: 17594 milliseconds
-Time to check 10000000 consecutive odd numbers of 4096 bits for divisibility by small primes: 35328 milliseconds
-Time to check 10000000 consecutive odd numbers of 8192 bits for divisibility by small primes: 70141 milliseconds
-Time to check 10000000 consecutive odd numbers of 16384 bits for divisibility by small primes: 140484 milliseconds
-
-Sample run: 32-bit DIGITs
-Time to check 10000000 consecutive odd numbers of 2048 bits for divisibility by small primes : 8813 milliseconds
-Time to check 10000000 consecutive odd numbers of 4096 bits for divisibility by small primes : 16766 milliseconds
-Time to check 10000000 consecutive odd numbers of 8192 bits for divisibility by small primes : 33281 milliseconds
-Time to check 10000000 consecutive odd numbers of 16384 bits for divisibility by small primes : 66937 milliseconds
-*/
 void CRSATest::PerfTestDivisibleBySmallPrime()
 {
 	const unsigned int c_nNumsToCheck = 10000000;
@@ -393,20 +380,20 @@ void CRSATest::PerfTestDivisibleBySmallPrime()
 
 /*
 16-bit DIGITs
-Time to check 1000 nonconsecutive odd numbers of 256 bits each for primality: 234 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 512 bits each for primality: 1375 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 1024 bits each for primality: 6047 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 2048 bits each for primality: 37735 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 4096 bits each for primality: 192781 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 8192 bits each for primality: 1071797 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 256 bits each for primality: 188 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 512 bits each for primality: 1234 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 1024 bits each for primality: 5141 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 2048 bits each for primality: 25141 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 4096 bits each for primality: 155859 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 8192 bits each for primality: 878656 milliseconds
 
 32-bit DIGITs
-Time to check 1000 nonconsecutive odd numbers of 256 bits each for primality: 47 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 512 bits each for primality: 344 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 1024 bits each for primality: 2109 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 2048 bits each for primality: 10438 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 4096 bits each for primality: 61328 milliseconds
-Time to check 1000 nonconsecutive odd numbers of 8192 bits each for primality: 328359 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 256 bits each for primality: 62 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 512 bits each for primality: 297 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 1024 bits each for primality: 1734 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 2048 bits each for primality: 8063 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 4096 bits each for primality: 45297 milliseconds
+Time to check 1000 nonconsecutive odd numbers of 8192 bits each for primality: 289328 milliseconds
 */
 void CRSATest::PerfTestProbablyPrime()
 {
@@ -421,7 +408,7 @@ void CRSATest::PerfTestProbablyPrime()
 	for( ; nBaseBitSize<=nMaxBitSize; nBaseBitSize *= 2)
 	{
 		nTime = ::GetTickCount();
-		for (int i = 0; i < c_nNumsToCheck; i++)
+		for (int i=0; i<c_nNumsToCheck; i++)
 		{
 			generator.RandomBits(nBaseBitSize/_DIGIT_SIZE_IN_BITS, nBaseBitSize%_DIGIT_SIZE_IN_BITS, false, number);
 			number.GetValue()[0] |= 1; // force odd
@@ -437,116 +424,109 @@ void CRSATest::PerfTestProbablyPrime()
 All encrypt/decrypt tests use the same message of 100000 BYTEs
 Using protection against timing attacks: false
 Iterations for modulus of 64 BYTEs: 10000
-Retrying
-Retrying
-Retrying
-Get encryptor milliseconds:   351106
-Encryption milliseconds:      774931
-Decryption milliseconds:      10214320
+Get encryptor milliseconds:   255318
+Encryption milliseconds:      574343
+Decryption milliseconds:      6849434
 
 Iterations for modulus of 128 BYTEs: 1000
-Get encryptor milliseconds:   373050
-Encryption milliseconds:      120779
-Decryption milliseconds:      3526844
+Get encryptor milliseconds:   273866
+Encryption milliseconds:      91175
+Decryption milliseconds:      2219366
 
 Iterations for modulus of 256 BYTEs: 100
-Get encryptor milliseconds:   349585
-Encryption milliseconds:      17759
-Decryption milliseconds:      1080172
+Get encryptor milliseconds:   278713
+Encryption milliseconds:      14622
+Decryption milliseconds:      739979
 
 Iterations for modulus of 512 BYTEs: 10
-Get encryptor milliseconds:   348845
-Encryption milliseconds:      2530
-Decryption milliseconds:      309656
+Get encryptor milliseconds:   255141
+Encryption milliseconds:      1920
+Decryption milliseconds:      235751
 
 Iterations for modulus of 1024 BYTEs: 1
-Get encryptor milliseconds:   206141
-Encryption milliseconds:      359
-Decryption milliseconds:      84235
+Get encryptor milliseconds:   73625
+Encryption milliseconds:      281
+Decryption milliseconds:      65391
 
 Using protection against timing attacks: true
 Iterations for modulus of 64 BYTEs: 10000
-Get encryptor milliseconds:   346891
-Encryption milliseconds:      776811
-Decryption milliseconds:      13800302
+Get encryptor milliseconds:   247465
+Encryption milliseconds:      575968
+Decryption milliseconds:      9114442
 
 Iterations for modulus of 128 BYTEs: 1000
-Get encryptor milliseconds:   420741
-Encryption milliseconds:      131087
-Decryption milliseconds:      5196921
+Get encryptor milliseconds:   279553
+Encryption milliseconds:      91196
+Decryption milliseconds:      2955391
 
 Iterations for modulus of 256 BYTEs: 100
-Get encryptor milliseconds:   396214
-Encryption milliseconds:      19912
-Decryption milliseconds:      1642781
+Get encryptor milliseconds:   261238
+Encryption milliseconds:      14730
+Decryption milliseconds:      997501
 
 Iterations for modulus of 512 BYTEs: 10
-Get encryptor milliseconds:   343717
-Encryption milliseconds:      2735
-Decryption milliseconds:      444407
+Get encryptor milliseconds:   282967
+Encryption milliseconds:      1969
+Decryption milliseconds:      321079
 
 Iterations for modulus of 1024 BYTEs: 1
-Get encryptor milliseconds:   68953
-Encryption milliseconds:      359
-Decryption milliseconds:      116453
+Get encryptor milliseconds:   215891
+Encryption milliseconds:      297
+Decryption milliseconds:      89359
 
 32-bit DIGITs
 All encrypt/decrypt tests use the same message of 100000 BYTEs
 Using protection against timing attacks: false
 Iterations for modulus of 64 BYTEs: 10000
-Retrying
-Get encryptor milliseconds:   108786
-Encryption milliseconds:      213081
-Decryption milliseconds:      2620443
+Get encryptor milliseconds:   101524
+Encryption milliseconds:      166963
+Decryption milliseconds:      2343563
 
 Iterations for modulus of 128 BYTEs: 1000
-Get encryptor milliseconds:   128085
-Encryption milliseconds:      32312
-Decryption milliseconds:      848650
+Get encryptor milliseconds:   124218
+Encryption milliseconds:      26754
+Decryption milliseconds:      651513
 
 Iterations for modulus of 256 BYTEs: 100
-Get encryptor milliseconds:   127718
-Encryption milliseconds:      5057
-Decryption milliseconds:      269350
+Get encryptor milliseconds:   102089
+Encryption milliseconds:      4423
+Decryption milliseconds:      215081
 
 Iterations for modulus of 512 BYTEs: 10
-Get encryptor milliseconds:   100406
-Encryption milliseconds:      784
-Decryption milliseconds:      84669
+Get encryptor milliseconds:   80717
+Encryption milliseconds:      640
+Decryption milliseconds:      71002
 
 Iterations for modulus of 1024 BYTEs: 1
-Get encryptor milliseconds:   15875
-Encryption milliseconds:      125
-Decryption milliseconds:      25250
+Get encryptor milliseconds:   89937
+Encryption milliseconds:      94
+Decryption milliseconds:      20891
 
 Using protection against timing attacks: true
 Iterations for modulus of 64 BYTEs: 10000
-Retrying
-Retrying
-Get encryptor milliseconds:   103171
-Encryption milliseconds:      211811
-Decryption milliseconds:      3428348
+Get encryptor milliseconds:   94403
+Encryption milliseconds:      166924
+Decryption milliseconds:      3079408
 
 Iterations for modulus of 128 BYTEs: 1000
-Get encryptor milliseconds:   136597
-Encryption milliseconds:      32436
-Decryption milliseconds:      1136342
+Get encryptor milliseconds:   99941
+Encryption milliseconds:      26685
+Decryption milliseconds:      865483
 
 Iterations for modulus of 256 BYTEs: 100
-Get encryptor milliseconds:   115484
-Encryption milliseconds:      5174
-Decryption milliseconds:      362467
+Get encryptor milliseconds:   107095
+Encryption milliseconds:      4267
+Decryption milliseconds:      286872
 
 Iterations for modulus of 512 BYTEs: 10
-Retrying
-Get encryptor milliseconds:   105702
-Encryption milliseconds:      751
-Decryption milliseconds:      117672
+Get encryptor milliseconds:   77391
+Encryption milliseconds:      624
+Decryption milliseconds:      94110
 
 Iterations for modulus of 1024 BYTEs: 1
-Get encryptor milliseconds:   98297
-Encryption milliseconds:      109
-Decryption milliseconds:      33656
+Get encryptor milliseconds:   182359
+Encryption milliseconds:      94
+Decryption milliseconds:      28109
 */
 bool CRSATest::PerfTestRSA()
 {
@@ -575,21 +555,21 @@ bool CRSATest::PerfTestRSA()
 		nIterations = 10000;
 		for (nModulusBYTEs = c_nMinModulusBytes; nModulusBYTEs <= c_nMaxModulusBytes && bTestJustFine; nModulusBYTEs *= 2)
 		{
-			nTimeGet = 0;
+			nTimeGet     = 0;
 			nTimeEncrypt = 0;
 			nTimeDecrypt = 0;
 			printf("Iterations for modulus of %i BYTEs: %i\n", nModulusBYTEs, nIterations);
 			for (int j = 0; j < nIterations && bTestJustFine; j++)
 			{
-				nTimeA = ::GetTickCount();
+				nTimeB = ::GetTickCount();
 				do
 				{
 					pDecryptor = CRSADecrypt::GetDecrypt(nModulusBYTEs, true, bProtectAgainstTimingAttacks);
 					if (NULL == pDecryptor) printf("Retrying\n");
 				}
 				while (NULL == pDecryptor);
-				nTimeGet += ::GetTickCount() - nTimeA;
-				nTimeA = ::GetTickCount();
+				nTimeA   =  ::GetTickCount();
+				nTimeGet += nTimeA - nTimeB;
 				if (!pDecryptor->Encrypt(pMessage, c_nMessageLength, pEncrypted, nEncryptedLength, nPadding))
 				{
 					printf("Encryption failed\n");

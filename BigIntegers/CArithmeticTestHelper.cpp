@@ -16,37 +16,62 @@ void CArithmeticTestHelper::ResetThresholdsForOptimization()
     // values found to be reasonable
     c_nBuildBlockSizePre                         = 8388608; // effectively ignored
     c_nBuildBlockSizePost                        = 16777216; // ignored
-    c_pnMultiplicationThresholds[eBasicMultiply] = 15;
-    c_pnMultiplicationThresholds[e3By2]          = 43;
-    c_pnMultiplicationThresholds[e5By3]          = 58;
-    c_pnMultiplicationThresholds[e7By4]          = 423327;
-    c_pnMultiplicationThresholds[e2NByN]         = 5633;
-	c_pn2NByNBreakpoints[0]                      = 91; // below use 5 pieces; above, 6
-	c_pn2NByNBreakpoints[1]                      = 2639; // below use 6 pieces; above, 7
-	c_pn2NByNBreakpoints[2]                      = 4366; // below use 7 pieces; above, 8
-	c_pn2NByNBreakpoints[3]                      = 6920; // below use 8 pieces; above, 9
-	c_pn2NByNBreakpoints[4]                      = 18377; // below use 9 pieces; above, 10
-	c_pn2NByNBreakpoints[5]                      = 26457; // below use 10 pieces; above, 11
-	c_pn2NByNBreakpoints[6]                      = 239783; // below use 11 pieces; above, 12
-    c_nDivideThresholdSmall                      = 16;
+    c_pnMultiplicationThresholds[eBasicMultiply] = 52;
+    c_pnMultiplicationThresholds[e3By2]          = 152;
+    c_pnMultiplicationThresholds[e5By3]          = 152;
+    c_pnMultiplicationThresholds[e7By4]          = 39211;
+    c_pnMultiplicationThresholds[e2NByN]         = 0;
+    c_pn2NByNBreakpoints[0]                      = 101233;   // below use 5 pieces; above, 6
+    c_pn2NByNBreakpoints[1]                      = 182042;   // below use 6 pieces; above, 7
+    c_pn2NByNBreakpoints[2]                      = 201275;   // below use 7 pieces; above, 8
+    c_pn2NByNBreakpoints[3]                      = 231567;   // below use 8 pieces; above, 9
+    c_pn2NByNBreakpoints[4]                      = 1692095;  // below use 9 pieces; above, 10
+    c_pn2NByNBreakpoints[5]                      = 2254277;  // below use 10 pieces; above, 11
+    c_pn2NByNBreakpoints[6]                      = 33154301; // below use 11 pieces; above, 12
+    c_pnSquareThresholds[eBasicMultiply]         = 34;
+    c_pnSquareThresholds[e3By2]                  = 154;
+    c_pnSquareThresholds[e5By3]                  = 154;
+    c_pnSquareThresholds[e7By4]                  = 18956;
+    c_pnSquareThresholds[e2NByN]                 = 0;
+    c_pn2NByNSquareBreakpoints[0]                = 9947;
+    c_pn2NByNSquareBreakpoints[1]                = 12563;
+    c_pn2NByNSquareBreakpoints[2]                = 12597;
+    c_pn2NByNSquareBreakpoints[3]                = 44304;
+    c_pn2NByNSquareBreakpoints[4]                = 89971;
+    c_pn2NByNSquareBreakpoints[5]                = 275688;
+    c_pn2NByNSquareBreakpoints[6]                = 2000000000;
+    c_nDivideThresholdSmall                      = 7;
     c_nDivideThresholdDiff                       = 4;
 #else
     // values found to be reasonable
     c_nBuildBlockSizePre                         = 16777216;
     c_nBuildBlockSizePost                        = 16777216; // ignored
-    c_pnMultiplicationThresholds[eBasicMultiply] = 38;// 15;
-    c_pnMultiplicationThresholds[e3By2]          = 83; //35;
-    c_pnMultiplicationThresholds[e5By3]          = 84; //43;
-    c_pnMultiplicationThresholds[e7By4]          = 115; //111;
-    c_pnMultiplicationThresholds[e9By5]          = 1090018; //130143;
-    c_pnMultiplicationThresholds[e2NByN]         = 12683; //12356;
-	c_pn2NByNBreakpoints[0]                      = 14481; //142; // below use 5 pieces; above, 6
-	c_pn2NByNBreakpoints[1]                      = 34001; //211; // below use 6 pieces; above, 7
-	c_pn2NByNBreakpoints[2]                      = 135915; //568; // below use 7 pieces; above, 8
-	c_pn2NByNBreakpoints[3]                      = 543863; //3564; // below use 8 pieces; above, 9
-	c_pn2NByNBreakpoints[4]                      = 779232; //10375; // below use 9 pieces; above, 10
-	c_pn2NByNBreakpoints[5]                      = 1765454; //16267; // below use 10 pieces; above, 11
-	c_pn2NByNBreakpoints[6]                      = 1917176; //90534; // below use 11 pieces; above, 12
+    c_pnMultiplicationThresholds[eBasicMultiply] = 54;
+    c_pnMultiplicationThresholds[e3By2]          = 100;
+    c_pnMultiplicationThresholds[e5By3]          = 100;
+    c_pnMultiplicationThresholds[e7By4]          = 160;
+    c_pnMultiplicationThresholds[e9By5]          = 40789;
+    c_pnMultiplicationThresholds[e2NByN]         = 0;
+    c_pnSquareThresholds[eBasicMultiply]         = 26;
+    c_pnSquareThresholds[e3By2]                  = 186;
+    c_pnSquareThresholds[e5By3]                  = 186;
+    c_pnSquareThresholds[e7By4]                  = 190;
+    c_pnSquareThresholds[e9By5]                  = 11573;
+    c_pnSquareThresholds[e2NByN]                 = 0;
+	c_pn2NByNBreakpoints[0]                      = 160;    // below use 5 pieces; above, 6
+	c_pn2NByNBreakpoints[1]                      = 644;    // below use 6 pieces; above, 7
+	c_pn2NByNBreakpoints[2]                      = 3499;   // below use 7 pieces; above, 8
+	c_pn2NByNBreakpoints[3]                      = 3500;   // below use 8 pieces; above, 9
+	c_pn2NByNBreakpoints[4]                      = 13545;   // below use 9 pieces; above, 10
+	c_pn2NByNBreakpoints[5]                      = 13546;  // below use 10 pieces; above, 11
+	c_pn2NByNBreakpoints[6]                      = 19471;  // below use 11 pieces; above, 12
+    c_pn2NByNSquareBreakpoints[0]                = 346;
+    c_pn2NByNSquareBreakpoints[1]                = 2433;
+    c_pn2NByNSquareBreakpoints[2]                = 17964;
+    c_pn2NByNSquareBreakpoints[3]                = 23264;
+    c_pn2NByNSquareBreakpoints[4]                = 28659;
+    c_pn2NByNSquareBreakpoints[5]                = 28660;
+    c_pn2NByNSquareBreakpoints[6]                = 28661;
     c_nDivideThresholdSmall                      = 12;
     c_nDivideThresholdDiff                       = 4;
 #endif
@@ -63,7 +88,22 @@ void CArithmeticTestHelper::ResetThresholdsForTest(bool bForceNo2NByN)
     c_pnMultiplicationThresholds[e3By2]          = 30;
     c_pnMultiplicationThresholds[e5By3]          = 45;
     c_pnMultiplicationThresholds[e7By4]          = (bForceNo2NByN) ? 100000000 : 60;
+#if(16==_DIGIT_SIZE_IN_BITS)
     c_pnMultiplicationThresholds[e2NByN]         = (bForceNo2NByN) ? 100000000 : 75;
+#else
+    c_pnMultiplicationThresholds[e9By5]          = 75;
+    c_pnMultiplicationThresholds[e2NByN]         = (bForceNo2NByN) ? 100000000 : 90;
+#endif
+    c_pnSquareThresholds[eBasicMultiply]         = 15;
+    c_pnSquareThresholds[e3By2]                  = 30;
+    c_pnSquareThresholds[e5By3]                  = 45;
+    c_pnSquareThresholds[e7By4]                  = (bForceNo2NByN) ? 100000000 : 60;
+#if(16==_DIGIT_SIZE_IN_BITS)
+    c_pnSquareThresholds[e2NByN]                 = (bForceNo2NByN) ? 100000000 : 75;
+#else
+    c_pnSquareThresholds[e9By5]                  = 75;
+    c_pnSquareThresholds[e2NByN]                 = (bForceNo2NByN) ? 100000000 : 90;
+#endif
 	c_pn2NByNBreakpoints[0]                      = 100; // below use 5 pieces; above, 6
 	c_pn2NByNBreakpoints[1]                      = 200; // below use 6 pieces; above, 7
 	c_pn2NByNBreakpoints[2]                      = 300; // below use 7 pieces; above, 8
