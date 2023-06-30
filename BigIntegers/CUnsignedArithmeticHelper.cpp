@@ -10032,7 +10032,7 @@ size_t CUnsignedArithmeticHelper::GCDBase(size_t  nXSize,
                       nModSize,
                       pXValue,
                       pYValue,
-                      pWorkspace, // can we save some space by using pGCDValue here?  Debug resolve todo!
+                      pWorkspace,
                       dwTimestamp,
                       pWorkspace+nXSize-nYSize+1);
         g_nGCDTime[eGCDDivideTime] += (dwTimestamp - dwTimestamp2);
@@ -10043,7 +10043,7 @@ size_t CUnsignedArithmeticHelper::GCDBase(size_t  nXSize,
                       nModSize,
                       pXValue,
                       pYValue,
-                      pWorkspace, // can we save some space by using pGCDValue here?  Debug resolve todo!
+                      pWorkspace,
                       pWorkspace+nXSize-nYSize+1);
 #endif
         if(0==nModSize)
@@ -13540,9 +13540,7 @@ void CUnsignedArithmeticHelper::SQRT(size_t nXSize, size_t &nRootSize, DIGIT *pn
   Then { x0, x1, x2, x3 } - {y', y1}^2  is 1000x0 + 100x1 + 10x2 + x3 - 100y'^2 - 20y'y1 - y1^2
   // <-> {x0, ..., x3} - Ya^2 - 2Yay1 - y1^2
   Ya is known, so we want the largest y1 s.t. (2Ya + y1)*y1 <= {x0, ..., x3} - Ya^2
-  We then solve this latter (smaller) problem with Newton.
-  Note that Newton is faster for this problem than for the problem y^2 <= x: the 20y'y1 term makes it closer to linear,
-  so Newton converges faster
+  We then solve this latter (smaller) problem with GeneralSquareRootRecursive
 */
 void CUnsignedArithmeticHelper::SquareRootRecursive(size_t  nXSize,
                                                     size_t  &nRootSize,
@@ -13572,7 +13570,7 @@ void CUnsignedArithmeticHelper::SquareRootRecursive(size_t  nXSize,
     else
     {
         DOUBLEDIGIT nCarry, nVal;
-        nOffset     = ((nXSize+3)>>2)<<1;        // offset needs to be even, and at least half x size
+        nOffset     = ((nXSize+3)>>2)<<1;      // offset needs to be even, and at least half x size
         pnX1        = pnWorkspace;
         pnYPrime    = pnX1     + (nOffset>>1); // NOTE: we use that y' immediately follows x1 in memory!
         pnWorkspace = pnYPrime + ((nXSize + 1)>>1) + 1;
@@ -13973,7 +13971,6 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
                 // note we don't need pnX1PlusY anymore
                 pnWorkspace = pnX1PlusY;
                 // compute Yb
-                // put Yb directly into pnRoot -- no need to copy.  Debug resolve todo
                 pnYb        =  pnWorkspace;
                 pnWorkspace += nX2Size;
 #if _CollectDetailedTimingData

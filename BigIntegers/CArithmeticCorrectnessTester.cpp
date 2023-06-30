@@ -2366,6 +2366,8 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
                        nBigMat2(10*c_nMatrixSize,12*c_nMatrixSize),
                        nBigProdOracle(6*c_nMatrixSize,12*c_nMatrixSize),
                        nBigProduct(6*c_nMatrixSize,12*c_nMatrixSize);
+    CBigIntegerMatrix  smallMatrix(3);
+    CBigIntegerVector  diag(3);
     // validate accessor function -- [] overload
     for(int i=0; i<c_nMatrixSize; i++)
     {
@@ -2524,7 +2526,6 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
         printf("Multiplication failed\n");
         goto exit;
     }
-    //if(!nProductMatrix.Copy(nQuasiInverse))
     if(CBigIntegerMatrix::eWorked != (nQuasiInverse = nProductMatrix))
     {
         printf("copy failed\n");
@@ -2533,6 +2534,62 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
     if(CBigIntegerMatrix::eSingular != nQuasiInverse.QuasiInverse(nDiagVector,cBox))
     {
         printf("Should not be able to invert singular matrix\n");
+        goto exit;
+    }
+    // compute the quasi-inverse of the matrix
+    // 0  1  1
+    // 1  1  1
+    // 1 -1  1
+    // Note that this requires row exchanges.
+    // It's quasi-inverse is
+    // -1  1  0
+    //  0  1 -1
+    //  2 -1  1
+    // and the quasi-inverse times the original matrix is
+    //  1  0  0
+    //  0  2  0
+    //  0  0  2
+    // so its diag is {1,2,2}
+    nBig.SetFromHexString("1");
+    for(int i=0;i<3;i++)
+    {
+        for(int j=0;j<3;j++)
+        {
+            smallMatrix[i][j] = nBig;
+        }
+    }
+    smallMatrix[0][0].SetSize(0);
+    smallMatrix[2][1].Invert();
+    smallMatrix.QuasiInverse(diag, cBox);
+    // validate the computed inverse
+    if(smallMatrix[0][1] != nBig || !smallMatrix[0][2].IsZero() || !smallMatrix[1][0].IsZero() || smallMatrix[1][1] != nBig || smallMatrix[2][2] != nBig)
+    {
+        printf("error computing inverse where rows swaps necessary\n");
+        smallMatrix.Print();
+        goto exit;
+    }
+    if(diag[0] != nBig)
+    {
+        printf("error computing diagonal associated with the quasi inverse where row swaps needed\n");
+        goto exit;
+    }
+    nBig.Invert();
+    if(smallMatrix[0][0] != nBig || smallMatrix[1][2] != nBig || smallMatrix[2][1] != nBig)
+    {
+        printf("error computing inverse where rows swaps necessary\n");
+        smallMatrix.Print();
+        goto exit;
+    }
+    nBig.SetFromHexString("2");
+    if(smallMatrix[2][0] != nBig)
+    {
+        printf("error computing inverse where rows swaps necessary\n");
+        goto exit;
+    }
+    if(diag[1] != nBig || diag[2] != nBig)
+    {
+        printf("error computing diagonal associated with the quasi inverse where row swaps needed\n");
+        smallMatrix.Print();
         goto exit;
     }
     // finally, just run a bunch of largish matrix multiplications: oracle vs performant (well; performant in retail anyway)

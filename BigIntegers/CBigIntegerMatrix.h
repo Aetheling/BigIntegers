@@ -53,10 +53,6 @@ public:
     //              with its quasi-inverse (B).
     //
     // Algorithm:   Guassian elimination
-    //
-    // pQuasiInverse is created in the procedure; if an existing matrix is passed,
-    // it is deleted
-    //
     //----------------------------------------------------------
     EMatrixOpReturnValue QuasiInverse(CBigIntegerVector &vD,
                                       CArithmeticBox    &cArithmeticBox);

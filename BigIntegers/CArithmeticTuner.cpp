@@ -482,7 +482,6 @@ void CArithmeticTuner::ComputeThreshold(unsigned int       *pnThreshold,
         MultiplyMultipleTimes(dwIterations, dwHighTime, cWork, nX, nY, nZ, bTestingSquare);
         if (pOutput)
         {
-          //  sprintf_s(szOutput[i%16],"Size: %u\tLow threshold time: %u\tHigh threshold time: %u\tIterations: %u\n", dwSize, dwLowTime, dwHighTime, dwIterations);
             fprintf(pOutput, "Size: %u\tLow threshold time: %u\tHigh threshold time: %u\tIterations: %u\n", dwSize, dwLowTime, dwHighTime, dwIterations);
         }
         if(dwLowTime<dwHighTime)
@@ -511,7 +510,6 @@ void CArithmeticTuner::ComputeThreshold(unsigned int       *pnThreshold,
     while(dwCnt < 6);
     if (pOutput)
     {
-     //   for(int j=0;j<16;j++) fprintf(pOutput,"%s",szOutput[(i+j)%16]); // debug restore todo
         fprintf(pOutput,"\n");
     }
     *pnThreshold = dwHoldSize;

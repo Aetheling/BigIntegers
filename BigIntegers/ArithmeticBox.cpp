@@ -444,7 +444,7 @@ EArithmeticOperationResult CArithmeticBox::GCD(const CBigInteger &nX,
         else
         {
             // GCD needs space for the larger of (x,y) -- the GCD cannot be bigger than the smaller, BUT we need extra space for intermediate values
-            if (!nGCD.Reserve((nXSize < nYSize) ? nYSize : nXSize), (&nGCD==&nX || &nGCD==&nY) ||
+            if (!nGCD.Reserve((nXSize < nYSize) ? nYSize : nXSize, (&nGCD==&nX || &nGCD==&nY)) ||
                 !m_Workspace.Reserve(CUnsignedArithmeticHelper::GCDMemoryNeeds(nXSize, nYSize, false)))
             {
                 eReturn = eOutOfMemory;

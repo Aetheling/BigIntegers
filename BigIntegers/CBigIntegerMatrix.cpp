@@ -398,8 +398,7 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
                     // Note that while we still care about [i][i] -- it
                     // gives the diagonal for the matrix -- we don't care
                     // about [j][i]
-                    nCoef3 = m_ppData[i][ii]; // no need to copy; just use -- debug resolve todo
-                    if(eOperationSucceeded != cArithmeticBox.Divide(nCoef3,
+                    if(eOperationSucceeded != cArithmeticBox.Divide(m_ppData[i][ii],
                                                                     nCoef4,
                                                                     nCoef1,
                                                                     nThrowAway)    ||
@@ -480,60 +479,65 @@ CBigIntegerMatrix::EMatrixOpReturnValue CBigIntegerMatrix::QuasiInverse(CBigInte
             }
         }
     }
-    // And last: the GCD of row "0"
-    // Divide through by the GCD of the row (if > 1) to shrink
-    // the sizes as much as possible
-    i = pnPermutation[0];
-    if(1 < m_ppData[i][0].GetSize() ||
-       !m_ppData[i][0].IsZero() && 1 < m_ppData[i][0].GetValue()[0])  // there might be a GCD of interest
+    // and last: for each row of the quasi inverse, divide through by the GCD of each element of that row and the diag element for that row: makes
+    // for smaller values, and hence more efficient usage.  Also puts the matrix in a more concrete form
+    for(int ii=0; ii<m_nCols; ii++)
     {
-        nCoef1 = m_ppData[i][0];  // slightly wasteful
-        for(j=0;j<m_nCols;j++)
+        i = pnPermutation[ii];
+        if(1 < m_ppData[i][ii].GetSize() ||
+           !m_ppData[i][ii].IsZero() && 1 < m_ppData[i][ii].GetValue()[0])  // there might be a GCD of interest
         {
-            if(1 == nQuasiInverse[i][j].GetSize() &&
-               1 == nQuasiInverse[i][j].GetValue()[0]) // no interesting GCD
+            nCoef1 = m_ppData[i][ii];  // slightly wasteful
+            for(j=0;j<m_nCols;j++)
             {
-                break;
-            }
-            if(!nQuasiInverse[i][j].IsZero())
-            {
-                if(eOperationSucceeded != cArithmeticBox.GCD(nCoef1,
-                                                             nQuasiInverse[i][j],
-                                                             nCoef1))
+                if(1 == nQuasiInverse[i][j].GetSize() &&
+                   1 == nQuasiInverse[i][j].GetValue()[0]) // no interesting GCD
                 {
-                    break;  // note that we can still continue even if this
-                            // fails
+                    break;
+                }
+                if(!nQuasiInverse[i][j].IsZero())
+                {
+                    if(eOperationSucceeded != cArithmeticBox.GCD(nCoef1,
+                                                                 nQuasiInverse[i][j],
+                                                                 nCoef1))
+                    {
+                        break;  // note that we can still continue even if this
+                                // fails
+                    }
+                }
+                if (1 == nCoef1.GetSize() && 1 == nCoef1.GetValue()[0]) // no interesting GCD
+                {
+                    break;
                 }
             }
-        }
-        if(j==m_nCols)  // have an interesting GCD
-        {
-            if(eOperationSucceeded == cArithmeticBox.Divide(m_ppData[i][0],
-                                                            nCoef1,
-                                                            nCoef2,
-                                                            nThrowAway))
+            if(j==m_nCols)  // have an interesting GCD
             {
-                CBigInteger::Swap(nCoef2, m_ppData[i][0]);
-                for(j=0;j<m_nCols;j++)
+                if(eOperationSucceeded == cArithmeticBox.Divide(m_ppData[i][0],
+                                                                nCoef1,
+                                                                nCoef2,
+                                                                nThrowAway))
                 {
-                    if(!nQuasiInverse[i][j].IsZero())
+                    CBigInteger::Swap(nCoef2, m_ppData[i][0]);
+                    for(j=0;j<m_nCols;j++)
                     {
-                        if(eOperationSucceeded != cArithmeticBox.Divide(nQuasiInverse[i][j],
-                                                                        nCoef1,
-                                                                        nCoef2,
-                                                                        nThrowAway))
+                        if(!nQuasiInverse[i][j].IsZero())
                         {
-                            eStatus = eOutOfMemory;  // ran out of memory, and the
-                                                     // system is now in bad shape
-                            goto Cleanup;
+                            if(eOperationSucceeded != cArithmeticBox.Divide(nQuasiInverse[i][j],
+                                                                            nCoef1,
+                                                                            nCoef2,
+                                                                            nThrowAway))
+                            {
+                                eStatus = eOutOfMemory;  // ran out of memory, and the
+                                                         // system is now in bad shape
+                                goto Cleanup;
+                            }
+                            CBigInteger::Swap(nCoef2, nQuasiInverse[i][j]);
                         }
-                        CBigInteger::Swap(nCoef2, nQuasiInverse[i][j]);
                     }
                 }
             }
         }
     }
-//    nQuasiInverse.Print();
     // Now, nQuasiInverse contains the sort-of inverse of the original
     // matrix, the diagonal elements of the original matrix contain the
     // D matrix, and the rest of the values of the original matrix are
