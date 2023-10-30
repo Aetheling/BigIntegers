@@ -151,6 +151,7 @@
     <ClInclude Include="..\BigIntegers\SSystemData.h" />
     <ClInclude Include="..\BigIntegers\Timer.h" />
     <ClInclude Include="CBigIntegerHelper.h" />
+    <ClInclude Include="SmallPrimes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BigIntegers\ArithmeticBox.cpp" />

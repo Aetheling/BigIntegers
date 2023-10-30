@@ -21,9 +21,15 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     const char *szBasePlusOneMinusSeven = "FFFFFFFFFFFFFFF9";
     const char *szMinusBase             = "-FFFFFFFFFFFFFFFF";
     const char *szBadHexString          = "-ABCDEFG";
+#if(16==_DIGIT_SIZE_IN_BITS)
+    const char *szSmall                 = "FFFF";
+#else
+    const char *szSmall                 = "FFFFFFFF";
+#endif
     DIGIT      *pnYData                 = NULL;
     size_t     nSize                    = 0;
     bool       bTestWorked              = false;
+    DIGIT      *pWork                   = (DIGIT *) malloc(sizeof(DIGIT)*1000000); // ample space for our simple usage
     ResetThresholdsForTest();
     if(bVerbose)
     {
@@ -61,6 +67,8 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         printf("<print to base 10 failed>\n");
         goto exit;
     }
+    printf("And with optimized print:     ");
+    PrintNumberToBase10(nBaseTenTest, pWork);
     nBaseTenTest.SetFromHexString(szBase10TestHexB);
     printf("Printing z, base 10.  Expect: %s\nGot:                          ",szBase10TestDecimalB);
     if(!nBaseTenTest.PrintDecimalToFile())
@@ -68,6 +76,17 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         printf("<print to base 10 failed>\n");
         goto exit;
     }
+    printf("And with optimized print:     ");
+    PrintNumberToBase10(nBaseTenTest, pWork);
+    nBaseTenTest.SetFromHexString(szSmall);
+    printf("Printing z, base 10.  Base:      ");
+    if (!nBaseTenTest.PrintDecimalToFile())
+    {
+        printf("<print to base 10 failed>\n");
+        goto exit;
+    }
+    printf("Printing z, base 10.  Optimized: ");
+    PrintNumberToBase10(nBaseTenTest, pWork);
     nY.SetFromHexString(szBasePlusOne);
     nZ.SetFromHexString(szBasePlusOneMinusSeven);
     nX2.SetFromHexString(szShouldEqualBase);
@@ -464,6 +483,48 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     {
         printf("Inequalities which shouldn't hold did -- negative signs\n");
         goto exit;
+    }
+    // test printing a few BIG numbers
+    for(int i=0;i<100;i++)
+    {
+        int nTimeBase, nTimeFast;
+        FILE *f;
+        int c,j;
+        char s1[20001], s2[20001], *s;
+        nX.SetRandom(2000*_DIGIT_SIZE_IN_BITS);
+        errno_t err = fopen_s(&f,"foo","w+");
+        nTimeBase = ::GetTickCount();
+        nX.PrintDecimalToFile(f);
+        nTimeBase = ::GetTickCount() - nTimeBase;
+        fclose(f);
+        err = fopen_s(&f, "foo", "r+");
+        j = 0;
+        do
+        {
+            c = getc(f);
+            s1[j++] = c;
+        }
+        while(c != EOF);
+        fclose(f);
+        s = s2 + 20001;
+        nTimeFast = ::GetTickCount();
+        PrintNumberToBase10(nX, s, pWork);
+        nTimeFast = ::GetTickCount() - nTimeFast;
+        // compare the values
+        j = 0;
+        do
+        {
+            if((s1[j]=='\0' || s1[j]=='\n') && (s[j]=='\0' || s[j]=='\n')) break;
+            if (s1[j] != s[j])
+            {
+                printf("two methods of printing to base 10 disagree\n");
+                printf("%s\n----------------------\n%s\n", s1, s);
+                goto exit;
+            }
+            j++;
+        }
+        while(true);
+        printf("Printing big integers to base 10: Base: %u ms\tFast: %u ms\n", nTimeBase, nTimeFast);
     }
     bTestWorked = true;
 exit:
@@ -1496,9 +1557,9 @@ bool CArithmeticCorrectnessTester::TestDivide(bool bVerbose)
                     printf("Basic division:\n");
                     printf("x*y = prod:\n");
                     printf("x:          ");
-                    nX.PrintHexToScreen();
+                    nX.PrintHexToFile();
                     printf("y:          ");
-                    nY.PrintHexToScreen();
+                    nY.PrintHexToFile();
                     printf("Prod:       ");
                     nProduct.PrintHexToFile();
                     printf("Prod/y:     ");
@@ -1538,11 +1599,11 @@ bool CArithmeticCorrectnessTester::TestDivide(bool bVerbose)
                     printf("Basic division with remainder:\n");
                     printf("x*y+z = prod:\n");
                     printf("x:          ");
-                    nX.PrintHexToScreen();
+                    nX.PrintHexToFile();
                     printf("y:          ");
-                    nY.PrintHexToScreen();
+                    nY.PrintHexToFile();
                     printf("z:          ");
-                    nZ.PrintHexToScreen();
+                    nZ.PrintHexToFile();
                     printf("Prod:       ");
                     nProduct.PrintHexToFile();
                     printf("Prod/y:     ");
@@ -1586,9 +1647,9 @@ bool CArithmeticCorrectnessTester::TestDivide(bool bVerbose)
                         printf("Recursive division:\n");
                         printf("x*y = prod:\n");
                         printf("x:          ");
-                        nX.PrintHexToScreen();
+                        nX.PrintHexToFile();
                         printf("y:          ");
-                        nY.PrintHexToScreen();
+                        nY.PrintHexToFile();
                         printf("Prod:       ");
                         nProduct.PrintHexToFile();
                         printf("Prod/y:     ");
@@ -1629,11 +1690,11 @@ bool CArithmeticCorrectnessTester::TestDivide(bool bVerbose)
                         printf("Recursive division with remainder:\n");
                         printf("x*y+z = prod:\n");
                         printf("x:          ");
-                        nX.PrintHexToScreen();
+                        nX.PrintHexToFile();
                         printf("y:          ");
-                        nY.PrintHexToScreen();
+                        nY.PrintHexToFile();
                         printf("z:          ");
-                        nZ.PrintHexToScreen();
+                        nZ.PrintHexToFile();
                         printf("Prod:       ");
                         nProduct.PrintHexToFile();
                         printf("Prod/y:     ");
@@ -5208,5 +5269,529 @@ bool CArithmeticCorrectnessTester::TestSquareRoot()
     bTestWorked = true;
 exit:
     free(pnWorkspace);
+    return bTestWorked;
+}
+
+bool CArithmeticCorrectnessTester::TestPower()
+{
+    CArithmeticBox     cBox;
+    CWorkspace         workspace;
+    CBigIntegerForTest nX, nPowerReal, nPowerComputed;
+    size_t             nPowerSize, nMemoryNeeds;
+    bool bTestWorked = false;
+    nPowerReal.Reserve(256*32);
+    nPowerComputed.Reserve(256*32 + 1);
+    workspace.Reserve(200000000);
+    // special case that has caused Issues in the past
+    nX.SetFromHexString("7F76A72");
+    // brute force to compute the power (hence, relatively small powers)
+    nPowerReal.SetFromHexString("1");
+    for(unsigned int i=0; i<77; i++)
+    {
+        cBox.Multiply(nX, nPowerReal, nPowerComputed);
+        nPowerReal = nPowerComputed;
+    }
+    cBox.Power(nX, 77, nPowerComputed);
+    if (nPowerComputed != nPowerReal)
+    {
+        printf("Problem computing power:\n");
+        printf("Power: 77\tX: ");
+        nX.PrintHexToFile();
+        printf("Computed power: ");
+        nPowerComputed.PrintHexToFile();
+        printf("actual power:   ");
+        nPowerReal.PrintHexToFile();
+        goto exit;
+    }
+    for(int j=0; j<2; j++)
+    {
+        // first pass: some powers of random values
+        // second pass: powers of maximum value for size
+        if(0==j) nX.SetRandom(256);
+        else     nX.SetFromHexString("ffffffffffffffffffffffffffffffff");
+        for(unsigned int n=1; n<=32; n++)
+        {
+            // brute force to compute the power (hence, relatively small powers)
+            nPowerReal.SetFromHexString("1");
+            for(unsigned int i=0; i<n; i++)
+            {
+                cBox.Multiply(nX, nPowerReal, nPowerComputed);
+                nPowerReal = nPowerComputed;
+            }
+            nMemoryNeeds                              = PowerMemoryNeeds(nX.GetValue(), nX.GetSize(), n);
+            workspace.GetSpace()[nMemoryNeeds]        = TEST_BUFFERGUARD;
+            nPowerComputed.GetValue()[nX.GetSize()*n] = TEST_BUFFERGUARD;
+            Power(nX.GetSize(), nPowerSize, n, nX.GetValue(), nPowerComputed.GetValue(), workspace.GetSpace());
+            if (TEST_BUFFERGUARD != workspace.GetSpace()[nMemoryNeeds])
+            {
+                printf("Overran workspace in computing power\n");
+                goto exit;
+            }
+            if (TEST_BUFFERGUARD != nPowerComputed.GetValue()[nX.GetSize()*n])
+            {
+                printf("Overran output buffer in computing power\n");
+                goto exit;
+            }
+            nPowerComputed.SetSize(nPowerSize);
+            if (nPowerComputed != nPowerReal)
+            {
+                printf("Problem computing power:\n");
+                printf("Power: %u\tX: ", n);
+                nX.PrintHexToFile();
+                printf("Computed power: ");
+                nPowerComputed.PrintHexToFile();
+                printf("actual power:   ");
+                nPowerReal.PrintHexToFile();
+                goto exit;
+            }
+        }
+    }
+    bTestWorked = true;
+exit:
+    return bTestWorked;
+}
+
+bool CArithmeticCorrectnessTester::TestNthRootHelper()
+{
+    const unsigned int c_nIterations = 1000;
+    unsigned int       nTimePower, nTimeRoot;
+    size_t             nRootSize, nRootSizeHint, nRoot, nMemoryNeeds;
+    CArithmeticBox     cBox;
+    CBigIntegerForTest nTrueRoot, nRootTruncated, nY, nComputedRoot;
+    bool bTestWorked = false;
+    printf("Testing nth root recursive helper function\n");
+    for(nRoot=2; nRoot<33; nRoot++)
+    {
+        printf("Testing %u root\n", nRoot);
+        for(size_t nRootSize=4; nRootSize<11; nRootSize++) // debug restore todo -- start at 1
+        {
+            for(unsigned int nIteration=0; nIteration<c_nIterations; nIteration++)
+            {
+                nTrueRoot.SetRandom(nRootSize*_DIGIT_SIZE_IN_BITS);
+#if _DEBUG
+                for(int nBigAdd=0; nBigAdd<2; nBigAdd++)
+                {
+                    CUnsignedArithmeticHelper::s_bForceBigAddForValidatingNthRoot = (0==nBigAdd);
+#else
+                {
+#endif
+                    cBox.Power(nTrueRoot, nRoot, nY);
+                    // try a y value one larger than the root to its power first
+                    nY += 1;
+                    nRootTruncated.Reserve(nTrueRoot.GetSize() + 1); // "hint" -- starting point for the procedure -- expected to have one extra DIGIT, initialize to 0, for overflow
+                    nRootTruncated = nTrueRoot;
+                    for(int i=0; i<nTrueRoot.GetSize()/2 - 1; i++)
+                    {
+                        nRootTruncated.m_pnValue[i] = 0;
+                    }
+                    nRootTruncated.m_pnValue[nTrueRoot.GetSize()] = 0; // overflow guard
+                    nRootSizeHint = nRootTruncated.GetSize();
+                    nMemoryNeeds  = NthRootMemoryNeeds(nY.GetSize(), nRoot);
+                    cBox.m_Workspace.Reserve(nMemoryNeeds + 1);
+                    cBox.m_Workspace.Reserve(nMemoryNeeds*10 + 1); // debug remove todo
+                    cBox.m_Workspace.GetSpace()[nMemoryNeeds] = TEST_BUFFERGUARD;
+                    NthRootRecursiveWithHint(nRoot, nRootSizeHint, nY.GetSize(), (nTrueRoot.GetSize()/2 - 1)*_DIGIT_SIZE_IN_BITS, nRootTruncated.GetValue(), nY.GetValue(), cBox.m_Workspace.GetSpace());
+                    if(TEST_BUFFERGUARD != cBox.m_Workspace.GetSpace()[nMemoryNeeds])
+                    {
+                        printf("Nth root test overran purputed workspace needs\n");
+                        goto exit;
+                    }
+                    // nRootTruncated should be replaced with the true root
+                    nRootTruncated.SetSize(nRootSizeHint);
+                    if(nRootTruncated != nTrueRoot)
+                    {
+                        printf("Helper function failure!\n");
+                        printf("Y:                "); nY.PrintHexToFile();
+                        printf("sqrt(Y):          "); nTrueRoot.PrintHexToFile();
+                        printf("computed sqrt(Y): "); nRootTruncated.PrintHexToFile();
+                        goto exit;
+                    }
+                    // try with Y the equal to root^power
+                    nY -= 1;
+                    nRootTruncated.Reserve(nTrueRoot.GetSize() + 1); // "hint" -- starting point for the procedure -- expected to have one extra DIGIT, initialize to 0, for overflow
+                    nRootTruncated = nTrueRoot;
+                    for(int i=0; i<nTrueRoot.GetSize()/2 - 1; i++)
+                    {
+                        nRootTruncated.m_pnValue[i] = 0;
+                    }
+                    nRootTruncated.m_pnValue[nTrueRoot.GetSize()] = 0; // overflow guard
+                    nRootSizeHint = nRootTruncated.GetSize();
+                    nMemoryNeeds  = NthRootMemoryNeeds(nY.GetSize(), nRoot);
+                    cBox.m_Workspace.Reserve(nMemoryNeeds + 1);
+                    cBox.m_Workspace.GetSpace()[nMemoryNeeds] = TEST_BUFFERGUARD;
+                    NthRootRecursiveWithHint(nRoot, nRootSizeHint, nY.GetSize(), (nTrueRoot.GetSize()/2 - 1)*_DIGIT_SIZE_IN_BITS, nRootTruncated.GetValue(), nY.GetValue(), cBox.m_Workspace.GetSpace());
+                    if(TEST_BUFFERGUARD != cBox.m_Workspace.GetSpace()[nMemoryNeeds])
+                    {
+                        printf("Nth root test overran purputed workspace needs\n");
+                        goto exit;
+                    } // debug restore todo
+                    // nRootTruncated should be replaced with the true root
+                    nRootTruncated.SetSize(nRootSizeHint);
+                    if(nRootTruncated != nTrueRoot)
+                    {
+                        printf("Helper function failure!\n");
+                        printf("Y:                "); nY.PrintHexToFile();
+                        printf("sqrt(Y):          "); nTrueRoot.PrintHexToFile();
+                        printf("computed sqrt(Y): "); nRootTruncated.PrintHexToFile();
+                        goto exit;
+                    }
+                    // repeat, but with a number one less than a perfect power
+                    nY             -= 1;
+                    nTrueRoot      -= 1;
+                    nRootTruncated =  nTrueRoot;
+                    for(int i=0; i<nTrueRoot.GetSize()/2 - 1; i++)
+                    {
+                        nRootTruncated.m_pnValue[i] = 0;
+                    }
+                    nRootTruncated.m_pnValue[nTrueRoot.GetSize()] = 0; // overflow guard
+                    nRootSizeHint = nRootTruncated.GetSize();
+                    NthRootRecursiveWithHint(nRoot, nRootSizeHint, nY.GetSize(), (nTrueRoot.GetSize()/2 - 1)*_DIGIT_SIZE_IN_BITS, nRootTruncated.GetValue(), nY.GetValue(), cBox.m_Workspace.GetSpace());
+                    if (TEST_BUFFERGUARD != cBox.m_Workspace.GetSpace()[nMemoryNeeds])
+                    {
+                        printf("Nth root test overran purputed workspace needs\n");
+                        goto exit;
+                    } // debug restore todo
+                    // nRootTruncated should be replaced with the true root
+                    nRootTruncated.SetSize(nRootSizeHint);
+                    if(nRootTruncated != nTrueRoot)
+                    {
+                        printf("Helper function failure!\n");
+                        printf("Y:                "); nY.PrintHexToFile();
+                        printf("sqrt(Y):          "); nTrueRoot.PrintHexToFile();
+                        printf("computed sqrt(Y): "); nRootTruncated.PrintHexToFile();
+                        goto exit;
+                    }
+                }
+            }
+        }
+    }
+    /*
+    // now: a REALLY big problem
+#if (16==_DIGIT_SIZE_IN_BITS)
+    nRoot = 60000;
+#else
+    nRoot = 1000000;
+#endif
+    nTrueRoot.SetRandom(50*_DIGIT_SIZE_IN_BITS);
+    nTimePower = ::GetTickCount();
+    cBox.Power(nTrueRoot, nRoot, nY);
+    nTimePower = ::GetTickCount() - nTimePower;
+    nY += 1; // start one over root
+    printf("Large trials: %uth root of a %i BYTE number\n",nRoot,nY.GetSize()*sizeof(DIGIT));
+    nRootTruncated.Reserve(nTrueRoot.GetSize() + 1); // "hint" -- starting point for the procedure -- expected to have one extra DIGIT, initialize to 0, for overflow
+    nRootTruncated = nTrueRoot;
+    for(int i=0; i<nTrueRoot.GetSize()/2 - 1; i++)
+    {
+        nRootTruncated.m_pnValue[i] = 0;
+    }
+    nRootTruncated.m_pnValue[nTrueRoot.GetSize()] = 0; // overflow guard
+    nRootSizeHint = nRootTruncated.GetSize();
+    nMemoryNeeds  = NthRootMemoryNeeds(nY.GetSize(), nRoot);
+    cBox.m_Workspace.Reserve(nMemoryNeeds + 1);
+    cBox.m_Workspace.GetSpace()[nMemoryNeeds] = TEST_BUFFERGUARD;
+    nTimeRoot = ::GetTickCount();
+    NthRootRecursiveWithHint(nRoot, nRootSizeHint, nY.GetSize(), nRootTruncated.GetValue(), nY.GetValue(), cBox.m_Workspace.GetSpace());
+    nTimeRoot = ::GetTickCount() - nTimeRoot;
+    printf("Number one over root to power: %u milliseconds to construct, %u for root\n", nTimePower, nTimeRoot);
+    if (TEST_BUFFERGUARD != cBox.m_Workspace.GetSpace()[nMemoryNeeds])
+    {
+        printf("Nth root test overran supposed workspace needs\n");
+        goto exit;
+    }
+    // nRootTruncated should be replaced with the true root
+    nRootTruncated.SetSize(nRootSizeHint);
+    if(nRootTruncated != nTrueRoot)
+    {
+        printf("Helper function failure!\n"); // don't print -- too darned big for it to be useful
+        goto exit;
+    }
+    nY -= 1; // the root itself
+    nRootTruncated.Reserve(nTrueRoot.GetSize() + 1); // "hint" -- starting point for the procedure -- expected to have one extra DIGIT, initialize to 0, for overflow
+    nRootTruncated = nTrueRoot;
+    for(int i=0; i<nTrueRoot.GetSize()/2 - 1; i++)
+    {
+        nRootTruncated.m_pnValue[i] = 0;
+    }
+    nRootTruncated.m_pnValue[nTrueRoot.GetSize()] = 0; // overflow guard
+    nRootSizeHint = nRootTruncated.GetSize();
+    nMemoryNeeds  = NthRootMemoryNeeds(nY.GetSize(), nRoot);
+    cBox.m_Workspace.Reserve(nMemoryNeeds + 1); // *5: for newton -- it needs more space debug resolve todo
+    cBox.m_Workspace.GetSpace()[nMemoryNeeds] = TEST_BUFFERGUARD;
+    nTimeRoot = ::GetTickCount();
+    NthRootRecursiveWithHint(nRoot, nRootSizeHint, nY.GetSize(), nRootTruncated.GetValue(), nY.GetValue(), cBox.m_Workspace.GetSpace());
+    nTimeRoot = ::GetTickCount() - nTimeRoot;
+    printf("Number equal root to power: %u for root\n", nTimeRoot);
+    if (TEST_BUFFERGUARD != cBox.m_Workspace.GetSpace()[nMemoryNeeds])
+    {
+        printf("Nth root test overran supposed workspace needs\n");
+        goto exit;
+    }
+    // nRootTruncated should be replaced with the true root
+    nRootTruncated.SetSize(nRootSizeHint);
+    if(nRootTruncated != nTrueRoot)
+    {
+        printf("Helper function failure!\n");
+        goto exit;
+    }
+    // repeat, but with a number one less than a perfect power
+    nY             -= 1;
+    nTrueRoot      -= 1;
+    nRootTruncated =  nTrueRoot;
+    for(int i=0; i<nTrueRoot.GetSize()/2 - 1; i++)
+    {
+        nRootTruncated.m_pnValue[i] = 0;
+    }
+    nRootTruncated.m_pnValue[nTrueRoot.GetSize()] = 0; // overflow guard
+    nRootSizeHint = nRootTruncated.GetSize();
+    nTimeRoot = ::GetTickCount();
+    NthRootRecursiveWithHint(nRoot, nRootSizeHint, nY.GetSize(), nRootTruncated.GetValue(), nY.GetValue(), cBox.m_Workspace.GetSpace());
+    nTimeRoot = ::GetTickCount() - nTimeRoot;
+    printf("Number one less than root to power: %u for root\n", nTimeRoot);
+    if (TEST_BUFFERGUARD != cBox.m_Workspace.GetSpace()[nMemoryNeeds])
+    {
+        printf("Nth root test overran supposed workspace needs\n");
+        goto exit;
+    }
+    // nRootTruncated should be replaced with the true root
+    nRootTruncated.SetSize(nRootSizeHint);
+    if(nRootTruncated != nTrueRoot)
+    {
+        printf("Helper function failure!\n");
+        goto exit;
+    }
+    */
+    /* Don't do it!  This took over 3 days on my machine and hadn't completed when then system decided it was time to reboot
+    nRootTruncated.Reserve(2*nY.GetSize()+1); // much bigger than needed -- but Newton needs more space than the basic here.  Lazy; not checking how much more
+    nTimeRoot = ::GetTickCount();
+    NthRootNewton(nY.GetSize(), nRoot, nRootSize, nY.GetValue(), nRootTruncated.GetValue(), cBox.m_Workspace.GetSpace());
+    nTimeRoot = ::GetTickCount() - nTimeRoot;
+    printf("Number one less than root to power: %u for root (Newton)\n", nTimeRoot);
+    */
+    bTestWorked = true;
+exit:
+    return bTestWorked;
+}
+
+bool CArithmeticCorrectnessTester::TestNthRoot()
+{
+    CArithmeticBox     cBox;
+    unsigned int       i, j, n, nMemoryNeedsRoot, nMemoryNeedsPower;
+    size_t             nRootSize, nPowerSize;
+    CBigIntegerForTest nX, nRoot, nPower, nXCopy;
+    DIGIT              *pWorkspace;
+    const unsigned int one_BILLION                           = 1000000000;
+    const unsigned int one_MILLION                           = 1000000;
+    const unsigned int c_nMaxRoot                            = 320, c_nMaxSize = 100;
+    const size_t       c_nMaxOverflow                        = 1 + (c_nMaxRoot + _DIGIT_SIZE_IN_BITS - 1)/_DIGIT_SIZE_IN_BITS; // max overflow might get from computing power, in DIGITS
+    const int          c_nNumSpecialCases                    = 1;
+    bool               bTestWorked                           = false;
+    const char         *szSpecialCase[c_nNumSpecialCases]    = { "5CA11FD105915F7D1EB73DF930603D58212A4F205FF5D0A46F0AD8EBA0327FE8A389F8CDC1BB1C2F817B48BC63ED3A478DC4AEE812D687F2A3DA3576602D23239036E734FB4CF833A9CEA655C425141D628DFF27EA3BFDB1E9CC08CAFF9A0CCDBACB35EC11D1C5993D232E7BC3E62DBB5647AB626451249004F34B4009F5BD66F6AB6A1D9F1393AF222FFB260C49263F5FF65D633E832E81FCA1386F4CF8F7AD597A52308420B5057DE5658F8CACE109B1DDFD31757D8CB1156B482ED5A0BBA2391BF4CADD42BC6BB578082B72A87FB9C381B412472AF091D5243395F2284B852BB39CD4070579F16E5CBBB32A1A622E4BA5EE8F31B64ACF01E0F5FC310C29D404A3D176" };
+    DIGIT              nSpecialCaseRoots[c_nNumSpecialCases] = { 77 };
+    cBox.m_Workspace.Reserve(one_BILLION);
+    pWorkspace = cBox.m_Workspace.GetSpace();
+    nX.Reserve(c_nMaxSize+1); // one extra DIGIT for overflow -- recall nth root backend is destructive
+    nXCopy.Reserve(c_nMaxSize);
+    nRoot.Reserve(max(c_nMaxRoot, c_nMaxSize)+1); 
+    nPower.Reserve(c_nMaxSize + c_nMaxOverflow);
+#ifdef _DEBUG
+    for(int nBigAdd=0; nBigAdd<2; nBigAdd++)
+    {
+        CUnsignedArithmeticHelper::s_bForceBigAddForValidatingNthRoot = (0 == nBigAdd);
+#else
+    {
+#endif
+        printf("testing nth root: special cases\n");
+        // some individual instances that have, in the past, caused Problems
+        for(int i=0; i<c_nNumSpecialCases; i++)
+        {
+            nX.SetFromHexString(szSpecialCase[i]);
+            n      = nSpecialCaseRoots[i];
+            nXCopy = nX; // since the backend procedures destroy x to make higher-level functions more efficient
+            NthRootNewton(nXCopy.GetSize(), n, nRootSize, nXCopy.GetValue(), nRoot.GetValue(), pWorkspace);
+            nRoot.SetSize(nRootSize);
+            Power(nRootSize, nPowerSize, n, nRoot.GetValue(), nPower.GetValue(), pWorkspace);
+            nPower.SetSize(nPowerSize);
+            if (nX < nPower)
+            {
+                printf("Newton: %u root\n",n);
+                printf("%u root of x, taken to %u power, should be at most x\n", n,n);
+                printf("X:                                \t"); nX.PrintHexToFile();
+                printf("%u root of X, taken to %u power:\t", n,n); nPower.PrintHexToFile();
+                printf("The root:                         \t"); nRoot.PrintHexToFile();
+                nPower = nRoot;
+                for (int i=0; i<n-1; i++)
+                {
+                    cBox.Multiply(nPower, nRoot, nXCopy);
+                    nPower = nXCopy;
+                }
+                printf("%u root of X, taken to Nth power:\t", n); nPower.PrintHexToFile();
+                goto exit;
+            }
+            nRoot += 1;
+            Power(nRootSize, nPowerSize, n, nRoot.GetValue(), nPower.GetValue(), pWorkspace);
+            nPower.SetSize(nPowerSize);
+            if (nPower < nX)
+            {
+                printf("Newton: %u root\n",n);
+                printf("%u root of x, taken to %u power, should be at greater than x\n",n+1,n+1);
+                printf("X:                                 \t"); nX.PrintHexToFile();
+                printf("%u root of X, taken to %u power:\t",n+1,n+1); nPower.PrintHexToFile();
+                printf("The root + 1:                      \t"); nRoot.PrintHexToFile();
+                goto exit;
+            }
+        }
+        printf("testing nth root: general\n");
+        for (n=2; n <= c_nMaxRoot; n++)
+        {
+            // first, test to make sure that the newton method is working properly
+            printf("Testing Newton:    %u root\n",n);
+            for (i=1; i<100000; i++)
+            {
+                if(i<32768)
+                {
+                    nX.SetSize(1);
+                    nX.GetValue()[0] = i;
+                }
+                else if (i<65536)
+                {
+                    nX.SetSize(1);
+                    nX.GetValue()[0] = c_nClearHigh - i + 32768;
+                }
+                else
+                {
+                    nX.SetRandom(512);
+                }
+                nXCopy = nX; // since the backend procedures destroy x to make higher-level functions more efficient
+                NthRootNewton(nXCopy.GetSize(), n, nRootSize, nXCopy.GetValue(), nRoot.GetValue(), pWorkspace);
+                nRoot.SetSize(nRootSize);
+                Power(nRootSize, nPowerSize, n, nRoot.GetValue(), nPower.GetValue(), pWorkspace);
+                nPower.SetSize(nPowerSize);
+                if (nX < nPower)
+                {
+                    printf("Newton:\n");
+                    printf("nth root of x, taken to nth power, should be at most x\n");
+                    printf("X:                                 "); nX.PrintHexToFile();
+                    printf("Nth root of X, taken to Nth power: "); nPower.PrintHexToFile();
+                    goto exit;
+                }
+                nRoot += 1;
+                Power(nRootSize, nPowerSize, n, nRoot.GetValue(), nPower.GetValue(), pWorkspace);
+                nPower.SetSize(nPowerSize);
+                if (nPower < nX)
+                {
+                    printf("Newton:\n");
+                    printf("1 + nth root of x, taken to nth power, should be at greater than x\n");
+                    printf("X:                                     "); nX.PrintHexToFile();
+                    printf("1 + Nth root of X, taken to Nth power: "); nPower.PrintHexToFile();
+                    goto exit;
+                }
+            }
+            printf("Testing optimized: %i root\n", n);
+            // next, test the hopefully-faster method: small tests
+            for (size_t nSize=2; nSize<=c_nMaxSize; nSize++)
+            {
+                nMemoryNeedsRoot = NthRootMemoryNeeds(nSize, n);
+                for(i=0;i<3;i++)
+                {
+                    switch (i)
+                    {
+                    case 0:
+                        // minimum nSize-DIGIT number
+                        nXCopy.SetSize(nSize);
+                        for(j=0;j<nSize-1;j++) nXCopy.m_pnValue[j] = 0;
+                        nXCopy.m_pnValue[j] = 1;
+                        break;
+                    case 1:
+                        // maximum nSize-DIGIT number
+                        nXCopy.SetSize(nSize);
+                        for(j=0;j<nSize;j++) nXCopy.m_pnValue[j] = c_nClearHigh;
+                        break;
+                    default:
+                        // random nSize-DIGIT number
+                        nXCopy.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
+                    }
+                    pWorkspace[nMemoryNeedsRoot] = TEST_BUFFERGUARD;
+                    nX                           = nXCopy;
+                    NthRoot(nX.GetSize(), n, nRootSize, nX.GetValue(), nRoot.GetValue(), pWorkspace);
+                    nRoot.SetSize(nRootSize);
+                    if (pWorkspace[nMemoryNeedsRoot] != TEST_BUFFERGUARD)
+                    {
+                        printf("Workspace overflow computing root %u of %u DIGIT number\n", n, nSize);
+             //           goto exit; // debug restore todo
+                    }
+                    // the computed root, taken to the nth power, should be at most nX
+                    nMemoryNeedsPower             = PowerMemoryNeeds(nRoot.GetValue(), nRootSize, n);
+                    pWorkspace[nMemoryNeedsPower] = TEST_BUFFERGUARD;
+                    Power(nRootSize, nPowerSize, n, nRoot.GetValue(), nPower.GetValue(), pWorkspace);
+                    if (pWorkspace[nMemoryNeedsPower] != TEST_BUFFERGUARD)
+                    {
+                        printf("Workspace overflow computing power %u of %u DIGIT number\n", nRootSize, nSize);
+                        goto exit;
+                    }
+                    nPower.SetSize(nPowerSize);
+                    if (nX < nPower)
+                    {
+                        printf("Optimized for n = %u, size %u:\n", n, nSize);
+                        printf("nth root of x, taken to nth power, should be at most x\n");
+                        printf("X:                                 "); nX.PrintHexToFile();
+                        printf("nth root of X, taken to Nth power: "); nPower.PrintHexToFile();
+                        printf("nth root of X:                     "); nRoot.PrintHexToFile();
+                        goto exit;
+                    }
+                    // <1+the computed root>, taken to the nth power, should be greater than nX
+                    nRoot += 1;
+                    nMemoryNeedsPower             = PowerMemoryNeeds(nRoot.GetValue(), nRoot.GetSize(), n);
+                    pWorkspace[nMemoryNeedsPower] = TEST_BUFFERGUARD;
+                    Power(nRoot.GetSize(), nPowerSize, n, nRoot.GetValue(), nPower.GetValue(), pWorkspace);
+                    nPower.SetSize(nPowerSize);
+                    if (pWorkspace[nMemoryNeedsPower] != TEST_BUFFERGUARD)
+                    {
+                        printf("Workspace overflow computing power %u of %u DIGIT number\n", nRootSize, nSize);
+                        goto exit;
+                    }
+                    if (nPower < nX)
+                    {
+                        printf("Optimized for n = %u, size %u:\n", n, nSize);
+                        printf("1 + nth root of x, taken to nth power, should be at greater than x\n");
+                        printf("X:                                       "); nX.PrintHexToFile();
+                        printf("1 + <nth root of X>, taken to Nth power: "); nPower.PrintHexToFile();
+                        printf("1 + <nth root of X>:                     "); nRoot.PrintHexToFile();
+                        goto exit;
+                    }
+                }
+            }
+        }
+        printf("Testing, using... The Box\n");
+        nX.SetRandom(8*one_MILLION);
+        nXCopy = nX;
+        for(DIGIT n=8*27; n<8*27+10; n++)
+        {
+            cBox.NthRoot(nX, n, nRoot);
+            if (nX != nXCopy)
+            {
+                printf("uh-oh\n");
+            }
+            cBox.Power(nRoot, n, nPower);
+      //      printf("%u %u %u %u b %u %u\n",n, nRoot.GetSize(), nPower.GetSize(),nX.GetSize(), nPower.m_pnValue[nPower.GetSize()-1], nX.m_pnValue[nX.GetSize() - 1]);
+            if (nX != nXCopy)
+            {
+                printf("oh-uh\n");
+            }
+            if(nX<nPower)
+            {
+                printf("Oh dear -- using The Box, the %u root of a %u byte number was too large\n", n, nX.GetSize()*sizeof(DIGIT));
+                goto exit;
+            }
+            nRoot += 1;
+            cBox.Power(nRoot, n, nPower);
+            if(nPower<=nX)
+            {
+                printf("Oh dear -- using The Box, the %u root of a %u byte number was too small\n", n, nX.GetSize()*sizeof(DIGIT));
+                goto exit;
+            }
+        }
+    }
+    bTestWorked = true;
+exit:
     return bTestWorked;
 }

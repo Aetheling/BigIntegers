@@ -51,6 +51,9 @@
     <ClInclude Include="CBigIntegerHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SmallPrimes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BigIntegers\BasicMultiply.cpp">
@@ -92,8 +95,5 @@
     <ClCompile Include="CBigIntegerHelper.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include=".gitignore" />
   </ItemGroup>
 </Project>

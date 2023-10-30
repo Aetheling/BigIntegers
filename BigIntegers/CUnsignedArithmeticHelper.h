@@ -63,13 +63,9 @@ class CUnsignedArithmeticHelper
     // build time: time to construct the arguments for the multiplies
     // process time: time to use the multiplies to get the results
 public:  // functions
+    static void PrintNumberToBase10(const CBigInteger &nX, DIGIT *pWork, FILE *f = stdout);
     static void ReportAllTimingData();
     static void ReportMeasuredComponentTimingData(ETimeMeasuredComponents eComponent);
-    /*static void ReportMultiplicationTimingData();
-    static void ReportDivisionTimingData();
-    static void ReportSquareRootTimingData();
-    static void ReportGCDTimingData();
-    static void ReportPowerModulusTimingData();*/
     static unsigned long long GetChunkProcessTime(bool bPre);
     static void ResetTimingData();
     // and one further operation on signed values...  *sigh*
@@ -104,6 +100,13 @@ public:  // functions
     static size_t FFTMultiplyMemoryNeeds(size_t nXSize, size_t nYSize, bool bMultAdd);
     static size_t FFTSquareMemoryNeeds(size_t nXSize, bool bMultAdd);
     static size_t SquareRootMemoryNeeds(size_t nXSize);
+    // note that the number is needed, not just its size!  This is because the result grows VERY rapidly,
+    // and we might want to take a large power of a small value -- say, 3.
+    static size_t PowerMemoryNeeds(DIGIT *pX, size_t nXSize, size_t nPower);
+    static size_t NthRootMemoryNeeds(size_t nXSize, DIGIT nRoot);
+    static size_t PrintToBase10MemoryNeeds(size_t nDigits);
+    // gives the size in BITs of the number passed.  Assumed not to be 0 (unchecked)
+    static size_t BitSize(size_t nXSize, const DIGIT *pnX);
     static void Multiply(size_t nXSize,
                          size_t nYSize,
                          DIGIT  *pnXValue,
@@ -117,10 +120,10 @@ public:  // functions
                             DIGIT  *pnYValue,
                             DIGIT  *pnRunningSum,
                             DIGIT  *pnWorkspace);
-    static void Square(size_t nXSize,
-                       DIGIT  *pnXValue,
-                       DIGIT  *pnXSquaredValue,
-                       DIGIT  *pnWorkspace);
+    static void Square(size_t      nXSize,
+                       const DIGIT *pnXValue,
+                       DIGIT       *pnXSquaredValue,
+                       DIGIT       *pnWorkspace);
     // computes X/Y (stored in XDivYValue) and the remainder (stored in X) -- yes; this
     // *is* destructive!
     // Y is NOT destroyed, despite not being labeled as const; it is transiently adjusted
@@ -259,9 +262,19 @@ public:  // functions
 							           bool        bProtectAgainstTimingAttacks = false);
     // computes the largest value SquareRoot such that SquareRoot*SquareRoot <= X
     static void SQRT(size_t nXSize, size_t &nRootSize, DIGIT *pnX, DIGIT *pnSquareRoot, DIGIT *pWorkspace);
-
+    // computes x^power.  As ever, it is assumed that all allocated space is adequate.  It is also assumed that the both power
+    // and x are greater than 0 (not checked)
+    static void Power(size_t nXSize, size_t &nPowerSize, unsigned int nPower, const DIGIT *pnX, DIGIT *pnPowerOfX, DIGIT *pnWorkspace);
+    // computes the general nth root of the number: for a given integer y and root n, the largest x s.t. x^n < y
+    // It is assumed that the root n is at least 2 -- unchecked -- and that X is at least 1 (likewise unchecked)
+    static void NthRoot(size_t nXSize, unsigned int n, size_t &nRootSize, DIGIT *pnX, DIGIT *pnRoot, DIGIT *pnWorkspace);
+    // computes the maximum size might get in computing power during nth root computation, above and beyond the size of the number whose root is being taken
+    static size_t NthRootPowerOverflow(DIGIT n) { return 2 + ((DOUBLEDIGIT) n + _DIGIT_SIZE_IN_BITS - 1) / _DIGIT_SIZE_IN_BITS; }
 
 protected: // functions
+    // s is assumed to have enough space, and initially to point to the END of the string.
+    // On return it will point to the first character of the number.
+    static void PrintNumberToBase10(const CBigInteger &nX, char *&s, DIGIT *pWork);
     static const char *GetMultiplicationAlgorithmName(EMultiplyAlgorithm eMultAlg);
     // Sets the XPlusY array to contain the sum X+Y -- it assumes that array is big enough;
     // it does NOT check.  Returns the #of digits in XPlusY.
@@ -360,6 +373,7 @@ protected: // functions
     static size_t SquareRootNewtonMemoryNeeds(size_t nXSize);
     static size_t GeneralSquareRootNewtonMemoryNeeds(size_t nX1Size, size_t nX2Size);
     static size_t GeneralSquareRootRecursiveMemoryNeeds(size_t nX1Size, size_t nX2Size);
+    static size_t NthRootNewtonMemoryNeeds(size_t nSize, DIGIT nRoot);
     // This is NOT to be held up as the right way to do multiplication.
     // Rather, it is an easy-to-debug baseline for testing the real
     // functions: something to get the bootstrapping started.
@@ -423,8 +437,7 @@ protected: // functions
                              const DIGIT  *pY,
                              DIGIT        *pZ,
                              bool         bAddInitialZValueToProduct);
-    // Note that it is assumed that nXSize <= nYSize (unverified).  Also
-    // doesn't handle 0-sized numbers!.
+    // Note that it is assumed that 1 <= nXSize <= nYSize, 12 (unverified).
     static void MultUShortLong(size_t       nXSize,
                                size_t       nYSize,
                                const DIGIT  *pXValue,
@@ -793,20 +806,6 @@ protected: // functions
                     size_t      nFieldSize,
                     SBitShift   nRootUnity,
                     DIGIT       *pnWorkspace);
-    // computes the FFT with a different ordering of the data for better locality of reference
-    /*static void FFTReordered(const DIGIT *pBase,    // the number whose FFT is to be computed
-                    DIGIT       *pFFT,
-                    size_t      nBaseSize, // the size of the number whose FFT is to be computed
-                    size_t      nChunkSize,
-                    size_t      nLength,
-                    size_t      nFieldSize,
-                    SBitShift   nRootUnity,
-                    DIGIT       *pnWorkspace);
-    static void FFTReorderedBackend(DIGIT       *pFFT,
-                                    size_t      nLength,
-                                    size_t      nFieldSize,
-                                    SBitShift   nRootUnity,
-                                    DIGIT       *pnWorkspace);*/
     static void FFT_Inverse_basic(const DIGIT *pToCompute,
                                   size_t      nLength,
                                   SBitShift   nRootUnity, // the root of unity used in the forward FFT
@@ -1028,27 +1027,45 @@ protected: // functions
     // returns the subproblem size used in dividing an nXSize-DIGIT number by an nYSize-DIGIT one
     static size_t DivideSubproblemSize(size_t nXSize, size_t nYSize, size_t &nDivOffset);
 
+    // computes the nth root of a number A using Newton's method: the largest value Root such that Root^n <= A.
+    static void NthRootNewton(size_t nASize, unsigned int n, size_t &nNthRootSize, const DIGIT *pA, DIGIT *pnRoot, DIGIT *pnWorkspace);
+    // computes the nth root of a number A using Newton's method: the largest value Root such that Root^n <= A, with a starting guess (assumed to be at least
+    // as large as the actual root) in pnRoot of size nNthRootSize
+    static void NthRootNewtonFromGuess(size_t nASize, unsigned int n, size_t &nNthRootSize, const DIGIT *pA, DIGIT *pnRoot, DIGIT *pnWorkspace);
+
+    // note we use a DIGIT for the root -- this restricts us somewhat when we use 16-bit DIGITs, but we need to multiply big integers by the root, which
+    // is rather simpler with the root no bigger than a DIGIT.
+    // TODO: upgrade for 16-bit DIGITs to allow two-DIGIT roots
+    static void NthRootRecursive(size_t nXSize, DIGIT n, size_t nRootBits, size_t nXBitsLeadDigit, size_t &nRootSize, DIGIT *pnX, DIGIT *pnRoot, DIGIT *pnWorkspace);
+    // Finds the nth root of y, starting from a.  Writing the root as (a+b), it is assumed that the initial guess of the root a is good enough that b <= a.
+    static void NthRootRecursiveWithHint(DIGIT n, size_t &nASize, size_t nYSize, size_t nMaxBSizeInBits, DIGIT *pA, const DIGIT *pY, DIGIT *pWorkspace);
+    // s should point to the end of the string on entry.  On return, it will point to
+    // the first character of the number.  There had best be enough space!  Note that
+    // this may include leading zeros.
+    static void PrintPiecesBase10(DIGIT **ppnPowersOfBase, size_t *pnPowerSizes, int nDepth, size_t nNumberDigits, DIGIT *pNum, char *&s, DIGIT *pWork);
+
 public:    // variables
 protected: // variables
     static const unsigned int c_n2NBynSizeBreakpoints = 7;
+#if _DEBUG
+    static bool               s_bForceBigAddForValidatingNthRoot;
+#endif
 #ifdef _UsingVariableThresholdsForTest
     static unsigned int       c_nBuildBlockSizePre;
     static unsigned int       c_nBuildBlockSizePost;
     static unsigned int       c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1];
     static unsigned int       c_pnSquareThresholds[eNumMultiplyAlgorithms-1];
-	static unsigned int       c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]; // switch between 5 and 6 pieces, 6 and 7, etc.  By the upper end,
-	                                                                         // don't care -- FFT mult is faster, anyway
+	static unsigned int       c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]; // switch between 5 and 6 pieces, 6 and 7, etc.
     static unsigned int       c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints];
     static unsigned int       c_nDivideThresholdSmall;       // at least 4 for correctness
     static unsigned int       c_nDivideThresholdDiff;        // at least 4 for correctness
     static unsigned int       c_nSquareRootThreshold;
 #else
-    static const unsigned int c_nBuildBlockSizePre;          // or whatever is found to be best in testing thresholds -- this is good
-    static const unsigned int c_nBuildBlockSizePost;         // or whatever is found to be best in testing thresholds -- this is good
+    static const unsigned int c_nBuildBlockSizePre;
+    static const unsigned int c_nBuildBlockSizePost;
     static const unsigned int c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1];
     static const unsigned int c_pnSquareThresholds[eNumMultiplyAlgorithms-1];
-	static const unsigned int c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]; // switch between 5 and 6 pieces, 6 and 7, etc.  By the upper end,
-	                                                                         // don't care -- FFT mult is faster, anyway
+	static const unsigned int c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]; // switch between 5 and 6 pieces, 6 and 7, etc.
     static const unsigned int c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints];
     // used by the function deciding how many pieces to use for REALLY BIG multiplications
     static const unsigned int c_nDivideThresholdSmall;       // at least 4 for correctness

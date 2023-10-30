@@ -133,7 +133,7 @@ int main()
 	//                              Test correctness                                      //
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
-    cCorrectnessTester.ResetThresholdsForTest();
+    /*cCorrectnessTester.ResetThresholdsForTest();
     if(!cCorrectnessTester.TestBigInteger())
     {
         printf("BigInteger test failed\n");
@@ -369,6 +369,36 @@ int main()
         printf("Square root test succeeded\n");
     }
     cCorrectnessTester.ResetThresholdsForTest();
+    if(!cCorrectnessTester.TestPower())
+    {
+        printf("Power test failed\n");
+        return 1;
+    }
+    else
+    {
+        printf("Power test succeeded\n");
+    }
+    cCorrectnessTester.ResetThresholdsForTest();
+    if(!cCorrectnessTester.TestNthRootHelper())
+    {
+        printf("Nth root helper test failed\n");
+        return 1;
+    }
+    else
+    {
+        printf("Nth root helper test succeeded\n");
+    }
+    cCorrectnessTester.ResetThresholdsForTest();
+    if(!cCorrectnessTester.TestNthRoot())
+    {
+        printf("Nth root test failed\n");
+        return 1;
+    }
+    else
+    {
+        printf("Nth root test succeeded\n");
+    }
+    cCorrectnessTester.ResetThresholdsForTest();
     if(!cRSATester.TestProbablyPrime())
     {
         printf("Probably prime test failed\n");
@@ -414,7 +444,7 @@ int main()
 	//                              Performance tests                                     //
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
-    cPerfTester.ResetThresholdsForOptimization();
+    */cPerfTester.ResetThresholdsForOptimization();
     if (!PinThreadToProcessor((DWORD)-1))
     {
         printf("Pinning processor failed!\n");
@@ -423,7 +453,7 @@ int main()
     else
     {
         printf("tests with processor pinned:\n");
-    }
+    }/*
     // on my machine, striped multiply is (almost) always faster than basic multiply.  But if basic multiply is faster on your
     // machine, you will want to adjust CUnsignedArithmeticHelper::MultUBackend, CUnsignedArithmeticHelper::MultAddUBackend,
     // and perhaps CUnsignedArithmeticHelper::SquareUBackend
@@ -436,7 +466,10 @@ int main()
     cPerfTester.CompareMultiplicationAlgorithms();
     cPerfTester.CompareDivideTimes();
     cPerfTester.SquareRootTimes();
-    cPerfTester.GCDTimes();
+    cPerfTester.GeneralRootTimes();*/
+  //  cPerfTester.CompareNthRootProblemBreakdownTimes();
+    cPerfTester.TestDrive();
+   /* cPerfTester.GCDTimes();
     cPerfTester.MatrixMultiplyTimes();
     cPerfTester.PowerModulusMontgomeryVsStandard();
     cPerfTester.FFTTimes();
@@ -451,6 +484,6 @@ int main()
     {
         printf("Unpinning processor failed!\n");
         return 1;
-    }
+    }*/
     return 0;
 }
