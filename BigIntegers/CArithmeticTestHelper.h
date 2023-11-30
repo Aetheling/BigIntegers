@@ -88,6 +88,7 @@ public:  // functions
     bool TestPower();
     bool TestNthRootHelper();
     bool TestNthRoot();
+    bool TestAVXInstructions();
 };
 
 // class to determine where the various threshholds and parameters should be
@@ -164,7 +165,6 @@ public:  // functions
     void CompareNthRootProblemBreakdownTimes();
     void MatrixMultiplyTimes();
     void FFTTimes();
-    void TestDrive();
 private: // functions
     void SaveMultiplicationThresholds();
     void RestoreMultiplicationThresholds();

@@ -428,6 +428,18 @@ int main()
     {
         printf("RSA without timing protection test succeeded\n");
     }
+    */
+    PinThreadToProcessor((DWORD)-1);
+    if(!cCorrectnessTester.TestAVXInstructions())
+    {
+        printf("AVX test failed\n");
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+    /*
 	////////////////////////////////////////////////////////////////////////////////////////
 	//                                                                                    //
 	//                              Tune parameters                                       //
@@ -444,7 +456,7 @@ int main()
 	//                              Performance tests                                     //
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
-    */cPerfTester.ResetThresholdsForOptimization();
+    cPerfTester.ResetThresholdsForOptimization();
     if (!PinThreadToProcessor((DWORD)-1))
     {
         printf("Pinning processor failed!\n");
@@ -453,7 +465,7 @@ int main()
     else
     {
         printf("tests with processor pinned:\n");
-    }/*
+    }
     // on my machine, striped multiply is (almost) always faster than basic multiply.  But if basic multiply is faster on your
     // machine, you will want to adjust CUnsignedArithmeticHelper::MultUBackend, CUnsignedArithmeticHelper::MultAddUBackend,
     // and perhaps CUnsignedArithmeticHelper::SquareUBackend
@@ -468,7 +480,6 @@ int main()
     cPerfTester.SquareRootTimes();
     cPerfTester.GeneralRootTimes();*/
   //  cPerfTester.CompareNthRootProblemBreakdownTimes();
-    cPerfTester.TestDrive();
    /* cPerfTester.GCDTimes();
     cPerfTester.MatrixMultiplyTimes();
     cPerfTester.PowerModulusMontgomeryVsStandard();
