@@ -5981,6 +5981,99 @@ void MultAVX_b(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ
     }
 }
 
+void Mult4Cols(DIGIT y0, DIGIT y1, DIGIT y2, DIGIT y3, __m256i &x, __m256i &carry, __m256i *pDest)
+{
+    /*
+    // debug remove todo
+    __m256i foo = _mm256_set_epi64x(4,3,2,1);
+    printf("Expect 1 2 3 4 : "); for (int i = 0; i < 4; i++) printf("%x ", foo.m256i_u64[i]); printf("\n");
+    printf("Expect 2 3 4 1 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_permute4x64_epi64(foo, 57).m256i_u64[i]); printf("\n");
+    printf("Expect 3 4 1 2 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_permute4x64_epi64(foo, 78).m256i_u64[i]); printf("\n");
+    printf("Expect 4 1 2 3 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_permute4x64_epi64(foo, 147).m256i_u64[i]); printf("\n");
+    printf("Expect 1 2 3 0 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(_mm256_setzero_si256(), foo, 63).m256i_u64[i]); printf("\n");
+    printf("Expect 0 0 0 4 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(foo, _mm256_setzero_si256(), 63).m256i_u64[i]); printf("\n");
+    printf("Expect 1 2 0 0 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(_mm256_setzero_si256(), foo, 15).m256i_u64[i]); printf("\n");
+    printf("Expect 0 0 3 4 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(foo, _mm256_setzero_si256(), 15).m256i_u64[i]); printf("\n");
+    printf("Expect 1 0 0 0 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(_mm256_setzero_si256(), foo, 3).m256i_u64[i]); printf("\n");
+    printf("Expect 0 2 3 4 : "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(foo, _mm256_setzero_si256(), 3).m256i_u64[i]); printf("\n");
+    */
+    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
+    __m256i mult0, mult1, mult2, mult3, acc;
+    mult0 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y0));
+    mult1 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y1));
+    mult2 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y2));
+    mult3 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y3));
+    acc   = _mm256_add_epi64(carry, _mm256_and_si256(mult0, mask)); // mult0, low order: cols 0-3
+    carry = _mm256_srli_epi64(mult3, 32);  // carry: cols 4-7
+    mult3 = _mm256_add_epi64(_mm256_srli_epi64(mult2, 32), _mm256_and_si256(mult3, mask)); // mult3: cols 3-6
+    mult2 = _mm256_add_epi64(_mm256_srli_epi64(mult1, 32), _mm256_and_si256(mult2, mask)); // mult2: cols 2-5
+    mult1 = _mm256_add_epi64(_mm256_srli_epi64(mult0, 32), _mm256_and_si256(mult1, mask)); // mult1: cols 1-4
+ //   printf("mult0 : "); for (int i = 0; i < 4; i++) printf("%x ", mult0.m256i_u64[i]); printf("\n");
+   // printf("mult1 : "); for (int i = 0; i < 4; i++) printf("%x ", mult1.m256i_u64[i]); printf("\n");
+ //   printf("mult2 : "); for (int i = 0; i < 4; i++) printf("%x ", mult2.m256i_u64[i]); printf("\n");
+   // printf("mult3 : "); for (int i = 0; i < 4; i++) printf("%x ", mult3.m256i_u64[i]); printf("\n");
+    // rotate mult3: cols (3, 4, 5, 6) -> (4, 5, 6, 3)
+    // rotate mult2: cols (2, 3, 4, 5) -> (4, 5, 2, 3)
+    // rotate mult1: cols (1, 2, 3, 4) -> (4, 1, 2, 3)
+    mult3 = _mm256_permute4x64_epi64(mult3, 57);  // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
+    mult2 = _mm256_permute4x64_epi64(mult2, 78);  // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
+    mult1 = _mm256_permute4x64_epi64(mult1, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
+    // add first 3 digits of mult3 to carry; last digit to acc
+//    printf("a : "); for (int i = 0; i < 4; i++) printf("%x ", carry.m256i_u64[i]); printf(" <-> "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(_mm256_setzero_si256(), mult3, 63).m256i_u64[i]); printf("\n");
+    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult3, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
+    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult3, 63));
+    // add first 2 digits of mult2 to carry; last 2 to acc
+//    printf("b : "); for (int i = 0; i < 4; i++) printf("%x ", carry.m256i_u64[i]); printf(" <-> "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(_mm256_setzero_si256(), mult2, 15).m256i_u64[i]); printf("\n");
+    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult2, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
+    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult2, 15));
+    // add first digit of mult1 to carry; last 3 to acc
+//    printf("c : "); for (int i = 0; i < 4; i++) printf("%x ", carry.m256i_u64[i]); printf(" <-> "); for (int i = 0; i < 4; i++) printf("%x ", _mm256_blend_epi32(_mm256_setzero_si256(), mult1, 3).m256i_u64[i]); printf("\n");
+    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult1, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
+    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult1, 3));
+    // store the results
+//    printf("store : "); for (int i = 0; i < 4; i++) printf("%x ", acc.m256i_u64[i]); printf("\n");
+ //   printf("carry : "); for (int i = 0; i < 4; i++) printf("%x ", carry.m256i_u64[i]); printf("\n");
+    _mm256_store_si256(pDest, acc);
+}
+
+void Mult4DigitX(DIGIT *pX, DIGIT *pY, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
+{
+    unsigned long long  sum, carry;
+    __m256i             xVec, carryVec, *pDest = (__m256i*) pWork;
+    DIGIT               *yLim = pY + nYDigits;
+
+    xVec     = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pX));
+    carryVec = _mm256_setzero_si256();
+    for(; pY<yLim-3; pY += 4)
+    {
+        Mult4Cols(pY[0], pY[1], pY[2], pY[3], xVec, carryVec, pDest++);
+    }
+    if(pY<yLim)
+    {
+        DIGIT y0, y1=0, y2=0, y3=0;
+        y0 = *pY++;
+        if (pY < yLim)
+        {
+            y1 = *pY++;
+            if (pY < yLim)
+            {
+                y2 = *pY;
+            }
+        }
+        Mult4Cols(y0, y1, y2, y3, xVec, carryVec, pDest++);
+    }
+    // push the data out left in carryVec
+    _mm256_store_si256(pDest, carryVec);
+    // finsL carry
+    carry = 0;
+    for (size_t i=0; i < nYDigits + 4; i++)
+    {
+        carry += pWork[i];
+        pZ[i] =  carry;
+        carry =  (carry>>32);
+    }
+}
+
 #if 0
 // as MultAVX_b, but with reordering of the inner loop.  Seems to make no difference
 void MultAVX_c(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
@@ -7390,7 +7483,7 @@ void FourStepsC(DIGIT *pY, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i
     _mm256_store_si256(pDest, accA);
 }
 
-#if 1
+#if 0
 void FourStepsD(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
 {
     DIGIT y0, y1, y2, y3;
@@ -7410,6 +7503,157 @@ void FourStepsD(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i
     MultCols2To13(y2, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
     // compute digits 3-14 of the output
     MultCols3To14(y3, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest);
+}
+#elif 1
+void FourStepsD(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
+{
+    // xxx
+    DIGIT y0, y1, y2, y3;
+    __m256i yA, yB, multA3, multB3, multC3;
+    __m256i multA2, multB2, multC2;
+    __m256i multA1, multB1, multC1;
+    __m256i multA0, multB0, multC0;
+    y0 = *pY++;
+    y1 = *pY++;
+    y2 = *pY++;
+    y3 = *pY;
+    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step,
+    // and accC garbage.  carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
+    // respectively.
+    // compute digits 0-11 of the output
+    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 3 steps, accB digits 4, 5, 6, and 7 after two steps, and accC digits 8-11 after one step.
+    // carryA, carryB, and carryC contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3; d 4, 5, 6, and 7; 8, 9, 10, 11
+    // respectively.
+    // compute digits 0-11 of the output
+    yA          = _mm256_set1_epi64x(y0);        // ??
+    yB          = _mm256_set1_epi64x(y1);
+    multA0      = _mm256_mul_epu32(yA, xLow);        // latency 5, throughput 0.5
+    multB0      = _mm256_mul_epu32(yA, xMid);
+    multC0      = _mm256_mul_epu32(yA, xHigh);
+    multC1      = _mm256_mul_epu32(yB, xHigh);
+    multB1      = _mm256_mul_epu32(yB, xMid);
+    multA1      = _mm256_mul_epu32(yB, xLow);
+    yA          = _mm256_set1_epi64x(y2);
+    yB          = _mm256_set1_epi64x(y3);
+    multC2      = _mm256_mul_epu32(yA, xHigh);
+    multB2      = _mm256_mul_epu32(yA, xMid);
+    multA2      = _mm256_mul_epu32(yA, xLow);
+    multC3      = _mm256_mul_epu32(yB, xHigh);
+    multB3      = _mm256_mul_epu32(yB, xMid);
+    multA3      = _mm256_mul_epu32(yB, xLow);
+    yA          = _mm256_set1_epi64x(0xFFFFFFFF);
+    accA        = _mm256_add_epi64(accA, carryA);   // latency 1, throughput 0.33
+    accB        = _mm256_add_epi64(accB, carryB);
+    accC        = _mm256_add_epi64(accC, carryC);
+    carryA      = _mm256_and_si256(yA, multA0);  // latency 1, throughput 0.33
+    carryB      = _mm256_and_si256(yA, multB0);
+    carryC      = _mm256_and_si256(yA, multC0);
+    accA        = _mm256_add_epi64(accA, carryA);   // latency 1, throughput 0.33
+    accB        = _mm256_add_epi64(accB, carryB);
+    accC        = _mm256_add_epi64(accC, carryC);
+    carryA      = _mm256_srli_epi64(multA0, 32);     // latency 1, throughput 0.5
+    carryB      = _mm256_srli_epi64(multB0, 32);
+    carryC      = _mm256_srli_epi64(multC0, 32);
+    multC0      = _mm256_and_si256(yA, multC1);
+    multB0      = _mm256_and_si256(yA, multB1);
+    multA0      = _mm256_and_si256(yA, multA1);
+    carryC      = _mm256_add_epi64(carryC, multC0);
+    carryB      = _mm256_add_epi64(carryB, multB0);
+    carryA      = _mm256_add_epi64(carryA, multA0);
+    yB          = _mm256_setzero_si256();
+    // This section
+    // add slots 0, 1, 2 of carryA (digits 1, 2, and 3) to slots 1, 2, and 3 of accA
+    // add slot 3 of carryA and slots 0, 1, 2 of carryB to accB
+    // add slot 3 of carryB and slots 0, 1, 2 of carryC to accC
+    // set slot 0 of accD to slot 3 of carryB and set the rest of it to 0
+    //
+    // rotate carryC: (0, 1, 2, 3) -> (3, 0, 1, 2) :: slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
+    carryC      = _mm256_permute4x64_epi64(carryC, 147); // latency 3, throughput 1
+    // rotate carryB: (0, 1, 2, 3) -> (3, 0, 1, 2)
+    carryB      = _mm256_permute4x64_epi64(carryB, 147);
+    // rotate carryA: (0, 1, 2, 3) -> (3, 0, 1, 2)
+    carryA      = _mm256_permute4x64_epi64(carryA, 147);
+    // set accD to the high-order digit of carryC
+    accD        = _mm256_blend_epi32(yB, carryC, 3);
+    // add the appropriate sections of carryB, carryC to accC
+    multC0      = _mm256_blend_epi32(carryC, carryB, 3);
+    multB0      = _mm256_blend_epi32(carryB, carryA, 3);
+    multA0      = _mm256_blend_epi32(carryA, yB, 3);
+    accC        = _mm256_add_epi64(accC, multC0);
+    // add the appropriate sections of carryA, carryB to accB
+    accB        = _mm256_add_epi64(accB, multB0);
+    // add selected digits of carryA to accA
+    accA        = _mm256_add_epi64(accA, multA0);
+    // set the high-order bits out of the multiplications for the carry into the next step
+    carryA      = _mm256_srli_epi64(multA1, 32);     // latency 1, throughput 0.5
+    carryB      = _mm256_srli_epi64(multB1, 32);
+    carryC      = _mm256_srli_epi64(multC1, 32);
+    // overall: 14 cycles?
+    // compute digits 2-13 of the output
+    // y[2] gives digits 2-13 (low bits) and 3-14 (high bits)
+    // carryA contains carry from previous step for digits 2-5; carryB, for 6-9
+    multC0      = _mm256_and_si256(yA, multC2);
+    multB0      = _mm256_and_si256(yA, multB2);
+    multA0      = _mm256_and_si256(yA, multA2);
+    carryC      = _mm256_add_epi64(carryC, multC0);
+    carryB      = _mm256_add_epi64(carryB, multB0);
+    carryA      = _mm256_add_epi64(carryA, multA0);
+    // this section
+    // add slots 0, 1 of carryA (digits 2 and 3) to slots 2 and 3 of accA
+    // add slot 2 and 3 of carryA and slots 0 and 1 of carryB to accB
+    // add slot 2 and 3 of carryB to accC
+    //
+    // rotate carryC: (0, 1, 2, 3) -> (2, 3, 0, 1)
+    carryC      = _mm256_permute4x64_epi64(carryC, 78); // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
+    // rotate carryB: (0, 1, 2, 3) -> (2, 3, 0, 1)
+    carryB      = _mm256_permute4x64_epi64(carryB, 78);
+    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
+    carryA      = _mm256_permute4x64_epi64(carryA, 78);
+    // add slots 0, 1 of carryC to accD
+    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(yB, carryC, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from carryB; rest are 0
+    // add the appropriate sections of carryB, carryC to accC
+    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 15));
+    // add the appropriate sections of carryA, carryB to accB
+    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 15));
+    // add selected digits of carryA to accA
+    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, yB, 15));
+    // set the high-order bits out of the multiplications for the carry into the next step
+    carryA      = _mm256_srli_epi64(multA2, 32);
+    carryB      = _mm256_srli_epi64(multB2, 32);
+    carryC      = _mm256_srli_epi64(multC2, 32);
+    // compute digits 3-14 of the output
+    // y[3] gives digits 3-10 (low bits) and 4-11 (high bits)
+    // carryA contains carry from previous step for digits 3-6; carryB, for 7-10
+    multC0      = _mm256_and_si256(yA, multC3);
+    multB0      = _mm256_and_si256(yA, multB3);
+    multA0      = _mm256_and_si256(yA, multA3);
+    carryC      = _mm256_add_epi64(carryC, multC0);
+    carryB      = _mm256_add_epi64(carryB, multB0);
+    carryA      = _mm256_add_epi64(carryA, multA0);
+    // this section
+    // add slots 0 of carryA (digit 3) to slot 3 of accA
+    // add slots 1, 2, and 3 of carryA and slot 0 of carryB to accB
+    // add slots 1, 2, and 3 of carryB and slot 0 of carryC to accC
+    // add slots 1, 2, and 3 of carryC to accD
+    //
+    // rotate carryC: (0, 1, 2, 3) -> (1, 2, 3, 0)
+    carryC      = _mm256_permute4x64_epi64(carryC, 57); // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
+    // rotate carryB: (0, 1, 2, 3) -> (1, 2, 3, 0)
+    carryB      = _mm256_permute4x64_epi64(carryB, 57);
+    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
+    carryA      = _mm256_permute4x64_epi64(carryA, 57);
+    // add slots 0, 1, 2 from carryC to accD
+    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(yB, carryC, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from carryB; rest are 0
+    // add the appropriate sections of carryA, carryB to accB; band c to accC
+    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 63));
+    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 63));
+    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, yB, 63));
+    // set the high-order bits out of the multiplications for the carry into the next step
+    carryA      = _mm256_srli_epi64(multA3, 32);
+    carryB      = _mm256_srli_epi64(multB3, 32);
+    carryC      = _mm256_srli_epi64(multC3, 32);
+    // at this point we are done with accA.  Write it to memory.
+    _mm256_store_si256(pDest, accA);
 }
 #elif 0
 void FourStepsD(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
@@ -8995,61 +9239,22 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
     unsigned int nTime;
     bool         bTestWorked = true;
     unsigned int data[8]     = { 1000000,2000000,3000000,4000000,5000000,6000000,7000000,8000000 };
-    const unsigned int c_nIterations = 10000000;
+    const unsigned int c_nIterations = 1000000; //10000000;
     const unsigned int c_nBigSize = 2049;
-     
-    __m256i foo, goo;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    /*
-    foo = _mm256_loadu_si256((__m256i const* ) data);
-    printf("%u %u %u %u %u %u %u %u\n", foo.m256i_i32[0], foo.m256i_i32[1], foo.m256i_i32[2], foo.m256i_i32[3], foo.m256i_i32[4], foo.m256i_i32[5], foo.m256i_i32[6], foo.m256i_i32[7]);
-    printf("%I64u %I64u %I64u %I64u\n", foo.m256i_u64[0], foo.m256i_u64[1], foo.m256i_u64[2], foo.m256i_u64[3]);
-    goo = _mm256_cvtepu32_epi64(_mm256_castsi256_si128(foo));
-    printf("%I64u %I64u %I64u %I64u\n", goo.m256i_u64[0], goo.m256i_u64[1], goo.m256i_u64[2], goo.m256i_u64[3]);
-    goo = _mm256_permute4x64_epi64(foo, 0xEE);
-    printf("%u %u %u %u %u %u %u %u\n", goo.m256i_i32[0], goo.m256i_i32[1], goo.m256i_i32[2], goo.m256i_i32[3], goo.m256i_i32[4], goo.m256i_i32[5], goo.m256i_i32[6], goo.m256i_i32[7]);
-    // load data
-    __m256i xUpper, xLower;
-    __m256i multUpperBits, multLowerBits;
-    xUpper = _mm256_loadu_si256((__m256i const*) data);
-    xLower = _mm256_cvtepu32_epi64(_mm256_castsi256_si128(xUpper));
-    xUpper = _mm256_cvtepu32_epi64(_mm256_castsi256_si128(_mm256_permute4x64_epi64(xUpper, 0xEE)));
-    printf("check:\n");
-    printf("lower: %I64u %I64u %I64u %I64u\n", xLower.m256i_u64[0], xLower.m256i_u64[1], xLower.m256i_u64[2], xLower.m256i_u64[3]);
-    printf("upper: %I64u %I64u %I64u %I64u\n", xUpper.m256i_u64[0], xUpper.m256i_u64[1], xUpper.m256i_u64[2], xUpper.m256i_u64[3]);
-    multLowerBits = _mm256_mul_epu32(xUpper, xLower); // multiply lower 32 bits of each 64-bit element of xUpper, xLower
-    printf("multiply: %I64u %I64u %I64u %I64u\n", multLowerBits.m256i_u64[0], multLowerBits.m256i_u64[1], multLowerBits.m256i_u64[2], multLowerBits.m256i_u64[3]);
-    multUpperBits = _mm256_srli_epi64(multLowerBits, 32);
-    multLowerBits = _mm256_and_si256(multLowerBits, mask);
-    printf("mult base:  %I64u %I64u %I64u %I64u\n", multLowerBits.m256i_u64[0], multLowerBits.m256i_u64[1], multLowerBits.m256i_u64[2], multLowerBits.m256i_u64[3]);
-    printf("mult carry: %I64u %I64u %I64u %I64u\n", multUpperBits.m256i_u64[0], multUpperBits.m256i_u64[1], multUpperBits.m256i_u64[2], multUpperBits.m256i_u64[3]);
-    */
-    /*for (int i = 0; i < 4; i++)
-    {
-        foo.m256i_u64[i] = i + 1;
-        goo.m256i_u64[i] = 5 + i;
-    }
-    DOUBLEDIGIT xx = 0;
-    HorizontalSum2(foo, goo, foo, goo, 0, (__m256i*) data);*/
+
+    __m256i x1 = _mm256_set_epi64x(1, 1, 1, 1);
+    __m256i x2 = _mm256_set_epi64x(1, 1, 1, 1);
+
     printf("\nchecking AVX multiply\n\n");
-    /*x.SetRandom(128*_DIGIT_SIZE_IN_BITS);
-    y.SetRandom(128*_DIGIT_SIZE_IN_BITS);
-    x.SetSize(16);
-    y.SetSize(16);
-    for (int i = 0; i < x.GetSize(); i++)
-    {
-        x.GetValue()[i] = i+1;
-        y.GetValue()[i] = i+1;
-    }*/
-    z1.Reserve(x.GetSize() + y.GetSize());
-    z2.Reserve(x.GetSize() + y.GetSize());
     DOUBLEDIGIT pWork[16000];
     c_pnMultiplicationThresholds[0] = 256; // force basic multiply
     // 4x1025 multiply
     x.SetRandom(4*_DIGIT_SIZE_IN_BITS);
     y.SetRandom(c_nBigSize*_DIGIT_SIZE_IN_BITS);
  //   y.SetRandom(16*_DIGIT_SIZE_IN_BITS);
-  /*  for (int i = 0; i < x.GetSize(); i++)
+    z1.Reserve(x.GetSize() + y.GetSize());
+    z2.Reserve(x.GetSize() + y.GetSize());
+    /*for (int i = 0; i < x.GetSize(); i++)
     {
         x.GetValue()[i] = i + 1;// +((i + 1) << 16);
         y.GetValue()[i] = i + 1;// +((i + 1) << 16);
@@ -9062,7 +9267,7 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
     z2.Reserve(x.GetSize() + y.GetSize());
     DIGIT *pX = x.GetValue(), *pY = y.GetValue(), *pZ = z2.GetValue();
     unsigned int nXDigits = x.GetSize(), nYDigits = y.GetSize();
-    /*printf("4 x 1025\n\n");
+    printf("4 x %u\n\n",c_nBigSize);
     nTime = ::GetTickCount();
     for(int i=0;i<c_nIterations;i++)
     {
@@ -9097,11 +9302,26 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
         printf("Computed: ");  z2.PrintHexToFile();
     }
     printf("AVX_b time:  %u milliseconds\n", nTime);
-    */
-    printf("\n8 x %i\n\n",y.GetSize());
+    nTime = ::GetTickCount();
+    for (int i = 0; i < c_nIterations; i++)
+    {
+        Mult4DigitX(pX, pY, nYDigits, pZ, pWork);
+    }
+    nTime = ::GetTickCount() - nTime;
+    if (z1 != z2)
+    {
+        printf("Mult4DigitX is WRONG!\n");
+    //    printf("correct:  ");  z1.PrintHexToFile();
+      //  printf("Computed: ");  z2.PrintHexToFile();
+        return 0;
+    }
+    printf("Mult4DigitX time:  %u milliseconds\n", nTime);
+
+    // Mult4DigitX
+    /*printf("\n8 x %i\n\n",y.GetSize());
     // boost the size to 8x1024
     x.SetRandom(8*_DIGIT_SIZE_IN_BITS);
-    /*y.SetSize(23);
+    y.SetSize(23);
     for (int i = 0; i < x.GetSize(); i++)
     {
         x.GetValue()[i] = ((i + 1) << 16);
@@ -9110,6 +9330,7 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
     {
         y.GetValue()[i] = ((i + 1) << 16);
     }*/
+#if 0
     nXDigits = x.GetSize();
     nYDigits = y.GetSize();
     z1.Reserve(x.GetSize() + y.GetSize());
@@ -9117,7 +9338,6 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
     pZ = z2.GetValue();
     pX = x.GetValue();
     pY = y.GetValue();
-#if 0
     nTime = ::GetTickCount();
     for (int i = 0; i < c_nIterations; i++)
     {
@@ -9250,10 +9470,11 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
     nTime = ::GetTickCount() - nTime;
     z2.SetSize(x.GetSize() + y.GetSize());
     printf("AVX_h time:    %u milliseconds\n", nTime);
-    printf("\n12 x %i\n\n", y.GetSize());
 #endif
+    printf("\n12 x %i\n\n", y.GetSize());
     // boost the size to 8x1024
     x.SetRandom(12*_DIGIT_SIZE_IN_BITS);
+    y.SetSize(c_nBigSize);
     nXDigits = x.GetSize();
     nYDigits = y.GetSize();
     z1.Reserve(x.GetSize() + y.GetSize());
@@ -9261,7 +9482,7 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
     pZ = z2.GetValue();
     pX = x.GetValue();
     pY = y.GetValue();
-    /*nTime = ::GetTickCount();
+    nTime = ::GetTickCount();
     for (int i = 0; i < c_nIterations; i++)
     {
         cBox.Multiply(x, y, z1);
@@ -9270,11 +9491,12 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
     for (size_t nSize=32; nSize<48; nSize++)
     {
         y.SetSize(nSize);
-        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);//<<16; // debug remove todo
-        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);//<<16; // debug remove todo
+  //      for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);//<<16; // debug remove todo
+    //    for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);//<<16; // debug remove todo
         cBox.Multiply(x, y, z1);
-        MultAVX_i(x.GetValue(), y.GetValue(), x.GetSize(), y.GetSize(), z2.GetValue(), pWork);
+        z2.Reserve(x.GetSize() + y.GetSize());
         z2.SetSize(x.GetSize() + y.GetSize());
+        MultAVX_i(x.GetValue(), y.GetValue(), x.GetSize(), y.GetSize(), z2.GetValue(), pWork);
         if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
         if (z1 != z2)
         {
@@ -9283,7 +9505,7 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
             printf("Computed: ");  z2.PrintHexToFile();
             break;
         }
-    }*/
+    }
     y.SetSize(c_nBigSize);
     z2.Reserve(x.GetSize() + y.GetSize());
     pX       = x.GetValue();
@@ -9306,6 +9528,10 @@ bool CArithmeticCorrectnessTester::TestAVXInstructions()
     if (z1 != z2)
     {
         printf("AVX_i is WRONG for size %i -- oh PHOOEY!\n", c_nBigSize);
+    }
+    else
+    {
+        printf("all is well!\n");
     }
     return bTestWorked;
 }
