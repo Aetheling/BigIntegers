@@ -367,12 +367,17 @@ bool CBigInteger::Reserve(size_t nDigitsNeeded, bool bPreserveData)
     {
         if(BUFFERGUARD != m_pnValue[m_nAllocatedSize+j])
         {
-            printf("Overran big integer allocated size\n");
+            printf("Overran big integer allocated size\n");  // debug restore todo
         }
     }
 #endif
     if(m_nAllocatedSize<nDigitsNeeded)
     {
+        if(!bPreserveData)
+        {
+            free(m_pnValue);
+            m_pnValue = NULL;
+        }
 #ifdef _DEBUG
         // extra space for buffer guard in debug
         DIGIT *pTemp = (DIGIT *) malloc(sizeof(DIGIT)*(nDigitsNeeded + _BUFFERGUARD_SLOTS));
@@ -383,8 +388,8 @@ bool CBigInteger::Reserve(size_t nDigitsNeeded, bool bPreserveData)
         if(bPreserveData && 0<m_nSize)
         {
             memcpy_s(pTemp,sizeof(DIGIT)*nDigitsNeeded,m_pnValue,sizeof(DIGIT)*m_nSize);
+            free(m_pnValue);
         }
-        free(m_pnValue);
         m_pnValue        = pTemp;
         m_nAllocatedSize = nDigitsNeeded;
 #ifdef _DEBUG
@@ -606,6 +611,40 @@ bool CBigInteger::operator-=(const CBigInteger &nSub)
             break;
         }
     }
+    return true;
+}
+
+bool CBigInteger::operator*=(DIGIT nMult)
+{
+    size_t i;
+    DOUBLEDIGIT nProd, nCarry, m;
+    if (!Reserve(m_nSize + 1, true)) return false; // insufficient memory for even ONE more DIGIT!  Uh-oh...
+    nCarry = 0;
+    m      = nMult;
+    for(i=0; i<m_nSize; i++)
+    {
+        nProd        = m_pnValue[i]*m + nCarry;
+        m_pnValue[i] = nProd;
+        nCarry       = nProd>>_DIGIT_SIZE_IN_BITS;
+    }
+    m_pnValue[i] =  nCarry;
+    m_nSize      += (0<nCarry);
+    return true;
+}
+
+bool CBigInteger::operator/=(DIGIT nDiv)
+{
+    size_t i;
+    DOUBLEDIGIT nVal, nRemainder;
+    if (0 == nDiv) return false;
+    nRemainder = 0;
+    for(i=m_nSize-1; 0<=i; i--)
+    {
+        nVal         = nRemainder | m_pnValue[i];
+        m_pnValue[i] = nVal/nDiv;
+        nRemainder   = (nVal%nDiv)<<_DIGIT_SIZE_IN_BITS;
+    }
+    if(0<m_nSize && 0==m_pnValue[m_nSize-1]) m_nSize--;
     return true;
 }
 

@@ -595,3 +595,194 @@ EArithmeticOperationResult CArithmeticBox::SQRT(const CBigInteger &nX, CBigInteg
     m_Workspace.CheckBufferguard();
     return eOperationSucceeded;
 }
+
+EArithmeticOperationResult CArithmeticBox::Power(const CBigInteger &nX, unsigned int nPower, CBigInteger &nXToPower)
+{
+    size_t needs, nPowSize;
+    if(0==nPower)
+    {
+        if(nX.IsZero()) return eBadOperand;
+        nXToPower.SetSize(1);
+        nXToPower.m_pnValue[0] = 1;
+        nXToPower.m_bNegative  = false;
+        return eOperationSucceeded;
+    }
+    needs    = CUnsignedArithmeticHelper::PowerMemoryNeeds(nX.GetValue(), nX.GetSize(), nPower);
+    nPowSize = (CUnsignedArithmeticHelper::BitSize(nX.GetSize(), nX.GetValue())*nPower + _DIGIT_SIZE_IN_BITS - 1)/_DIGIT_SIZE_IN_BITS + 1; // +1: need one extra DIGIT for overflow
+    if(!nXToPower.Reserve(nPowSize) || !m_Workspace.Reserve(needs))
+    {
+        return eOutOfMemory;
+    }
+    else if(1==nPower)
+    {
+        nXToPower = nX;
+    }
+    else
+    {
+        size_t nPowerSize;
+        if(0 == (nPower&1))
+        {
+            // Even power -> result is positive, regardless of initial sign.
+            // (If the power is odd, the sign is preserved.)
+            nXToPower.m_bNegative = false;
+        }
+        CUnsignedArithmeticHelper::Power(nX.GetSize(), nPowerSize, nPower, nX.GetValue(), nXToPower.GetValue(), m_Workspace.GetSpace());
+        nXToPower.SetSize(nPowerSize);
+    }
+    // note that bufferguard checks are compiled away in retail
+    nX.CheckBufferguard();
+    nXToPower.CheckBufferguard();
+    m_Workspace.CheckBufferguard();
+    return eOperationSucceeded;
+}
+
+// 
+EArithmeticOperationResult CArithmeticBox::PrintBase10ToFile(const CBigInteger &nX, FILE *f)
+{
+    if (!m_Workspace.Reserve(CUnsignedArithmeticHelper::PrintToBase10MemoryNeeds(nX.GetSize()))) return eOutOfMemory;
+    CUnsignedArithmeticHelper::PrintNumberToBase10(nX, m_Workspace.GetSpace(), f);
+    return eOperationSucceeded;
+}
+
+// First, note that the mth root of the nth root of X is the (m*n)th root of X (ltr).
+// If n is even, it is faster to compute the (n/2)th root of the square root of X than to compute the nth root directly (especially as the specialized
+// square root function is faster than using the general nth root function with n==2).  Similarly if n is 3, it is generally faster to compute the cube root
+// of X, then the appropriate root of that (tests I've done indicate breaking it up is generally faster, and no worse.  The square root is ALWAYS faster).
+// So that is what we do here.
+EArithmeticOperationResult CArithmeticBox::NthRoot(const CBigInteger &nXOriginal, DIGIT n, CBigInteger &nNthRootOfX)
+{
+    CBigInteger nX;
+    size_t nRootSize, nMaxN2Size, nMaxN3Size, nMaxPowerOverflow;
+    DIGIT  n3Pow;
+    DIGIT  nCopy = n; // debug remove todo
+    int    nPowersOf2 = 0, nPowersOf3 = 0, nSteps;
+    if (nXOriginal.IsNegative()) return eBadOperand;
+    if (1 == n || nXOriginal.IsZero())
+    {
+        return (nNthRootOfX = nXOriginal) ? eOperationSucceeded : eOutOfMemory;
+    }
+    // nth root is destructive -- need to make a copy of our value
+    nMaxPowerOverflow = CUnsignedArithmeticHelper::NthRootPowerOverflow(n);
+    if(!nX.Reserve(nXOriginal.GetSize()+nMaxPowerOverflow)) return eOutOfMemory; // do we need extra space at all?  I think so
+    nX = nXOriginal;
+    while(0==(n&1))
+    {
+        n /= 2;
+        nPowersOf2++;
+    }
+    nMaxN2Size = (nX.GetSize()+(1<<nPowersOf2)-1)/(1<<nPowersOf2);
+    n3Pow      = n;
+    while (0 == (n%3))
+    {
+        n /= 3;
+        nPowersOf3++;
+    }
+    n3Pow      /= n;
+    nMaxN3Size =  (nMaxN2Size + n3Pow - 1)/n3Pow;
+    nSteps     =  nPowersOf2 + nPowersOf3 + (1<n);
+    if(1==nSteps)
+    {
+        size_t nDigits = ((nX.GetSize() + n - 1) / n) + nMaxPowerOverflow;// (n + _DIGIT_SIZE_IN_BITS - 1) / _DIGIT_SIZE_IN_BITS;
+        if (!nNthRootOfX.Reserve(nDigits)) return eOutOfMemory; // may need considerable extra space for Newton
+        nDigits = CUnsignedArithmeticHelper::NthRootMemoryNeeds(nX.GetSize(), n);
+        if (!m_Workspace.Reserve(nDigits)) return eOutOfMemory;
+        CUnsignedArithmeticHelper::NthRoot(nX.GetSize(), n, nRootSize, nX.GetValue(), nNthRootOfX.GetValue(), m_Workspace.GetSpace());
+    }
+    else
+    {
+        int nWorkspaceNeeded;
+        // at least 2 root operations
+        DIGIT *pRootA, *pRootB, *pHold, *pWork;
+        if (0 < nPowersOf2)
+        {
+            // the two root "slots" should be big enough for the square root of X
+            nRootSize        = nMaxPowerOverflow + (nX.GetSize()+1)/2;
+            nWorkspaceNeeded = CUnsignedArithmeticHelper::SquareRootMemoryNeeds(nX.GetSize());
+            if(0<nPowersOf3) nWorkspaceNeeded = max(nWorkspaceNeeded, CUnsignedArithmeticHelper::NthRootMemoryNeeds(nMaxN2Size, 3));
+            if(1<n)          nWorkspaceNeeded = max(nWorkspaceNeeded, CUnsignedArithmeticHelper::NthRootMemoryNeeds(nMaxN3Size, n));
+        }
+        else
+        {
+            nRootSize        = nMaxPowerOverflow + (nX.GetSize()+2)/3;
+            nWorkspaceNeeded = CUnsignedArithmeticHelper::NthRootMemoryNeeds(nX.GetSize(), 3);
+            nWorkspaceNeeded = max(nWorkspaceNeeded, CUnsignedArithmeticHelper::NthRootMemoryNeeds(nMaxN3Size, n));
+        }
+        nWorkspaceNeeded += nRootSize;
+        if (!nNthRootOfX.Reserve(nRootSize) || !m_Workspace.Reserve(nWorkspaceNeeded)) return eOutOfMemory;
+        // starting value in rootA, result in rootB
+        pWork = m_Workspace.GetSpace();
+        if(nSteps&1)
+        {
+            // odd number of steps: final value in initial value of rootB
+            pRootA = pWork;
+            pRootB = nNthRootOfX.GetValue();
+        }
+        else
+        {
+            // even number of steps: final value in initial value of rootA
+            pRootA = nNthRootOfX.GetValue();
+            pRootB = pWork;
+        }
+        pWork += nRootSize;
+        if (0<nPowersOf2)
+        {
+            CUnsignedArithmeticHelper::SQRT(nX.GetSize(), nRootSize, nX.GetValue(), pRootB, pWork);
+            pHold  = pRootA;
+            pRootA = pRootB;
+            pRootB = pHold;
+            for(int i=1; i<nPowersOf2; i++)
+            {
+                CUnsignedArithmeticHelper::SQRT(nRootSize, nRootSize, pRootA, pRootB, pWork);
+                pHold  = pRootA;
+                pRootA = pRootB;
+                pRootB = pHold;
+            }
+            for(int i=0; i<nPowersOf3; i++)
+            {
+                CUnsignedArithmeticHelper::NthRoot(nRootSize, 3, nRootSize, pRootA, pRootB, pWork);
+                pHold  = pRootA;
+                pRootA = pRootB;
+                pRootB = pHold;
+            }
+            if(1<n)
+            {
+                CUnsignedArithmeticHelper::NthRoot(nRootSize, n, nRootSize, pRootA, pRootB, pWork);
+            }
+        }
+        else
+        {
+            CUnsignedArithmeticHelper::NthRoot(nX.GetSize(), 3, nRootSize, nX.GetValue(), pRootB, pWork);
+            pHold  = pRootA;
+            pRootA = pRootB;
+            pRootB = pHold;
+            for(int i=1; i<nPowersOf3; i++)
+            {
+                CUnsignedArithmeticHelper::NthRoot(nRootSize, 3, nRootSize, pRootA, pRootB, pWork);
+                pHold  = pRootA;
+                pRootA = pRootB;
+                pRootB = pHold;
+            }
+            if(1<n)
+            {
+                CUnsignedArithmeticHelper::NthRoot(nRootSize, n, nRootSize, pRootA, pRootB, pWork);
+            }
+        }
+    }
+    {
+
+        DIGIT* pPow = new DIGIT[10000000]; // debug remove todo
+         // debug remove todo
+        size_t nPowSize;
+        n = nCopy;
+        CUnsignedArithmeticHelper::Power(nRootSize, nPowSize, n, nNthRootOfX.GetValue(), pPow, m_Workspace.GetSpace());
+  //      printf("%u %u %u %u a %u %u\n",n,nRootSize, nPowSize, nXOriginal.GetSize(), pPow[nPowSize - 1], nXOriginal.m_pnValue[nXOriginal.GetSize() - 1]);
+        if (1 == CBigInteger::CompareUnsigned(nPowSize, nXOriginal.GetSize(), pPow, nXOriginal.GetValue()))
+        {
+            printf("Zounds!\n");
+        }
+        delete pPow;
+    }
+    nNthRootOfX.SetSize(nRootSize);
+    nNthRootOfX.SetNegative(false);
+    return eOperationSucceeded;
+}

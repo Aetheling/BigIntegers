@@ -36,6 +36,9 @@ public:    // functions
     // subtract in place
     bool operator-=(DIGIT nAdd); // BOOLEAN return value!  (true on success; might run out of memory).  Also DIGIT is unsigned, so can't do (say) x -= -7 -- use x += 7 instead
     bool operator-=(const CBigInteger &nToSubtract); // BOOLEAN return value!  (true on success; might run out of memory).
+    // multiply, divide in place.  Single DIGIT factor only!
+    bool operator*=(DIGIT nMult); // BOOLEAN return value!  (true on success; might run out of memory).
+    bool operator/=(DIGIT nDiv); // fails on divide-by-0 only
     // Note that we do NOT overload +, -, *, /, or %.  For these, use the arithmetic box.  (*, /, and % need a workspace, and for all
     // overloading would mean computing the value, then copying it in to the destination rather than computing it in the destination
     // in the first place as the box does)
@@ -95,7 +98,7 @@ public:    // functions
     // the file is NULL).  Adds some spacing to make the result more readable
     bool PrintHexToFile(FILE *pFile = NULL) const;
     bool PrintHexToScreen(); // prints to screen without spacing for aesthetics
-    // Same, but prints to base 10.  Slower.  NOTE: allows for at most ~2 billion DIGITs
+    // Same, but prints to base 10.  NOTE: allows for at most ~2 billion DIGITs.  SLOW for large integers!  Like, 24 hours for a 20 million DIGIT one.
     bool PrintDecimalToFile(FILE *pFile = NULL) const;
     // Makes sure the integer has space for at least as many digits as needed.  If bPreserveData is false and more space is needed,
     // the original data is discarded.  The data is copied if bPreserveData is true
@@ -134,6 +137,7 @@ public:    // functions
 protected: // functions
 private:   // functions
     // returns -1 if X < Y, 0 if X == Y, and 1 if X > Y.
+    public:// debug remove todo -- public declaration, that is
     static int CompareUnsigned(size_t nXSize, size_t nYSize, const DIGIT *pX, const DIGIT *pY);
 public:    // data
     size_t m_nAllocatedSize;

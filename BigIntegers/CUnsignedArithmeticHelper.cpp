@@ -6,6 +6,9 @@
 #pragma warning(disable:4018)    // signed/unsigned mismatch
 #pragma warning(disable:4146)    // unary operator applied to signed type
 CHighPerfTimer CUnsignedArithmeticHelper::s_Timer;
+#if _DEBUG
+bool CUnsignedArithmeticHelper::s_bForceBigAddForValidatingNthRoot = false;
+#endif
 // global declarations
 SSystemDataNode *g_pInversionStructures = NULL;
 // class variable definitions/initializations
@@ -575,7 +578,18 @@ size_t CUnsignedArithmeticHelper::GeneralSquareRootRecursiveMemoryNeeds(size_t n
 
 size_t CUnsignedArithmeticHelper::SquareRootMemoryNeeds(size_t nXSize)
 {
-    return 2*nXSize + 2 + max(MultiplyMemoryNeeds((nXSize+1)>>1,(nXSize+1)>>1), GeneralSquareRootRecursiveMemoryNeeds((3*nXSize)>>2, nXSize));
+    return 3*nXSize + 2 + max(MultiplyMemoryNeeds((nXSize+1)>>1,(nXSize+1)>>1), GeneralSquareRootRecursiveMemoryNeeds((3*nXSize)>>2, nXSize));
+}
+
+// same for NthRootNewtonFromGuess and NthRootNewton -- though in the former case, we assume the initial guess is close to the actual root in
+// size (at most 1 extra DIGIT)
+size_t CUnsignedArithmeticHelper::NthRootNewtonMemoryNeeds(size_t nSize, DIGIT nRoot)
+{
+    // (n+_DIGIT_SIZE_IN_BITS-1)/_DIGIT_SIZE_IN_BITS: using Newton the value being taken to a power can be a bit larger than the actual root
+    // (assuming a reasonable initial guess), but not much
+    DIGIT pMaxFirst[] = { c_nClearHigh };
+    return 2*nSize + 2 + max(PowerMemoryNeeds(pMaxFirst - ((nSize+nRoot-1)/nRoot) + 1, (nSize+nRoot-1)/nRoot, nRoot-1) + (nRoot+_DIGIT_SIZE_IN_BITS-1)/_DIGIT_SIZE_IN_BITS,
+                             DivisionMemoryNeeds(nSize, (nSize+nRoot-1)/nRoot));
 }
 
 void CUnsignedArithmeticHelper::Multiply(size_t nXSize,
@@ -615,10 +629,10 @@ void CUnsignedArithmeticHelper::MultiplyAdd(size_t nXSize,
 #endif
 }
 
-void CUnsignedArithmeticHelper::Square(size_t nXSize,
-                                       DIGIT  *pnXValue,
-                                       DIGIT  *pnXSquaredValue,
-                                       DIGIT  *pnWorkspace)
+void CUnsignedArithmeticHelper::Square(size_t      nXSize,
+                                       const DIGIT *pnXValue,
+                                       DIGIT       *pnXSquaredValue,
+                                       DIGIT       *pnWorkspace)
 {
 #if(_CollectDetailedTimingData)
     DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
@@ -9170,8 +9184,11 @@ void CUnsignedArithmeticHelper::Divide(size_t  nXSize,
                                        DIGIT   *pWorkspace)
 {
 #if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp  = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
     DivideBackend(nXSize, nYSize, nXDivYSize, nRemainderSize, pXValue, pYValue, pXDivYValue, dwTimestamp, pWorkspace);
+    g_nDivideTime[eTotalDivideCalls]++;
+    g_nDivideTime[eTotalDivideTime] += dwTimestamp - dwTimestamp2;
 #else
     DivideBackend(nXSize, nYSize, nXDivYSize, nRemainderSize, pXValue, pYValue, pXDivYValue, pWorkspace);
 #endif
@@ -9198,6 +9215,7 @@ void CUnsignedArithmeticHelper::DivideBackend(size_t  nXSize,
         // X is smaller than Y
         nXDivYSize     = 0;
         nRemainderSize = nXSize;
+        *pXDivYValue   = 0;
     }
     else
     {
@@ -9269,11 +9287,6 @@ void CUnsignedArithmeticHelper::DivideBackend(size_t  nXSize,
             while(0<nRemainderSize && 0==pXValue[nRemainderSize-1]);
         }
     }
-#if _CollectDetailedTimingData
-    dwTimestamp                     =  s_Timer.GetMicroseconds();
-    g_nDivideTime[eTotalDivideTime] += dwTimestamp - dwTimestamp2;
-    g_nDivideTime[eTotalDivideCalls]++;
-#endif
 };
 
 void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
@@ -9309,227 +9322,137 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
             pXDivYValue[i] = 0;
         }
         nD1 = pYValue[nYSize-1];
-        nD2 = ((nD1<<_DIGIT_SIZE_IN_BITS) + pYValue[nYSize-2]) + 1;
+        nD2 = ((nD1<<_DIGIT_SIZE_IN_BITS) + pYValue[nYSize-2]) + (2<nYSize); // if nYSize==2, do exact divide -- no need to estimate
         nD1++;
-        if(nXSize>nYSize)
+        while(nYSize < nXSize)
         {
-            do
+            ii = 0;
+            nD3 = pXValue[nXSize - 1];
+            if(nD1 <= nD3)
             {
-                nD3 = pXValue[nXSize-1];
-                nD4 = (nD3<<_DIGIT_SIZE_IN_BITS) + pXValue[nXSize-2];
-                if(nD2>nD4 || nD2==0) // nD2==0: first two digits are FFFFFFFF
-                {
-                    nMult  = nD4/nD1;
-                    nProd  = pXDivYValue[nXSize-nYSize-1] + nMult;
-                    nCarry = nProd>>_DIGIT_SIZE_IN_BITS;
-                    if(nCarry)
-                    {
-                        pXDivYValue[nXSize-nYSize-1] = (DIGIT) nProd;
-                        ii = 0;
-                        do
-                        {
-                            nProd                         = pXDivYValue[nXSize-nYSize+ii] + (DOUBLEDIGIT) 1;
-                            pXDivYValue[nXSize-nYSize+ii] = (DIGIT) nProd;
-                            nCarry                        = (nProd>>_DIGIT_SIZE_IN_BITS);
-                            ii++;
-                        }
-                        while(nCarry);
-                    }
-                    else
-                    {
-                        pXDivYValue[nXSize-nYSize-1] = (DIGIT) nProd;
-                    }
-                    nCarry = 0;
-                    nXSize--;
-                    for(i=0;i<nYSize;i++)
-                    {
-                        nProd                    =  nMult*pYValue[i];
-                        nBorrow                  =  (nProd&c_nClearHigh) + nCarry;
-                        nCarry                   =  (nProd>>_DIGIT_SIZE_IN_BITS) + (nBorrow>>_DIGIT_SIZE_IN_BITS);
-                        nBorrow                  =  nBorrow&c_nClearHigh;
-                        if(nBorrow>pXValue[nXSize-nYSize+i])
-                        {
-                            nCarry++;
-                        }
-                        pXValue[nXSize-nYSize+i] -= (DIGIT) nBorrow;
-                    }
-                    pXValue[nXSize] -= (DIGIT) nCarry;
-                    nXSize++;
-                }
-                else
-                {
-                    nMult               = nD4/nD2;
-                    nProd               = pXDivYValue[nXSize-nYSize] + nMult;
-                    nCarry              = (nProd>>_DIGIT_SIZE_IN_BITS);
-                    if(nCarry)
-                    {
-                        pXDivYValue[nXSize-nYSize] = (DIGIT) nProd;
-                        ii = 1;
-                        do
-                        {
-                            nProd                         = pXDivYValue[nXSize-nYSize+ii] + (DOUBLEDIGIT) 1;
-                            pXDivYValue[nXSize-nYSize+ii] = (DIGIT) nProd;
-                            nCarry                        = (nProd>c_nClearHigh);
-                            ii++;
-                        }
-                        while(nCarry);
-                    }
-                    else
-                    {
-                        pXDivYValue[nXSize-nYSize] = (DIGIT) nProd;
-                    }
-                    nCarry  = 0;
-                    for(i=0;i<nYSize;i++)
-                    {
-                        nProd                    =  nMult*pYValue[i];
-                        nBorrow                  =  (nProd&c_nClearHigh) + nCarry;
-                        nCarry                   =  (nProd>>_DIGIT_SIZE_IN_BITS) + (nBorrow>>_DIGIT_SIZE_IN_BITS);
-                        nBorrow                  =  nBorrow&c_nClearHigh;
-                        if(nBorrow>pXValue[nXSize-nYSize+i])
-                        {
-                            nCarry++;
-                        }
-                        pXValue[nXSize-nYSize+i] -= (DIGIT) nBorrow;
-                    }
-                }
-                // At this point, might be able to subtract off one more
-                // y -- note that we divided by the first DIGIT +1, so
-                // there may have been a slight underestimate
-                if(nD1-1<=pXValue[nXSize-1])
-                {
-                    i = 1;
-                    if(nD1>pXValue[nXSize-1])
-                    {
-                        do
-                        {
-                            i++;
-                        }
-                        while(pXValue[nXSize-i]==pYValue[nYSize-i] && i<nYSize);
-                    }
-                    if(pXValue[nXSize-i]>=pYValue[nYSize-i]) // can subtract
-                    {
-                        nProd  = pXDivYValue[nXSize-nYSize] + (DOUBLEDIGIT) 1;
-                        nCarry = (nProd>>_DIGIT_SIZE_IN_BITS);
-                        if(nCarry)
-                        {
-                            pXDivYValue[nXSize-nYSize] = (DIGIT) nProd;
-                            ii = 1;
-                            do
-                            {
-                                nProd                         = pXDivYValue[nXSize-nYSize+ii] + (DOUBLEDIGIT) 1;
-                                pXDivYValue[nXSize-nYSize+ii] = (DIGIT) nProd;
-                                nCarry                        = (nProd>c_nClearHigh);
-                                ii++;
-                            }
-                            while(nCarry);
-                        }
-                        else
-                        {
-                            pXDivYValue[nXSize-nYSize] = (DIGIT) nProd;
-                        }
-                        nBorrow = 0;
-                        for(i=0;i<nYSize;i++)
-                        {
-                            nProd                    =  nBorrow + pYValue[i];
-                            nBorrow                  =  (nProd>pXValue[nXSize-nYSize+i]);
-                            pXValue[nXSize-nYSize+i] -= (DIGIT) nProd;
-                        }
-                    }
-                }
-                while(pXValue[nXSize-1]==0 && nXSize>0)
-                {
-                    nXSize--;
-                }
+                nMult = nD3/nD1;
             }
-            while(nXSize>nYSize);
-        }
-        if(nXSize==nYSize)  // might be able to stuff in a *little* more
-        {
-            nD3 = pXValue[nXSize-1];
-            nD4 = pXValue[nXSize-2] + (nD3<<_DIGIT_SIZE_IN_BITS);
-            if(nD2<=nD4 && 0<nD2)
+            else
             {
-                nMult  = nD4/nD2;
-                nProd  = pXDivYValue[0] + nMult;
-                nCarry = (nProd>c_nClearHigh);
-                if(nCarry)
-                {
-                    pXDivYValue[0] = (DIGIT) nProd;
-                    ii = 1;
-                    do
-                    {
-                        nProd           = pXDivYValue[ii] + (DOUBLEDIGIT) 1;
-                        pXDivYValue[ii] = (DIGIT) nProd;
-                        nCarry          = (nProd>c_nClearHigh);
-                        ii++;
-                    }
-                    while(nCarry);
-                }
-                else
-                {
-                    pXDivYValue[0] = (DIGIT) nProd;
-                }
-                nCarry =  0;
-                for(i=0;i<nYSize;i++)
-                {
-                    nProd   = nMult*pYValue[i];
-                    nBorrow = (nProd&c_nClearHigh) + nCarry;
-                    nCarry  = (nProd>>_DIGIT_SIZE_IN_BITS) + (nBorrow>>_DIGIT_SIZE_IN_BITS);
-                    if((DIGIT) nBorrow>pXValue[i])
-                    {
-                        nCarry++;
-                    }
-                    pXValue[i] -= (DIGIT) nBorrow;
-                }
+                nMult = ((nD3<<_DIGIT_SIZE_IN_BITS) + pXValue[nXSize-2])/nD1;
+                ii    = 1;
             }
-            // At this point, might be able to subtract off one more
-            // y -- note that we divided by the first DIGIT +1, so
-            // there may have been a slight underestimate
-            nD1--;
-            if(nD1<=pXValue[nXSize-1])
+            // add divide into place
+            nProd                         = pXDivYValue[nXSize-nYSize-ii] + nMult;
+            nCarry                        = nProd>>_DIGIT_SIZE_IN_BITS;
+            if (pXDivYValue + nXSize - nYSize - ii == pYValue+ nYSize - 1) // debug remove todo
+            {
+                printf("ZOUNDS!!!\n");
+            }
+            pXDivYValue[nXSize-nYSize-ii] = nProd;
+            if(nCarry)
             {
                 i = 1;
-                if(nD1==pXValue[nXSize-1])
+                do
                 {
-                    do
-                    {
-                        i++;
-                    }
-                    while(pXValue[nXSize-i]==pYValue[nYSize-i] && i<nYSize);
+                    nProd                             = pXDivYValue[nXSize-nYSize-ii+i] + nCarry;
+                    pXDivYValue[nXSize-nYSize-ii+i++] = nProd;
+                    nCarry                            = (nProd>>_DIGIT_SIZE_IN_BITS);
                 }
-                if(pXValue[nXSize-i]>=pYValue[nYSize-i]) // can subtract
+                while(nCarry);
+            }
+            // subtract multiple of Y from X
+            nCarry = 0;
+            for(i=0;i<nYSize;i++)
+            {
+                nProd                    =  nMult*pYValue[i];
+                nBorrow                  =  (nProd&c_nClearHigh) + nCarry;
+                nCarry                   =  (nProd>>_DIGIT_SIZE_IN_BITS) + (nBorrow>>_DIGIT_SIZE_IN_BITS);
+                nBorrow                  =  nBorrow&c_nClearHigh;
+                if(nBorrow>pXValue[nXSize-nYSize+i-ii])
                 {
-                    nProd  = pXDivYValue[nXSize-nYSize] + (DOUBLEDIGIT) 1;
-                    nCarry = (nProd>>_DIGIT_SIZE_IN_BITS);
-                    if(nCarry)
-                    {
-                        pXDivYValue[0] = (DIGIT) nProd;
-                        ii = 1;
-                        do
-                        {
-                            nProd           = pXDivYValue[ii] + (DOUBLEDIGIT) 1;
-                            pXDivYValue[ii] = (DIGIT) nProd;
-                            nCarry          = (nProd>c_nClearHigh);
-                            ii++;
-                        }
-                        while(nCarry);
-                    }
-                    else
-                    {
-                        pXDivYValue[0] = (DIGIT) nProd;
-                    }
-                    nBorrow   =  0;
+                    nCarry++;
+                }
+                if (pXValue + nXSize - nYSize + i - ii == pYValue + nYSize - 1) // debug remove todo
+                {
+                    printf("ZOUNDS!!!\n");
+                }
+                pXValue[nXSize-nYSize+i-ii] -= (DIGIT) nBorrow;
+            }
+            if (pXValue + nXSize - ii == pYValue + nYSize - 1) // debug remove todo
+            {
+                printf("ZOUNDS!!!\n");
+            }
+            pXValue[nXSize-ii] -= (DIGIT) nCarry;
+            while(0<nXSize && 0==pXValue[nXSize-1])
+            {
+                nXSize--;
+            }
+        }
+        if(nXSize==nYSize)
+        {
+            // might be able to extract a little bit more
+            // if 0 == nD2, first 2 DIGITS of Y are FFF...: know can get at most one more Y in
+            if(0!=nD2)
+            {
+                nD3   = *((DOUBLEDIGIT *) (pXValue+nXSize-2));
+                nMult = nD3/nD2;
+                if(nMult)
+                {
+                    // yup
+                    nCarry = 0;
                     for(i=0;i<nYSize;i++)
                     {
-                        nProd      =  nBorrow + pYValue[i];
-                        nBorrow    =  (nProd>pXValue[i]);
-                        pXValue[i] -= (DIGIT) nProd;
+                        nProd                    =  nMult*pYValue[i];
+                        nBorrow                  =  (nProd&c_nClearHigh) + nCarry;
+                        nCarry                   =  (nProd>>_DIGIT_SIZE_IN_BITS) + (nBorrow>>_DIGIT_SIZE_IN_BITS);
+                        nBorrow                  =  nBorrow&c_nClearHigh;
+                        if(nBorrow>pXValue[i])
+                        {
+                            nCarry++;
+                        }
+                        pXValue[i] -= (DIGIT) nBorrow;
+                    }
+                    pXValue[i] -= (DIGIT) nCarry;
+                    while(0<nXSize && 0==pXValue[nXSize-1])
+                    {
+                        nXSize--;
+                    }
+                    nCarry         = nMult + pXDivYValue[0];
+                    pXDivYValue[0] = nCarry;
+                    nCarry         = nCarry>>_DIGIT_SIZE_IN_BITS;
+                    if(nCarry)
+                    {
+                        i = 1;
+                        while(c_nClearHigh==pXDivYValue[i]) pXDivYValue[i++] = 0;
+                        pXDivYValue[i]++;
                     }
                 }
             }
-            while(pXValue[nXSize-1]==0 && nXSize>0)
+            if(nXSize==nYSize)
             {
-                nXSize--;
+                // *might* be able to fit in just one more
+                bool bXGreater = false;
+                for(i=1;i<=nXSize;i++)
+                {
+                    if(pXValue[nXSize-i]<pYValue[nXSize-i])
+                    {
+                        break;
+                    }
+                    else if(pYValue[nXSize-i]<pXValue[nXSize-i])
+                    {
+                        bXGreater = true;
+                        break;
+                    }
+                }
+                bXGreater |= (i==nXSize+1);
+                if(bXGreater)
+                {
+                    // in fact, we can
+                    nXSize = Subtract(nXSize, nYSize, pXValue, pYValue, pXValue);
+                    i = 0;
+                    while(c_nClearHigh==pXDivYValue[i]) pXDivYValue[i++] = 0;
+                    pXDivYValue[i]++;
+                }
+                while(0<nXSize && 0==pXValue[nXSize-1])
+                {
+                    nXSize--;
+                }
             }
         }
     }
@@ -9628,9 +9551,9 @@ void CUnsignedArithmeticHelper::DivideRecursive(size_t  nXSize,
     }
     // Break problem down recursively: want to use at most half of y for subproblem
     nSmallY = DivideSubproblemSize(nXSize, nYSize, nDivOffset);
-    // y shift: nYSize - nSmallY1
-    // x shift: nXSize - 2*nSmallY1
-    // div shift: nXShift-nYShift = nXSize - 2*nSmallY1 - (nYSize - nSmallY1) = nXSize - nYSize - nSmallY1
+    // y shift: nYSize - nSmallY
+    // x shift: nXSize - 2*nSmallY
+    // div shift: nXShift-nYShift = nXSize - 2*nSmallY - (nYSize - nSmallY) = nXSize - nYSize - nSmallY
     i          = nYSize      - nSmallY;
     pDivSmall  = pXDivYValue + nDivOffset;                  // section of XDivY used for upper half of division
     pXSmall    = pXValue     + nXSize - 2*nSmallY;          // section of x used for upper half of division
@@ -9702,16 +9625,20 @@ void CUnsignedArithmeticHelper::DivideRecursive(size_t  nXSize,
         // have a couple DIGITs of overlap.  Save those DIGITs and add them back in afterwards
         nSmallY              = nXSize-nYSize;
         nNumDIGITsDivOverlap = (nLowestAdded <= nSmallY) ? (nSmallY-nLowestAdded+1) : 0;
-        for(i=0; i<nNumDIGITsDivOverlap; i++) pWorkspace[i] = pXDivYValue[nLowestAdded+i];
+        for(i=0; i<nNumDIGITsDivOverlap; i++)
+        {
+            pWorkspace[i]                 = pXDivYValue[nLowestAdded+i];
+            pXDivYValue[nLowestAdded + i] = 0;
+        }
 #if(_CollectDetailedTimingData)
         dwTimestamp2                      =  s_Timer.GetMicroseconds();
         g_nDivideTime[eDivideProcessTime] += dwTimestamp2 - dwTimestamp;
-        DivideRecursive(nXSize, nYSize, pXValue, pYValue, pXDivYValue, dwTimestamp2, pWorkspace+nNumDIGITsDivOverlap);
+        DivideBackend(nXSize, nYSize, nXDivYSize, j, pXValue, pYValue, pXDivYValue, dwTimestamp2, pWorkspace+nNumDIGITsDivOverlap);
         dwTimestamp = dwTimestamp2;
 #else
-        DivideRecursive(nXSize, nYSize, pXValue, pYValue, pXDivYValue, pWorkspace+nNumDIGITsDivOverlap);
+        DivideBackend(nXSize, nYSize, nXDivYSize, j, pXValue, pYValue, pXDivYValue, pWorkspace+nNumDIGITsDivOverlap);
 #endif
-        // add overlap digits back in to place
+        // add overlap digits back into place
         nCarry = 0;
         for(i=0; i<nNumDIGITsDivOverlap; i++)
         {
@@ -13538,7 +13465,7 @@ void CUnsignedArithmeticHelper::SQRT(size_t nXSize, size_t &nRootSize, DIGIT *pn
   Suppose we have that y' is the largest number s.t. y'^2 <= 10*x0 + x1.
   Let Ya be y' shifted over by half the size of {x2, x3}.
   Then { x0, x1, x2, x3 } - {y', y1}^2  is 1000x0 + 100x1 + 10x2 + x3 - 100y'^2 - 20y'y1 - y1^2
-  // <-> {x0, ..., x3} - Ya^2 - 2Yay1 - y1^2
+  <-> {x0, ..., x3} - Ya^2 - 2Yay1 - y1^2
   Ya is known, so we want the largest y1 s.t. (2Ya + y1)*y1 <= {x0, ..., x3} - Ya^2
   We then solve this latter (smaller) problem with GeneralSquareRootRecursive
 */
@@ -13670,17 +13597,39 @@ void CUnsignedArithmeticHelper::SquareRootRecursive(size_t  nXSize,
     }
 }
 
+// gives the size in bits of the DIGIT passed.  Assumed to NOT be zero!
+unsigned int DigitBitSize(DIGIT n)
+{
+    unsigned int nSize = _DIGIT_SIZE_IN_BITS;
+    unsigned int nBit  = 1<<(_DIGIT_SIZE_IN_BITS-1);
+    while(0==(n&nBit))
+    {
+        nSize--;
+        nBit = nBit>>1;
+    }
+    return nSize;
+}
+
+// gives the size in bits of the DOUBLEDIGIT passed.  Assumed to NOT be zero!
+unsigned int DigitBitSize(DOUBLEDIGIT n)
+{
+    unsigned int nSize = _DIGIT_SIZE_IN_BITS*2;
+    DOUBLEDIGIT  nBit  = ((DOUBLEDIGIT) 1)<<(_DIGIT_SIZE_IN_BITS*2 - 1);
+    while (0 == (n&nBit))
+    {
+        nSize--;
+        nBit = nBit>>1;
+    }
+    return nSize;
+}
+
 // gives the size in BITs of the number passed
-size_t BitSize(size_t nXSize, DIGIT *pnX)
+size_t CUnsignedArithmeticHelper::BitSize(size_t nXSize, const DIGIT *pnX)
 {
     if (0 == nXSize) return 0;
     DIGIT       nFirstDigit = pnX[nXSize - 1];
     DOUBLEDIGIT nMask       = ((DOUBLEDIGIT) 1)<<(_DIGIT_SIZE_IN_BITS - 1);
-    size_t      nBits       = nXSize*sizeof(DIGIT)<<3; // BITs in nX
-    // Construct smallest X(0)^2 such that nX <= X(0)^2 and X(0) is a power of two
-    // From first nonzero bit of nX, that gives us the first nonzero bit of X(0)^2
-    // (and in the process gives X(0), of course).  Just need to make sure we have
-    // X(0)^2 is an EVEN power of 2
+    size_t      nBits       = nXSize*_DIGIT_SIZE_IN_BITS; // BITs in nX
     while (0 == (nFirstDigit&nMask))
     {
         nBits--;
@@ -13690,7 +13639,7 @@ size_t BitSize(size_t nXSize, DIGIT *pnX)
 }
 
 // Find: largest y s.t. (x1 + y)y <= x2.  Note that with x1 positive, it is clear that y < sqrt(x2)
-// Write y = ya + yb.  Suppose ya is chosen to satisy 0<ya and (x1 + ya)ya <= x2.  The it is clear to satisfy
+// Write y = ya + yb.  Suppose ya is chosen to satisfy 0<ya and (x1 + ya)ya <= x2.  The it is clear to satisfy
 // y is the largest value s.t. (x1 + y)y <= x2, we just need to choose yb appropriately:
 // yb is the largest value s.t. (x1 + ya + yb)(ya + yb) <= x2
 // <->
@@ -13701,7 +13650,7 @@ size_t BitSize(size_t nXSize, DIGIT *pnX)
 // (x1a + yb)yb <= x2a
 // where x1a = (x1 + 2ya) and x2a = x2 - (x1 + ya)ya
 // We just need a simple way to pick ya s.t. picking yb is likewise made simpler
-// write x2 = {x2a, x2b}
+// write x2 = {xa, xb}
 // Solve ya is the largest value with (x1 + ya)ya <= xa
 // Write y = ya' + yb where ya' is ya shifted to line up with xa in {xa, xb}: shifted half the size of xb
 // Then we wish to find the largest yb s.t.
@@ -14060,7 +14009,7 @@ void CUnsignedArithmeticHelper::GeneralSquareRootRecursive(size_t  nX1Size,
             // We use this as our Ya
             // Update x1 as x1+2Ya, update x2 as x2 - (x1+Ya)*Ya, repeat
 
-            // When multiplying an n-it number by an m-bit number, the resuult is either an (m+n)-bit number or an (m+n-1)-bit number
+            // When multiplying an n-bit number by an m-bit number, the result is either an (m+n)-bit number or an (m+n-1)-bit number
             // So Ya can be at most (x2 length in BITs - X1 length in BITs) + 1 BITs in size  (Note X1 is greater than half the length
             // of X2 in this branch, so Ya < X1).  So takinging BitDiff as 2 + (X2 size - X1 size) inthe work below guarantees Ya < (1<<BitDiff)
             // and the rest follows
@@ -14885,170 +14834,885 @@ void CUnsignedArithmeticHelper::GeneralSquareRootNewton(size_t  nX1Size,
 #endif
 }
 
-// stuff
+// if power memory needs changes, update NthRootMemoryNeeds accordingly
+size_t CUnsignedArithmeticHelper::PowerMemoryNeeds(DIGIT *pX, size_t nXSize, size_t nPower)
+{
+    size_t nXSizeInBits = BitSize(nXSize, pX);
+    nXSize = (nXSizeInBits*nPower + 1)/2;  // bitsize of the square
+    nXSize = (nXSize + _DIGIT_SIZE_IN_BITS - 1)/_DIGIT_SIZE_IN_BITS; // digit size of the square
+    return (nXSizeInBits*nPower + 1 + _DIGIT_SIZE_IN_BITS - 1)/_DIGIT_SIZE_IN_BITS + SquareMemoryNeeds(nXSize) + 1;
+}
+
+// needs to be kept in sync with power memory needs
+size_t CUnsignedArithmeticHelper::NthRootMemoryNeeds(size_t nXSize, DIGIT nRoot)
+{
+    if(nXSize*_DIGIT_SIZE_IN_BITS < nRoot)
+    {
+        // root IS 1; no need to compute
+        return 0;
+    }
+    else
+    {
+        DIGIT  pThree[] = { 3 };
+        size_t nPower3Needs = (2 * nRoot + _DIGIT_SIZE_IN_BITS) / _DIGIT_SIZE_IN_BITS + PowerMemoryNeeds(pThree, 1, nRoot);
+        if(nXSize*_DIGIT_SIZE_IN_BITS < 2*((size_t) nRoot))
+        {
+            // root can be at most 3
+            return nPower3Needs;
+        }
+        else
+        {
+            // general case
+            size_t nMemoryNeeds;
+            size_t nRootSize            = (nXSize+nRoot-1)/nRoot;
+            size_t nPowerMemoryNeeds    = nXSize + 1 + SquareMemoryNeeds((nXSize + 1)/2);  // room for the root to the power, plus room for squaring
+            size_t nDivisionMemoryNeeds = DivisionMemoryNeeds(nXSize, nRootSize);
+            nMemoryNeeds =  max(nPowerMemoryNeeds, nDivisionMemoryNeeds) + nXSize;
+            nMemoryNeeds += 2*(nXSize + NthRootPowerOverflow(nRoot)) + nPower3Needs; // last bit: may need to take 3^<root> in final step; room for that
+            return nMemoryNeeds;
+        }
+    }
+}
+
+void CUnsignedArithmeticHelper::Power(size_t nXSize, size_t &nPowerSize, unsigned int nPower, const DIGIT *pnX, DIGIT *pnPowerOfX, DIGIT *pnWorkspace)
+{
+    // compute the size of the power and x in bits.  This gives a reasonably tight upper bound on the size of x^n
+    DIGIT  *pnXa, *pnXb, *pnHold;
+    size_t nXSizeInBits     = BitSize(nXSize, pnX);
+    int    nPowerSizeInBits = 31, n;
+    int    nFurtherSetBits  = 0;
+    while(0==((1<<nPowerSizeInBits)&nPower)) nPowerSizeInBits--;
+    // start x^n at x.  For every bit in the power after the first: square x^n.  Then if the bit is set multiply by x.
+    // Each of these operations means moving the value of x^n.  We have nPowerSizeInBits square operations.  Thus if we know how many bits in the power
+    // are set (ignoring the first), we know how many operations we need to compute x^n -- and thus whether we should start with x^n in pnPowerOfX or
+    // in the workspace
+    n = nPowerSizeInBits;
+    while(n)
+    {
+        n--;
+        nFurtherSetBits += (0<((1<<n)&nPower));
+    }
+    nPowerSize  =  (nXSizeInBits*nPower + _DIGIT_SIZE_IN_BITS - 1)/_DIGIT_SIZE_IN_BITS; // might actually be smaller, but might be this large -- and no larger
+    pnXa        =  ((nPowerSizeInBits+nFurtherSetBits)&1) ? pnWorkspace : pnPowerOfX;
+    pnXb        =  ((nPowerSizeInBits+nFurtherSetBits)&1) ? pnPowerOfX : pnWorkspace;
+    pnWorkspace += nPowerSize + 1; // +1: need one extra DIGIT for overflow
+    // data starts in pnXa; ends in pnPowerOfX
+    memcpy(pnXa, pnX, sizeof(DIGIT)*nXSize);
+    nPowerSize = nXSize;
+    while (nPowerSizeInBits--)
+    {
+        Square(nPowerSize, pnXa, pnXb, pnWorkspace);
+        nPowerSize = nPowerSize<<1;
+        if(0==pnXb[nPowerSize-1]) nPowerSize--;
+        if((1<<nPowerSizeInBits)&nPower)
+        {
+            // need to multiply by x
+#if _CollectDetailedTimingData
+            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+            MultUBackend(nXSize, nPowerSize, pnX, pnXb, pnXa, pnWorkspace, dwTimestamp);
+#else
+            MultUBackend(nXSize, nPowerSize, pnX, pnXb, pnXa, pnWorkspace);
+#endif
+            nPowerSize += nXSize;
+            if(0==pnXa[nPowerSize-1]) nPowerSize--;
+        }
+        else
+        {
+            // get value back in pnXa
+            pnHold = pnXa;
+            pnXa   = pnXb;
+            pnXb   = pnHold;
+        }
+    }
+}
+
+void CUnsignedArithmeticHelper::NthRootNewton(size_t nASize, unsigned int n, size_t &nNthRootSize, const DIGIT *pA, DIGIT *pnRoot, DIGIT *pnWorkspace)
+{
+    long long   i;
+    DOUBLEDIGIT nSum, nCarry, nPow = n-1; // nPow: power take guess to
+    size_t      nRightSize, nRemainderSize, nNewSize, nOldSize;
+    DIGIT       *pnGuess  = pnWorkspace;
+    DIGIT       *pOld     = pnGuess;
+    DIGIT       *pNew     = pnRoot;
+    DIGIT       *pRight   = pnGuess + nASize + 1;
+    DIGIT       *pACopy   = pRight  + nASize + 1;
+    pnWorkspace = pACopy + nASize;
+    // actually do Newton
+    // Recall: x(i+1) = x(i) - f(x(i))/f'(x(i))
+    // f(x)  = x^n - a
+    // f'(x) = nx^(n-1)
+    // -> x - f(x)/f'(x) = x - (x^n - a)/(nx^(n-1))
+    //                   = (nx^n - (x^n - a))/(nx^(n-1))
+    //                   = ((n-1)x^n + a)/(nx^(n-1))
+    //                   = ((n-1)x + a/x^(n-1))/n
+    // If we start with a guess above the root, at each step the guess will decrease until roundoff causes us to either reach it or we overshoot and
+    // bounce back.  In any case the moment the guess is NOT less than the previous guess, we've found our solution -- the previous guess
+    // Good initial guess: 
+    // size_t nBitsizeX = BitSize(nXSize, pnX);
+    // initial guess: 2^((bitsize + n - 1)/n)
+    // Then  x^(n-1) is 1<<(nBitShiftInitialGuess*(n-1)) and x^n is 1<<(nBitShiftInitialGuess*n)
+    // so ((n-1)x^n + a)/(nx^(n-1)) is ((n-1)*(1<<nBitShiftInitialGuess) + a>>(1<<(nBitShiftInitialGuess*n)))/n
+    // But I'm feeling lazy, so I'm not going through the optimizations.
+    size_t nBitsizeX = BitSize(nASize, pA);
+    nBitsizeX = (nBitsizeX+n-1)/n;
+    nNewSize = nBitsizeX/_DIGIT_SIZE_IN_BITS;
+    for(i=0; i<nNewSize; i++) pOld[i] = c_nClearHigh; // certainly bigger than the root -- but not by more than 1 DIGIT
+    pOld[i] = ((DIGIT) -1)>>(32 - nBitsizeX%_DIGIT_SIZE_IN_BITS);
+    nNewSize += (0 < pOld[i]);
+    do
+    {
+        nOldSize = nNewSize;
+        // x^(n-1)
+        Power(nOldSize, nNewSize, nPow, pOld, pNew, pnWorkspace); // pNew <- pOld^(n-1)
+        memcpy(pACopy, pA, sizeof(DIGIT)*nASize);
+        Divide(nASize, nNewSize, nRightSize, nRemainderSize, pACopy, pNew, pRight, pnWorkspace); // pRight <- a/(pOld^(n-1))
+        // Note that x >= (nth root of a) -> a/x^(n-1)) <= (nth root of a)
+        // -> a/x^(n-1)) <= (n-1)x
+        // and if x <= a/(x^(n-1)) we have reached our stopping point
+        if (-1 != CBigInteger::CompareUnsigned(nRightSize, nOldSize, pRight, pOld))
+        {
+            break; // end of the line
+        }
+        // pRight <- (n-1)*pOld + a/(pOld^(n-1))
+        nCarry = 0;
+        for(i=0; i<nRightSize; i++)
+        {
+            nCarry    += pRight[i];
+            nSum      =  nPow*pOld[i];
+            pRight[i] =  nCarry + nSum;
+            nCarry    =  (((nCarry&c_nClearHigh) + (nSum&c_nClearHigh))>>_DIGIT_SIZE_IN_BITS) + (nCarry>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
+        }
+        for(; i<nOldSize; i++)
+        {
+            nSum      =  nPow*pOld[i];
+            pRight[i] =  nCarry + nSum;
+            nCarry    =  (((nCarry&c_nClearHigh) + (nSum&c_nClearHigh))>>_DIGIT_SIZE_IN_BITS) + (nCarry>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
+        }
+        pRight[i]  = nCarry;
+        nRightSize = nOldSize + (0<nCarry);
+        // pNew = ((n-1)*pOld + a/(pOld^(n-1)))/n
+        nCarry   = 0;
+        nNewSize = nRightSize-1;
+        for(i=nRightSize-1; 0<=i; i--)
+        {
+            nSum    = nCarry | pRight[i];
+            pNew[i] = nSum/n;
+            nCarry  = (nSum%n)<<_DIGIT_SIZE_IN_BITS;
+        }
+        if (pNew[nNewSize]) nNewSize++;
+        DIGIT *pHold = pOld;
+        pOld = pNew;
+        pNew = pHold;
+    }
+    while(true);
+    if (pnRoot != pOld)
+    {
+        // final result in the wrong slot; copy over
+        memcpy(pnRoot, pOld, nOldSize*sizeof(DIGIT));
+    }
+    nNthRootSize = nOldSize;
+}
+
+void CUnsignedArithmeticHelper::NthRootNewtonFromGuess(size_t nASize, unsigned int n, size_t &nNthRootSize, const DIGIT *pA, DIGIT *pnRoot, DIGIT *pnWorkspace)
+{
+    long long   i;
+    DOUBLEDIGIT nSum, nCarry, nPow = n-1; // nPow: power take guess to
+    size_t      nRightSize, nRemainderSize, nNewSize, nOldSize;
+    DIGIT       *pnGuess  = pnWorkspace;
+    DIGIT       *pOld     = pnRoot;
+    DIGIT       *pNew     = pnGuess;
+    DIGIT       *pRight   = pnGuess + nASize + NthRootPowerOverflow(n);
+    DIGIT       *pACopy   = pRight  + nASize + NthRootPowerOverflow(n);
+    pnWorkspace = pACopy + nASize;
+    // actually do Newton
+    // Recall: x(i+1) = x(i) - f(x(i))/f'(x(i))
+    // f(x)  = x^n - a
+    // f'(x) = nx^(n-1)
+    // -> x - f(x)/f'(x) = x - (x^n - a)/(nx^(n-1))
+    //                   = (nx^n - (x^n - a))/(nx^(n-1))
+    //                   = ((n-1)x^n + a)/(nx^(n-1))
+    //                   = ((n-1)x + a/x^(n-1))/n
+    // If we start with a guess above the root, at each step the guess will decrease until roundoff causes us to either reach it or we overshoot and
+    // bounce back.  In any case the moment the guess is NOT less than the previous guess, we've found our solution -- the previous guess
+    nNewSize = nNthRootSize;
+    do
+    {
+        nOldSize = nNewSize;
+        // x^(n-1)
+        Power(nOldSize, nNewSize, nPow, pOld, pNew, pnWorkspace); // pNew <- pOld^(n-1)
+        memcpy(pACopy, pA, sizeof(DIGIT)*nASize);
+        Divide(nASize, nNewSize, nRightSize, nRemainderSize, pACopy, pNew, pRight, pnWorkspace); // pRight <- a/(pOld^(n-1))
+        // Note that x >= (nth root of a) -> a/x^(n-1)) <= (nth root of a)
+        // -> a/x^(n-1)) <= (n-1)x
+        // and if x <= a/(x^(n-1)) we have reached our stopping point
+        if (-1 != CBigInteger::CompareUnsigned(nRightSize, nOldSize, pRight, pOld))
+        {
+            break; // end of the line
+        }
+        // pRight <- (n-1)*pOld + a/(pOld^(n-1))
+        nCarry = 0;
+        for(i=0; i<nRightSize; i++)
+        {
+            nCarry    += pRight[i];
+            nSum      =  nPow*pOld[i];
+            pRight[i] =  nCarry + nSum;
+            nCarry    =  (((nCarry&c_nClearHigh) + (nSum&c_nClearHigh))>>_DIGIT_SIZE_IN_BITS) + (nCarry>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
+        }
+        for(; i<nOldSize; i++)
+        {
+            nSum      =  nPow*pOld[i];
+            pRight[i] =  nCarry + nSum;
+            nCarry    =  (((nCarry&c_nClearHigh) + (nSum&c_nClearHigh))>>_DIGIT_SIZE_IN_BITS) + (nCarry>>_DIGIT_SIZE_IN_BITS) + (nSum>>_DIGIT_SIZE_IN_BITS);
+        }
+        pRight[i]  = nCarry;
+        nRightSize = nOldSize + (0<nCarry);
+        // pNew = ((n-1)*pOld + a/(pOld^(n-1)))/n
+        nCarry   = 0;
+        nNewSize = nRightSize-1;
+        for(i=nRightSize-1; 0<=i; i--)
+        {
+            nSum    = nCarry | pRight[i];
+            pNew[i] = nSum/n;
+            nCarry  = (nSum%n)<<_DIGIT_SIZE_IN_BITS;
+        }
+        if (pNew[nNewSize]) nNewSize++;
+        DIGIT *pHold = pOld;
+        pOld = pNew;
+        pNew = pHold;
+    }
+    while(true);
+    if (pnRoot != pOld)
+    {
+        // final result in the wrong slot; copy over
+        memcpy(pnRoot, pOld, nOldSize*sizeof(DIGIT));
+    }
+    nNthRootSize = nOldSize;
+}
+
 /*
+  nth root of y: the largest number x s.t. x^n <= y
+  Consider taking the nth root of an n-bit number.  2^n is an n+1 bit number.  So the root is 1.
+  Likewise 4^n is a 2n+1 bit number.  So the nth root of a 2n bit number is either 2 or 3.
+  Consider taking the nth root of a number y with 2jn bits, 2 <= j.
+  First, solve the problem of finding the nth root of the first jn bits; call this root a'.  (2^j)^n is 2^(jn) and
+  has jn+1, so a'<2^j -> the root has at most j bits
+  Similarly (2^(j-1))^n has jn-n+1 bits < jn since 2 <= n.  So the root has at least j bits.
+  Ergo, the root has exactly j bits.
 
-new:  w^4 = -1
-{a b c d e f g h}  w
-  { a b c d}       w^2
-    { a b }
-    <- {a+b, a-b}
-    { c d}
-    <- {c+d, c-d}
-  <- {(a+b) + (c+d),
-      (a-b) + (c-d)w^2,
-      (a+b) - (c+d),
-      (a-b) - (c-d)w^2}
-  { e f g h}
-    { e f }
-    <- {e+f, e-f}
-    { g h }
-    <- {g+h, g-h}
-  <- {(e+f) + (g+h),
-      (e-f) + (g-h)w^2,
-      (e+f) - (g+h),
-      (e-f) - (g-h)w^2}
-order in FFT: a, e, c, g, b, f, d, h.  Note w^4 == -1!
-<- {((a+b) + (c+d))    + ((e+f) + (g+h)),          : a + b    + c    + d    + e    + f    + g + h       : a + e    + c     + g     + b     + f     + d     + h      : x0
-    ((a-b) + (c-d)w^2) + ((e-f) + (g-h)w^2)w,      : a + bw^4 + cw^2 + dw^6 + ew   + fw^5 + gw^3 + hw^7 : a + ew   + cw^2  + gw^3  + bw^4  + fw^5  + dw^6  + hw^7   : x1
-    ((a+b) - (c+d))    + ((e+f) - (g+h))w*2,       : a + b    - c    - d    + ew^2 + fw^2 - gw^2 - hw^2 : a + ew^2 + cw^4  + gw^6  + bw^8  + fw^10 + dw^12 + hw^14  : x2
-    ((a-b) - (c-d)w^2) + ((e-f) - (g-h)w^2)w^3,    : a - b    - cw^2 + dw^2 + ew^3 - fw^3 - gw^5 + hw^5 : a + ew^3 + cw^6  + gw^9  + bw^12 + fw^15 + dw^18 + hw^21  : x3
-    ((a+b) + (c+d))    - ((e+f) + (g+h)),          : a + b    + c    + d    - e    - f    - g    - h    : a + ew^4 + cw^8  + gw^12 + bw^16 + fw^20 + dw^24 + hw^28  : x4
-    ((a-b) + (c-d)w^2) - ((e-f) + (g-h)w^2)w,      : a - b    + cw^2 - dw^2 - ew   + fw   - gw^3 + hw^3 : a + ew^5 + cw^10 + gw^15 + bw^20 + fw^25 + dw^30 + hw^35  : x5
-    ((a+b) - (c+d))    - ((e+f) - (g+h))w*2,       : a + b    - c    - d    - ew^2 - fw^2 + gw^2 + hw^2 : a + ew^6 + cw^12 + gw^18 + bw^24 + fw^30 + dw^36 + hw^42  : x6
-    ((a-b) - (c-d)w^2) - ((e-f) - (g-h)w^2)w^3}    : a - b    - cw^2 + dw^2 - ew^3 + fw^3 + gw^5 - hw^5 : a + ew^7 + cw^14 + gw^21 + bw^28 + fw^35 + dw^42 + hw^49  : x7
+  Now consider solving our original problem.  Note that a'^n <= y>>(jn) by construction
+  so (a'<<j)^n <= y.  Let a = a'<<j.
+  We wish to find the largest b s.t. (a+b)^n <= y
+  Suppose b has at least j+1 bits
+  Then a+b <= a + 1<<j
+            = (a'<<j) + (1<<j)
+            = (a' + 1)<<j
+  But we know from the way a' was chosen that y < ((a'+1)<<j)^n
+  So b has at most j bits
 
-Own inverse, as DFT standard is?
-{x0 x1 x2 x3 x4 x5 x6 x7}
-<- ((x0+x1) + (x2+x3))    + ((x4+x5) + (x6+x7)),
-   ((x0-x1) + (x2-x3)W^2) + ((x4-x5) + (x6-x7)W^2)W,
-   ((x0+x1) - (x2+x3))    + ((x4+x5) - (x6+x7))W*2,
-   ((x0-x1) - (x2-x3)W^2) + ((x4-x5) - (x6-x7)W^2)W^3,
-   ((x0+x1) + (x2+x3))    - ((x4+x5) + (x6+x7)),
-   ((x0-x1) + (x2-x3)W^2) - ((x4-x5) + (x6-x7)W^2)W,
-   ((x0+x1) - (x2+x3))    - ((x4+x5) - (x6+x7))W*2,
-   ((x0-x1) - (x2-x3)W^2) - ((x4-x5) - (x6-x7)W^2)W^3}
-consider line 6:
-((x0-x1) + (x2-x3)W^2) - ((x4-x5) + (x6-x7)W^2)W:
-  +(a + e    + c     + g     + b     + f     + d     + h)
-  -(a + ew   + cw^2  + gw^3  + bw^4  + fw^5  + dw^6  + hw^7)
-  +(a + ew^2 + cw^4  + gw^6  + bw^8  + fw^10 + dw^12 + hw^14)W^2
-  -(a + ew^3 + cw^6  + gw^9  + bw^12 + fw^15 + dw^18 + hw^21)W^2
-  -(a + ew^4 + cw^8  + gw^12 + bw^16 + fw^20 + dw^24 + hw^28)W
-  +(a + ew^5 + cw^10 + gw^15 + bw^20 + fw^25 + dw^30 + hw^35)W
-  -(a + ew^6 + cw^12 + gw^18 + bw^24 + fw^30 + dw^36 + hw^42)W^3
-  +(a + ew^7 + cw^14 + gw^21 + bw^28 + fw^35 + dw^42 + hw^49)W^3
-a: 1 - 1   + 1       - 1       - 1     + 1     - 1       + 1       : 0
-b: 1 - w^4 + w^8W^2  - w^12W^2 - w^16W + w^20W - w^24W^3 + w^28W^3
-   1 + 1   - w^2     - w^2     + w^3   + w^3   + w       + w       : 2(1 + w - w^2 + w^3)
-c: 1 - w^2 + w^4W^2  - w^6W^2  - w^8W  + w^10W - w^12W^3 + w^14W^3
-   1 - w^2 + w^2     + 1       + w^3   + w     - w       + w^3     : 2w^3
-d: 1 - w^6 + w^12W^2 - w^18W^2 - w^24W + w^30W - w^36W^3 + w^42W^3
-   1 + w^2 + w^2     - 1       + w^3   - w     - w       - w^3     : -2(w - w^2)
+  (a+b)^n <= y
+  <-> a^n + (n choose 1) a^(n-1)b + (n choose 2)a^(n-2)b^2 + (n choose 3)a^(n-3)b*3 + ... + (n choose n-1) ab^(n-1) + b^n <= y
+  <-> ((n choose 1) a^(n-1) + (n choose 2)a^(n-2)b + ... + b^(n-1))b <= y - a^n = y'
+  Now from the above a is a 2j-bit number and b is a j-bit number.  Ignoring the "choose" coefficients, this is a geometric
+  series -- each term is ~j bits larger than the next.
+  Suppose n has k bits.  Note the "choose" coefficients grow by at most n and k<j-1, we have
+  (n choose 2)a^(n-2)b + ... + b^(n-1))b < (1<<k)na^(n-2)
+  Let a' = (a>>k).  We then have that
+  ((n choose 1) a^(n-1) + (n choose 2)a^(n-2)b + ... + b^(n-1))b <= b((a' + 1)<<k)^n
+  so if b satisfies (n choose 1)((a' + 1)<<k)^(n-1)b <= y - a^n it also satisfies
+  ((n choose 1) a^(n-1) + (n choose 2)a^(n-2)b + ... + b^(n-1))b <= y - a^n
+  With this b in hand, replace a with a+b and repeat -- a will be larger, so the convergence assumptions still hold
+  And when to stop?  The inequality gives a lower bound for the maximum b we can add.
+  Now it is clear that (n choose 1)(a'<<k)^(n-1)b <= ((n choose 1) a^(n-1) + (n choose 2)a^(n-2)b + ... + b^(n-1))b
+  so if b satisfies ((n choose 1) a^(n-1) + (n choose 2)a^(n-2)b + ... + b^(n-1))b <= y - a^n it also satisfies
+  (n choose 1)(a'<<k)^(n-1)b <= y - a^n
+  So the maximum b satisfying (n choose 1)(a'<<k)^(n-1)b <= y - a^n is an upper bound for the maximum b satisfying
+  ((n choose 1) a^(n-1) + (n choose 2)a^(n-2)b + ... + b^(n-1))b <= y - a^n (note that this holds regardless of the size of n)
 
-    order: a, a+4, a+2, a+6, a+1, a+5, a+3, a+7
+  Now suppose 0 is the largest value b s.t. (n choose 1)((a' + 1)<<k)^(n-1)b <= y - a^n
+  How big can the largest b' satisfying (n choose 1)(a'<<k)^(n-1)b' <= y - a^n be?
 
-Now reorder for inverse same way: y0 == x0
-                                  y1 == x4
-                                  y2 == x2
-                                  y3 == x6
-                                  y4 == x1
-                                  y5 == x5
-                                  y6 == x3
-                                  y7 == x7
-{y0 y1 y2 y3 y4 y5 y6 y7}
-<- ((y0+y1) + (y2+y3))    + ((y4+y5) + (y6+y7)),
-   ((y0-y1) + (y2-y3)W^2) + ((y4-y5) + (y6-y7)W^2)W,
-   ((y0+y1) - (y2+y3))    + ((y4+y5) - (y6+y7))W*2,
-   ((y0-y1) - (y2-y3)W^2) + ((y4-y5) - (y6-y7)W^2)W^3,
-   ((y0+y1) + (y2+y3))    - ((y4+y5) + (y6+y7)),
-   ((y0-y1) + (y2-y3)W^2) - ((y4-y5) + (y6-y7)W^2)W,
-   ((y0+y1) - (y2+y3))    - ((y4+y5) - (y6+y7))W*2,
-   ((y0-y1) - (y2-y3)W^2) - ((y4-y5) - (y6-y7)W^2)W^3}
+  Well; (n choose 1)((a' + 1)<<k)^(n-1)/2 <= (n choose 1)(a'<<k)^(n-1)b' is clear
+  So since the solution to (n choose 1)((a' + 1)<<k)^(n-1)b <= y - a^n rounds down to 0,
+  the solution to (n choose 1)(a'<<k)^(n-1)b' <= y - a^n can be at most 1 (twice as large, rounded down)
 
-<- ((x0+x4) + (x2+x6))    + ((x1+x5) + (x3+x7)),
-   ((x0-x4) + (x2-x6)W^2) + ((x1-x5) + (x3-x7)W^2)W,
-   ((x0+x4) - (x2+x6))    + ((x1+x5) - (x3+x7))W*2,
-   ((x0-x4) - (x2-x6)W^2) + ((x1-x5) - (x3-x7)W^2)W^3,
-   ((x0+x4) + (x2+x6))    - ((x1+x5) + (x3+x7)),
-   ((x0-x4) + (x2-x6)W^2) - ((x1-x5) + (x3-x7)W^2)W,
-   ((x0+x4) - (x2+x6))    - ((x1+x5) - (x3+x7))W*2,
-   ((x0-x4) - (x2-x6)W^2) - ((x1-x5) - (x3-x7)W^2)W^3}
+  So once our process reachea solution of b = 0, see if we can replace a with a+1.  And that really IS
+  the end of the line.
 
-Look at line 7:
-((x0-x4) - (x2-x6)W^2) - ((x1-x5) - (x3-x7)W^2)W^3}
-== a + e    + c     + g     + b     + f     + d     + h
-  -(a + ew^4 + cw^8  + gw^12 + bw^16 + fw^20 + dw^24 + hw^28)
-  -(a + ew^2 + cw^4  + gw^6  + bw^8  + fw^10 + dw^12 + hw^14)W^2
-  (a + ew^6 + cw^12 + gw^18 + bw^24 + fw^30 + dw^36 + hw^42)W^2
-  -(a + ew   + cw^2  + gw^3  + bw^4  + fw^5  + dw^6  + hw^7)W^3
-  (a + ew^5 + cw^10 + gw^15 + bw^20 + fw^25 + dw^30 + hw^35)W^3
-  (a + ew^3 + cw^6  + gw^9  + bw^12 + fw^15 + dw^18 + hw^21)W^5
-  -(a + ew^7 + cw^14 + gw^21 + bw^28 + fw^35 + dw^42 + hw^49)W^5
+  ======================================================================================================================
 
-a: a - a     - aW^2     + aW^2     - aW^3    + aW^3     + aW^5     - aW^5      = 0
-b: b - bw^16 - bw^8W^2  + bw^24W^2 - bw^4W^3 + bw^20W^3 + bw^12W^5 - bw^28W^5
-   b - b     + bw^2     - bw^2     - bw      + bw       - bw^3     + bw^3      = 0
-c: c - cw^8  - cw^4W^2  + cw^12W^2 - cw^2W^3 + cw^10W^3 + cw^6W^5  - cw^14W^5
-   c - c     - cw^2     + cw^2     + cw^3    - cw^3     + cw       - cw        = 0
-d: d - dw^24 - dw^12W^2 + dw^36W^2 - dw^6W^3 + dw^30W^3 + dw^18W^5 - dw^42W^5
-   d - d     - dw^2     + dw^2     - dw^3    + dw^3     - dw       + dw        = 0
-e: e - ew^4  - ew^2W^2  + ew^6W^2  - ewW^3   + ew^5W^3  + ew^3W^5  - ew^7W^5
-   e + e     - e        - e        + ew^2    + ew^2     - ew^2     + ew^2      = 0
-...
-h: h - hw^28 - hw^14W^2 + hw^42W^2 - hw^7W^3 + hw^35W^3 + hw^21W^5 - hw^49W^5
-   h + h     + h        + h        + h       + h        + h        + h         = 8h
+  Now: what about the case where the difference in the size of a and b is j bits, whereas the size of the root is k bits
+  with j-1 <= k?  The inequality we used to get a lower bound for the maximum value of b does not necessarily hold.
+  
+  By construction, a is either 2j or 2j-1 bits (depending on whether y is a multiple of n or not) and b is a j bit number.
+  Since n is at most 32 bits, we must have k <= 32 so j is at most 33.
 
-looks good
+  And I still don't see a way better than Newton to solve this.
 
-How about line 5:
-((x0-x4) + (x2-x6)W^2) - ((x1-x5) + (x3-x7)W^2)W
-==  (a + e    + c     + g     + b     + f     + d     + h)
-   -(a + ew^4 + cw^8  + gw^12 + bw^16 + fw^20 + dw^24 + hw^28)
-    (a + ew^2 + cw^4  + gw^6  + bw^8  + fw^10 + dw^12 + hw^14)W^2
-   -(a + ew^6 + cw^12 + gw^18 + bw^24 + fw^30 + dw^36 + hw^42)W^2
-   -(a + ew   + cw^2  + gw^3  + bw^4  + fw^5  + dw^6  + hw^7)W^3
-    (a + ew^5 + cw^10 + gw^15 + bw^20 + fw^25 + dw^30 + hw^35)W^3
-    (a + ew^3 + cw^6  + gw^9  + bw^12 + fw^15 + dw^18 + hw^21)W^5
-   -(a + ew^7 + cw^14 + gw^21 + bw^28 + fw^35 + dw^42 + hw^49)W^5
-a:                                                                            : 0
-e: e - ew^4  + ew^2W^2  - ew^6W^2  - ewW^3   + ew^5W^3  + ew^3W^5  - ew^7W^5
-   e + e     + e        + e        + ew^2    + ew^2     - ew^2     - ew^2     : 4e.  4???
-c: c - cw^8  + cw^4W^2  - cw^12W^2 - cw^2W^3 + cw^10W^3 + cw^6W^5  - cw^14W^5
-   c - c     + cw^2     - cw^2     + cw^3    - cw^3     + cw       - cw       : 0
-g: g - gw^12 + gw^6W^2  - gw^18W^2 - gw^3W^3 + gw^15W^3 + gw^9W^5  - gw^21W^5
-   g + g     - g        - g        - g       - g        - g        - g        : -4g ???
-b: b - bw^16 + bw^8W^2  - bw^24W^2 - bw^4W^3 + bW^20W^3 + bw^12W^5 - bw^28W^5
-   b - b     - bw^2     + bw^2     - bw      + bw       - bw^3     + bw^3     : 0
-f: f - fw^20 + fw^10W^2 - fw^30W^2 - fw^5W^3 + fw^25W^3 + fw^15W^5 + fw^35W^5
-   f + f     + f        + f        - fw^2    - fw^2     + fw^2     + fw^2     : 4f
-d: d - dw^24 + dw^12W^2 - dw^36W^2 - dw^6W^3 + dw^30W^3 + dw^18W^5 - dw^42W^5
-   d - d     + dw^2     - dw^2     - dw^3    + dw^3     - dw       + dw       : 0
-h: h - hw^28 + hw^14W^2 - hw^42W^2 - hw^7W^3 + hw^35W^3 + hw^21W^5 - hw^49W^5
-   h + h     - h        - h        + h       + h        + h        + h        : 4h
-
-suppose we use old for inverse:
-x0 x1 x2 x3 x4 x5 x6 x7
-  x0 x2 x4 x6
-     x0 x4
-     <-{x0+x4, x0-x4}
-     x2 x6
-     <-{x2+x6, x2-x6}
-  <-((x0+x4) + (x2+x6),
-     (x0-x4) + (x2-x6)W^2,
-     (x0+x4) - (x2+x6),
-     (x0-x4) - (x2-x6)W^2}
-  x1 x3 x5 x7
-  <-((x1+x5) + (x3+x7),
-     (x1-x5) + (x3-x7)W^2,
-     (x1+x5) - (x3+x7),
-     (x1-x5) - (x3-x7)W^2}
-<-{((x0+x4) + (x2+x6))    + ((x1+x5) + (x3+x7)),
-   ((x0-x4) + (x2-x6)W^2) + ((x1-x5) + (x3-x7)W^2)W,
-   ((x0+x4) - (x2+x6))    + ((x0+x4) - (x2+x6))W^2,
-   ((x0-x4) - (x2-x6)W^2) + ((x1-x5) - (x3-x7)W^2)W^3,
-   ((x0+x4) + (x2+x6))    - ((x1+x5) + (x3+x7)),
-   ((x0-x4) + (x2-x6)W^2) - ((x1-x5) + (x3-x7)W^2)W,
-   ((x0+x4) - (x2+x6))    - ((x0+x4) - (x2+x6))W^2,
-   ((x0-x4) - (x2-x6)W^2) - ((x1-x5) - (x3-x7)W^2)W^3}
+  So: with y a 2jn-m bit number, m < 2n
+  if j-1<k, use Newton
+  Otherwise solve for the nth root of the high-order jn bits recursively, then use the method outlined above to get the lower order bits
 */
+
+void CUnsignedArithmeticHelper::NthRoot(size_t nXSize, unsigned int n, size_t &nRootSize, DIGIT *pnX, DIGIT *pnRoot, DIGIT *pnWorkspace)
+{
+    unsigned int nBitSizeN       = 32;
+    size_t       nXBitsLeadDigit = _DIGIT_SIZE_IN_BITS;
+    DIGIT        nLeadDigitX     = pnX[nXSize - 1];
+    while(0==((1<<(nBitSizeN-1))&n))                 nBitSizeN--;
+    while(0==((1<<(nXBitsLeadDigit-1))&nLeadDigitX)) nXBitsLeadDigit--;
+    NthRootRecursive(nXSize, n, nBitSizeN, nXBitsLeadDigit, nRootSize, pnX, pnRoot, pnWorkspace);
+}
+
+void CUnsignedArithmeticHelper::NthRootRecursive(size_t nYSize, DIGIT n, size_t nRootBits, size_t nXBitsLeadDigit, size_t &nRootSize, DIGIT *pnY, DIGIT *pnRoot, DIGIT *pnWorkspace)
+{
+    if(1==nYSize)
+    {
+        // small.  Do with math.h's power function
+        DIGIT d  = pow(*pnY, 1.0/n);
+        DIGIT d2 = pow(d, n);
+        // might be rounding other than we desire -- a little over X instead of a little under
+        if (*pnY < d2)
+        {
+            d--;
+            d2 = pow(d, n);
+        }
+        nRootSize = 1;
+        *pnRoot   = d;
+    }
+    else
+    {
+        size_t       j;
+        DOUBLEDIGIT  nCarry;
+        DIGIT        *pB, *pAPrime, *pAPrimePow;
+        size_t       nBSize, nAPrimeSize, i, nBitshiftJ, nDigitShiftJ, nDigitShiftUpper, nBitShiftK, nDigitShiftK, nYTwiddleSize, nRemainderSize;
+        size_t       nBitSizeY = BitSize(nYSize, pnY);
+  //      size_t       nBitSizeLeadDigit = _DIGIT_SIZE_IN_BITS;
+    //    DIGIT        lead              = pnY[nYSize-1];
+      //  while(0==((1<<(nBitSizeLeadDigit-1))&lead)) nBitSizeLeadDigit--;
+        //nBitSizeY = nBitSizeLeadDigit + (nYSize-1)*_DIGIT_SIZE_IN_BITS;
+        if(nBitSizeY <= n)
+        {
+            // too small for anything but 1
+            nRootSize = 1;
+            *pnRoot   = 1;
+        }
+        else if(nBitSizeY <= 2*((size_t) n))
+        {
+            // root is either 2 or 3
+            // see if 3 works.  If not, can only be 2
+            size_t nPowerSize = (2*n+_DIGIT_SIZE_IN_BITS)/_DIGIT_SIZE_IN_BITS;
+            *pnRoot = 3;
+            Power(1,nRootSize,n,pnRoot,pnWorkspace,pnWorkspace+nPowerSize);
+            if(-1==CBigInteger::CompareUnsigned(nYSize,nRootSize,pnY,pnWorkspace))
+            {
+                // too big
+                *pnRoot = 2;
+            }
+            nRootSize = 1;
+        }
+        else
+        {
+            // Use recursive descent to get the upper half+ of the root, and recursive with hint to finish it
+            // Suppose Y is m bits long.
+            // Find the largest 0<j s.t. nj < m/2.  (Note that if we get here this is guaranteed to exist, as 2*n < m)
+            // Compute the root of Y ignoring the last jn bits recursively.
+            // Use that "guess" as the seed to NthRootRecursiveWithHint to finish it
+            j            = nBitSizeY/(2*n);
+            nDigitShiftJ = j/_DIGIT_SIZE_IN_BITS;
+            if(0<nDigitShiftJ)
+            {
+                // JUST cut off trailing DIGITs -- simpler, and most of the work is in the "with hint" stage so making the recursive step larger
+                // at the expense of the "hint" stage is not ALL bad
+                for(size_t i=0; i<nDigitShiftJ; i++)
+                {
+                    pnRoot[i] = 0;
+                }
+                nDigitShiftK = n*nDigitShiftJ;
+                NthRootRecursive(nYSize - nDigitShiftK, n, nRootBits, nXBitsLeadDigit, nRootSize, pnY + nDigitShiftK, pnRoot + nDigitShiftJ, pnWorkspace);
+                nRootSize += nDigitShiftJ;
+                j         =  j - (j%_DIGIT_SIZE_IN_BITS); // reduce j to actual shift used
+            }
+            else
+            {
+                DIGIT hold;
+                // use a bit shift instead of a digit shift
+                nBitshiftJ   =  j;
+                nBitShiftK   =  n*j;
+                nDigitShiftK =  nBitShiftK/_DIGIT_SIZE_IN_BITS;
+                nBitShiftK   =  nBitShiftK%_DIGIT_SIZE_IN_BITS;
+                pnY          += nDigitShiftK; // for convenience -- just looking at the top section
+                hold         =  pnY[0];
+                nYSize       =  CBigIntegerHelper::ShiftRightInPlace(nYSize - nDigitShiftK, nBitShiftK, 0, pnY);
+                NthRootRecursive(nYSize, n, nRootBits, nXBitsLeadDigit, nRootSize, pnY, pnRoot, pnWorkspace);
+                nYSize       =  CBigIntegerHelper::ShiftLeftInPlace(nYSize, nBitShiftK, 0, pnY)+nDigitShiftK;
+                nRootSize    =  CBigIntegerHelper::ShiftLeftInPlace(nRootSize, nBitshiftJ, 0, pnRoot);
+                pnY[0]       =  hold;
+                pnY          -= nDigitShiftK;
+            }
+            // finish it
+            NthRootRecursiveWithHint(n, nRootSize, nYSize, j, pnRoot, pnY, pnWorkspace);
+        }
+    }
+}
+
+DOUBLEDIGIT GetTopDigitsizeBits(DIGIT *pNumber, size_t nNumberSize)
+{
+    DOUBLEDIGIT nTop;
+    if(nNumberSize <= 1)
+    {
+        nTop = *pNumber;
+    }
+    else
+    {
+        int nExcess = 0;
+        nTop = *((DOUBLEDIGIT *) (pNumber+nNumberSize-2));
+        // find out how many bits nTop is in excess of _DIGIT_SIZE_IN_BITS, and shift right by that amount
+        DOUBLEDIGIT nBit = ((DOUBLEDIGIT) 1)<<(2*_DIGIT_SIZE_IN_BITS-1);
+        while(0==(nBit&nTop))
+        {
+            nExcess++;
+            nBit = nBit>>1;
+        }
+        nTop = nTop>>(_DIGIT_SIZE_IN_BITS - nExcess);
+    }
+    return nTop;
+}
+
+//
+// Suppose we have big integers a and y and integer n, where a^n <= y.  We wish to find the largest big integer b s.t (a+b)^n <= y.
+// <-> a^n + nba^(n-1) + (n choose 2) b^2a^(n-2) + (n choose 3) b^3a^(n-3) + ... + b^n <= y
+// <-> b(na^(n-1) + (n choose 2)ba^(n-2) + ... + b^(n-1)) <= y - a^n
+// Now suppose e is chosen s.t. b <= e.
+// Then if b is the largest integer s.t. b(na^(n-1) + (n choose 2)ea^(n-2) + ... + e^(n-1)) <= y - a^n
+// then b(na^(n-1) + (n choose 2)ba^(n-2) + ... + b^(n-1)) <= y - a^n (though it might not be the largest such b)
+//
+// Now consider na^(n-1) + (n choose 2)a^(n-2)e + ... + e^(n-1)
+//
+// (a+e)^(n-1)  = a^(n-1) + (n-1)a^(n-2)e + ((n-1) choose 2)a^(n-3)e^2 + ... + e^(n-1)
+// n(a+e)^(n-1) = na^(n-1) + n(n-1)a^(n-2)e + n((n-1) choose 2)a^(n-3)e^2 + ... + ne^(n-1)
+// compare with   na^(n-1) + (n choose 2)a^(n-2)e + ... + e^(n-1)
+//
+// the ith component of n(a+e)^(n-1)  is n((n-1) choose i)a^(n-1-i)e^i
+// the ith component of the latter is    (n choose (i+1))a^(n-1-i)e^i
+//
+// n((n-1) choose i) = n(n-1)!/((n-1-i)!i!) = n!/((n-1-i)!i!)
+// n choose(i+1)     =                        n!/((n-i-1)!(i+1)!)
+//
+// The former is clearly larger.  So if b is chosen such that bn(a+e)^(n-1) <= (y - a^n), we must have that
+//                                                            b(na^(n-1) + (n choose 2)a^(n-2)e + ... + e^(n-1)) <= (y - a^n)
+// and hence                                                  b(na^(n-1) + (n choose 2)ba^(n-2) + b^(n-1)) <= y - a^n  since b <= e
+// Finally, to get the best possible b for bn(a+e)^(n-1) <= (y - a^n) we just set
+// b = (y - a^n)/(n(a+e)^(n-1))
+//
+// To get e: well; clearly b <= (y - a^n)/(na^(n-1)).  We can limit this with a power of 2 to get a fast estimate for e.
+// Also: when first called, A contains the nth root for the first few bits -- all but the final jn, where j is an integer greater than 0.
+// With this, we know that b can be at most j bits in length (otherwise it would overlap with the computed best root, forcing the first
+// part to be larger -- and thus exceeed the computed root).
+
+void CUnsignedArithmeticHelper::NthRootRecursiveWithHint(DIGIT n, size_t &nASize, size_t nYSize, size_t nMaxBSizeInBits, DIGIT *pA, const DIGIT *pY, DIGIT *pWorkspace)
+{
+    DOUBLEDIGIT nBottom, nTop;
+    size_t      nPowerSizeSmall, nPowerSizeLarge, nBottomBitsize, nTopBitSize, nPowerBitsize, i, nBottomSize, nTopSize, nBitSizeBUpperBound;
+    size_t      nMaxOverflow = NthRootPowerOverflow(n); // max overflow might get from computing power, in DIGITS
+    DIGIT       *pTop        = pWorkspace;                    // space for a^n, y-a^n.  nYSize+nMaxOverflow is enough, including overflow space
+    DIGIT       *pBottom     = pTop + nYSize + nMaxOverflow;  // space for a^(n-1), n(a+e)^(n-1).  Again nYSize+nMaxOverflow is enough, including overflow space
+    pWorkspace = pBottom + nYSize + nMaxOverflow;
+    pA[nASize] = 0; // overflow guard
+    int nIteration = 0; // debug remove todo
+    pBottom[nYSize + nMaxOverflow - 1] = BUFFERGUARD; // debug remove todo
+    pTop[nYSize + nMaxOverflow - 1]    = BUFFERGUARD; // debug remove todo
+    do
+    {
+        // a^(n-1), a^n
+        nIteration++;
+        Power(nASize, nPowerSizeSmall, n - 1, pA, pBottom, pWorkspace);
+#if _CollectDetailedTimingData
+        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+        MultUBackend(nASize, nPowerSizeSmall, pA, pBottom, pTop, pWorkspace, dwTimestamp);
+#else
+        MultUBackend(nASize, nPowerSizeSmall, pA, pBottom, pTop, pWorkspace);
+#endif
+        nPowerSizeLarge = nPowerSizeSmall + nASize;
+        if(0==pTop[nPowerSizeLarge-1]) nPowerSizeLarge--;
+        // y - a^n.  Note that we don't need a^n after this is computed; put in pTop (overwriting a^n)
+        nPowerSizeLarge = Subtract(nYSize, nPowerSizeLarge, pY, pTop, pTop);
+        if(0==nPowerSizeLarge)
+        {
+            // b is at most 0 -> done
+            break;
+        }
+        // find the maximum bitsize of b: (y - a^n)/(na^(n-1)) is an upper bound for b -- what is the (maximum) bitsize of THAT?
+        // pull first _DIGIT_SIZE_IN_BITS bits out of a^(n-1), multiply by n, and subtract 1.  Use the bitsize of the result to
+        // get a lower bound for the bitsize of n*a^(n-1): <result bitsize> - _DIGIT_SIZE_IN_BITS + <bitsize of a^(n-1)>
+        // This digit also gives an upper bound for the size in bits of (y-a^n)/(na^(n-1)) -- compare first _DIGIT_SIZE_IN_BITS
+        // of top and bottom+1; if top is greater, size<top>-size<bottom>+1; else, size<top>-size<bottom>
+        nTopBitSize         =  BitSize(nPowerSizeLarge, pTop); // bitsize of y - a^n
+        nPowerBitsize       =  BitSize(nPowerSizeSmall, pBottom); // bitsize of a^(n-1).  Note that we don't need a^(n-1) after this
+        nTop                =  GetTopDigitsizeBits(pTop, nPowerSizeLarge);
+        nBottom             =  GetTopDigitsizeBits(pBottom, nPowerSizeSmall);
+        nBottomBitsize      =  DigitBitSize(nBottom);
+        nBottom             *= n;
+        nBottom             -= 1;
+        nBottomBitsize      =  DigitBitSize(nBottom) - nBottomBitsize;
+        nBottom             =  nBottom>>nBottomBitsize; // just want the leading _DIGIT_SIZE_IN_BITS) for comparison
+        nBitSizeBUpperBound =  nTopBitSize + (nBottom<=nTop);
+        nBottomBitsize      =  nPowerBitsize + nBottomBitsize;
+        if (nBitSizeBUpperBound <= nBottomBitsize) break; // max size 0 bits -> done
+        nBitSizeBUpperBound -= nBottomBitsize;
+        // for large roots and small values of A, this upper bound may be bigger than A.  But the updates will always be getting smaller
+        // by the way they are done -- refining by pulling in a piece of what's left.  If we get into such a state, use the size of A as
+        // a limit on the update e.
+        if (nMaxBSizeInBits < nBitSizeBUpperBound)
+        {
+            nBitSizeBUpperBound = nMaxBSizeInBits;
+        }
+        if(nBitSizeBUpperBound<=2)
+        {
+            // Note we don't need the computed values nBottom, nTop anymore
+            // b can be 0, 1, 2, or 3.
+            if(2==nBitSizeBUpperBound)
+            {
+                // 2 or 3 is possible (if 1 == nBitSizeBUpperBound, only 0 or 1 is possible for b)
+                // See if 2 fits.
+                // use nTop for carry
+                nTop = 2;
+                i    = 0;
+                do
+                {
+                    nTop    += pA[i];
+                    pA[i++] =  nTop;
+                    nTop    =  nTop>>_DIGIT_SIZE_IN_BITS;
+                }
+                while(nTop);
+                if (pA[nASize]) // certainly too large
+                {
+                    nASize++;
+                    nPowerSizeLarge = nYSize + 1; // flag for compare to undo
+                }
+                else
+                {
+                    Power(nASize, nPowerSizeLarge, n, pA, pTop, pWorkspace);
+                }
+                if (1 == CBigInteger::CompareUnsigned(nPowerSizeLarge, nYSize, pTop, pY))
+                {
+                    // nope; doesn't fit.  Subtract 2 off again
+                    if(2<=pA[0]) pA[0] -= 2;
+                    else
+                    {
+                        pA[0] -= 2;
+                        i     =  1;
+                        while(0==pA[i]) pA[i++] = c_nClearHigh;
+                        pA[i]--;
+                        if(0==pA[nASize-1]) nASize--;
+                    }
+                }
+            }
+            // see if we can add 1 more to b
+            nTop = 1;
+            i    = 0;
+            do
+            {
+                nTop    += pA[i];
+                pA[i++] =  nTop;
+                nTop    = nTop>>_DIGIT_SIZE_IN_BITS;
+            }
+            while(nTop);
+            if (pA[nASize]) // shouldn't ever happen
+            {
+                nASize++;
+            }
+            Power(nASize, nPowerSizeLarge, n, pA, pTop, pWorkspace);
+            if(1==CBigInteger::CompareUnsigned(nPowerSizeLarge, nYSize, pTop, pY))
+            {
+                // nope; doesn't fit.  Subtract 1 off again
+                i = 0;
+                while(0==pA[i]) pA[i++] = c_nClearHigh;
+                pA[i]--;
+                if(0==pA[nASize-1]) nASize--;
+            }
+            break;
+        }
+        // use a + 1<<shift rounded up to the shift bit and truncated  as a+e
+        // compute the minimum bits of our update using the basic scheme and this upper bound.
+        // a + e: Truncate a to the <e size> bit, rounding up, thyen add 1.  Note rather than check we round 0 up
+        // Compute x = (a + 1<<(nBitSizeBUpperBound + 1))>>(nBitSizeBUpperBound+1)
+        //           = (a>>(nBitSizeBUpperBound + 1)) + 1
+        //         z = (y - a^n)>>((nBitSizeBUpperBound+1)*(n-1))
+        // Approximate (y - a^n)/(n*(a+e)^n-1) with z/(nx^(n-1))
+        // put (y - a^n)>>(nBitSizeBUpperBound)*(n-1)) in pTop (note we don't need y-a^n after this)
+        nTopSize                                  = CBigIntegerHelper::ShiftRightInPlace(nPowerSizeLarge, ((n-1)*nBitSizeBUpperBound)%_DIGIT_SIZE_IN_BITS, ((n-1)*nBitSizeBUpperBound)/_DIGIT_SIZE_IN_BITS, pTop);
+        // put a>>nBitSizeBUpperBound in pWorkspace -- a+e
+        nBottomSize                               = CBigIntegerHelper::ShiftXRight(nASize, nBitSizeBUpperBound%_DIGIT_SIZE_IN_BITS, nBitSizeBUpperBound/_DIGIT_SIZE_IN_BITS, pA, pWorkspace);
+        pWorkspace[nBottomSize]                   = 0; // overflow guard
+        // put a>>nBitSizeBUpperBound + 2 in pWorkspace -- the "x" value (+1 for round up)
+        i                                         = 0;
+        nTop                                      = 2;
+        do
+        {
+            nTop            += pWorkspace[i];
+            pWorkspace[i++] =  nTop;
+            nTop            =  nTop>>_DIGIT_SIZE_IN_BITS;
+        }
+        while(nTop);
+        if (pWorkspace[nBottomSize]) nBottomSize++;
+        // put (a+e)^(n-1) (x^(n-1)) in pBottom
+        Power(nBottomSize, nPowerSizeSmall, n-1, pWorkspace, pBottom, pWorkspace+nBottomSize);
+        // n*(a+e)^(n-1) in place
+        nBottom = 0; // use for carry
+        for(i=0; i<nPowerSizeSmall; i++)
+        {
+            nBottom    += ((DOUBLEDIGIT) n)*pBottom[i];
+            pBottom[i] =  nBottom;
+            nBottom    =  nBottom>>_DIGIT_SIZE_IN_BITS;
+        }
+        pBottom[i]      =  nBottom;
+        nPowerSizeSmall += (0<nBottom);
+        // (y - a^n)/(n*(a+e)^n-1)
+        // No need to use extreme precision -- a 44 bit number divided by a 40 bit number can likely be pruned down to a 10 bit divided by an 6
+        // bit without affecting the final result, since division truncates anyway.  DEBUG RESOLVE TODO!
+#if _CollectDetailedTimingData
+        dwTimestamp = s_Timer.GetMicroseconds();
+        DivideBackend(nTopSize, nPowerSizeSmall, nPowerSizeSmall, nBottomSize, pTop, pBottom, pWorkspace, dwTimestamp, pWorkspace + nTopSize - nPowerSizeSmall + 1);
+#else
+        DivideBackend(nTopSize, nPowerSizeSmall, nPowerSizeSmall, nBottomSize, pTop, pBottom, pWorkspace, pWorkspace+nTopSize-nPowerSizeSmall+1);
+#endif
+        if(0==nPowerSizeSmall)
+        {
+            // end of the line -- this approximation scheme has reached its limit
+            // BUT: value might still be too small!
+            // At this point, the possible addition B is pretty small -- on the order of 8 bits or less (in all cases I've noticed).
+            // One way to finish would be to use Newton.  Another to just do a bit-by-bit add -- can we add 2^7?  2^6?  Etc.
+            // Turns out, the latter method is faster -- a lot faster.
+            // We know that the amount to add has AT MOST nBitSizeBUpperBound bits, so that gives us our starting point
+            // try binary search
+#if _DEBUG
+            if(nBitSizeBUpperBound <= _DIGIT_SIZE_IN_BITS && !s_bForceBigAddForValidatingNthRoot)
+#else
+            if(nBitSizeBUpperBound <= _DIGIT_SIZE_IN_BITS)
+#endif
+            {
+                // The biggest nBitSizeBUpperBound value I've seen is 15 (using 32-bit DIGITs; haven't looked at 16-bit ones)
+                // so this will likely always hold -- but it might not
+                DOUBLEDIGIT nAdd = 1<<(nBitSizeBUpperBound-1);
+                do
+                {
+                    // check if we can add nAdd to the root
+                    nTop = nAdd;
+                    i    = 0;
+                    do
+                    {
+                        nTop    += pA[i];
+                        pA[i++] =  nTop;
+                        nTop    =  nTop>>_DIGIT_SIZE_IN_BITS;
+                    }
+                    while(nTop);
+                    if (pA[nASize]) nASize++;
+                    // validate
+                    Power(nASize, nPowerSizeLarge, n, pA, pTop, pWorkspace);
+                    int nCompare = CBigInteger::CompareUnsigned(nPowerSizeLarge, nYSize, pTop, pY);
+                    if (1 == nCompare)
+                    {
+                        // doesn't fit; take it off again
+                        nTop = nAdd;
+                        i    = 0;
+                        do
+                        {
+                            nBottom = pA[i];
+                            pA[i]   = nBottom - nTop;
+                            nTop    = (nBottom<nTop);
+                        }
+                        while(nTop);
+                        if(0 == pA[nASize-1]) nASize--;
+                    }
+                    else if (0 == nCompare)
+                    {
+                        // exact fit
+                        break;
+                    }
+                    nAdd = nAdd>>1;
+                }
+                while(nAdd);
+            }
+            else
+            {
+                // well who'd'a thunk it -- a whopping big uper bound on B!
+                CBigInteger nAdd("1");
+                nAdd.ShiftLeft(nBitSizeBUpperBound - 1);
+                do
+                {
+                    // check if we can add nAdd to the root
+                    nASize = Add(nASize, nAdd.GetSize(), pA, nAdd.GetValue(), pA);
+                    // validate
+                    Power(nASize, nPowerSizeLarge, n, pA, pTop, pWorkspace);
+                    int nCompare = CBigInteger::CompareUnsigned(nPowerSizeLarge, nYSize, pTop, pY);
+                    if (1 == nCompare)
+                    {
+                        // doesn't fit; take it off again
+                        nASize = Subtract(nASize, nAdd.GetSize(), pA, nAdd.GetValue(), pA);
+                    }
+                    else if (0 == nCompare)
+                    {
+                        // exact fit
+                        break;
+                    }
+                    nAdd.ShiftRight(1);
+                }
+                while(!nAdd.IsZero());
+            }
+            break;
+        }
+        // update a: a += b
+        nTop = 0;
+        for(i=0; i<nPowerSizeSmall; i++)
+        {
+            nTop  = (nTop + pA[i]) + pWorkspace[i];
+            pA[i] = nTop;
+            nTop  = nTop>>_DIGIT_SIZE_IN_BITS;
+        }
+        while (nTop)
+        {
+            nTop    = nTop + pA[i];
+            pA[i++] = nTop;
+            nTop    = nTop>>_DIGIT_SIZE_IN_BITS;
+        }
+        if (0 < pA[nASize]) // shouldn't ever happen
+        {
+            printf("oops\n");
+        }
+        nASize += (0<pA[nASize]);
+    }
+    while(true);
+}
+
+#if(16==_DIGIT_SIZE_IN_BITS)
+const unsigned int c_nBaseNumberSize = 5;
+const DIGIT        c_nBaseNumber     = 10000;      // ten thousand -- largest power of 10 that fits in 16 bits
+#else
+const unsigned int c_nBaseNumberSize = 10;
+const DIGIT        c_nBaseNumber     = 1000000000; // one BILLION -- largest power of 10 that fits in 32 bits
+#endif
+
+// helper function: print a single DIGIT.  Assumed to be at most c_nBaseNumber
+void PrintBase10ToString(DIGIT n, char *&s)
+{
+    *--s = (n%10) + '0';
+    n /= 10;
+    *--s = (n%10) + '0';
+    n /= 10;
+    *--s = (n%10) + '0';
+    n /= 10;
+    *--s = (n%10) + '0';
+#if(32==_DIGIT_SIZE_IN_BITS)
+    n /= 10;
+    *--s = (n%10) + '0';
+    n /= 10;
+    *--s = (n%10) + '0';
+    n /= 10;
+    *--s = (n%10) + '0';
+    n /= 10;
+    *--s = (n%10) + '0';
+    n /= 10;
+    *--s = (n%10) + '0';
+#endif
+}
+
+// to convert to base 10:
+// find the smallest squaring of c_nBaseNumber that is at least as large as half the size of the number passed
+// divide by that number.  Mod contains right "half" to print; div contains "left"
+// Repeat on left and right halves.  Note that this is a destructive function! -- destroys original number
+void CUnsignedArithmeticHelper::PrintPiecesBase10(DIGIT **ppnPowersOfBase, size_t *pnPowerSizes, int nDepth, size_t nNumberDigits, DIGIT *pNum, char *&s, DIGIT *pWork)
+{
+    size_t nRemainderSize;
+    if(-1==nDepth)
+    {
+        // base case
+        if (1 == nNumberDigits)
+        {
+            PrintBase10ToString((*pNum)%c_nBaseNumber, s);
+            PrintBase10ToString((*pNum)/c_nBaseNumber, s);
+        }
+        else
+        {
+            // 2 DIGITs, and the number is less than c_nBaseNumber*c_nBaseNumber
+            DOUBLEDIGIT x = *((DOUBLEDIGIT *) pNum);
+            PrintBase10ToString(x%c_nBaseNumber, s);
+            PrintBase10ToString(x/c_nBaseNumber, s);
+        }
+    }
+    else if(nNumberDigits < pnPowerSizes[nDepth])
+    {
+        // power too small for the number -- can happen if the number is just a little larger than the power size
+        PrintPiecesBase10(ppnPowersOfBase, pnPowerSizes, nDepth-1, nNumberDigits, pNum, s, pWork);
+    }
+    else
+    {
+        // main path.  Divide by power; print the two halves
+        CUnsignedArithmeticHelper::Divide(nNumberDigits, pnPowerSizes[nDepth], nNumberDigits, nRemainderSize, pNum, ppnPowersOfBase[nDepth], pWork, pWork+nNumberDigits-pnPowerSizes[nDepth]+1);
+        nDepth--;
+        PrintPiecesBase10(ppnPowersOfBase, pnPowerSizes, nDepth, nRemainderSize, pNum, s, pWork+nNumberDigits);
+        PrintPiecesBase10(ppnPowersOfBase, pnPowerSizes, nDepth, nNumberDigits, pWork, s, pWork+nNumberDigits);
+    }
+}
+
+void CUnsignedArithmeticHelper::PrintNumberToBase10(const CBigInteger &nX, char *&s, DIGIT *pWork)
+{
+    DIGIT *pnPowersOf10[sizeof(size_t)*8]; // certainly more than needed
+    size_t pnPowerSizes[sizeof(size_t)*8];
+    *--s = '\0';
+    if(1==nX.GetSize())
+    {
+        PrintBase10ToString(nX.m_pnValue[0]%c_nBaseNumber, s);
+        PrintBase10ToString(nX.m_pnValue[0]/c_nBaseNumber, s);
+    }
+    else
+    {
+        // set up the powers of 10 needed
+        size_t      nSize     = 1;
+        const DIGIT *pCurrent = &c_nBaseNumber;
+        DIGIT       *pNext    = pWork;
+        int         nDepth    = -1;
+        do
+        {
+            Square(nSize, pCurrent, pNext, pNext+nSize+nSize);
+            nSize = nSize + nSize;
+            if(0==pNext[nSize-1]) nSize--;
+            pnPowersOf10[++nDepth] = pNext;
+            pnPowerSizes[nDepth]   = nSize;
+            pCurrent               = pNext;
+            pNext                  = pNext + nSize;
+        }
+        while(nSize <= nX.GetSize()/2);
+        PrintPiecesBase10(pnPowersOf10, pnPowerSizes, nDepth, nX.GetSize(), nX.GetValue(), s, pNext);
+    }
+    // get rid of leading 0s.  Note that we are guaranteed that the number is not ALL 0s, so no further checks needed
+    while ('0' == *s) s++;
+    // sign, if necessary
+    if (nX.IsNegative()) *--s = '-';
+}
+
+void CUnsignedArithmeticHelper::PrintNumberToBase10(const CBigInteger &nX, DIGIT *pWork, FILE *f)
+{
+    char *s;
+    if (nX.IsZero())
+    {
+        // special case
+        fprintf(f, "0\n");
+        return;
+    }
+    // set up the string to print.  Note we know that there WILL be at least one nonzero digit!
+    s     = ((char *) pWork) + (nX.GetSize()+1)*c_nBaseNumberSize + 2; // s points to the END of the string to print.  Give enough space for all the digits, plus sign and trailing null character
+    pWork = (DIGIT *) (s+1);
+    // convert to a base-10 representation; put in a string
+    PrintNumberToBase10(nX, s, pWork);
+    // print to file
+    fprintf_s(f, "%s\n", s);
+}
+
+size_t CUnsignedArithmeticHelper::PrintToBase10MemoryNeeds(size_t nDigits)
+{
+    size_t nMemory;
+    nMemory =  ((nDigits + 1) * c_nBaseNumberSize + 1 + sizeof(DIGIT)) / sizeof(DIGIT); // memory needed for the intermediate string
+    nMemory += 4*nDigits; // for the powers of 10 -- overestimate!
+    nMemory += nDigits + DivisionMemoryNeeds(2*nDigits, nDigits);
+    return nMemory;
+}

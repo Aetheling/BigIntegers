@@ -32,6 +32,8 @@ class __declspec(dllexport) CArithmeticBox
 public:
     CArithmeticBox();
     ~CArithmeticBox();
+    // prints the decimal version of the number to the file passed.  If the file is null, defaults to stdout.
+    EArithmeticOperationResult PrintBase10ToFile(const CBigInteger &nX, FILE *f = nullptr);
     // assigns the value of X+Y to XPlusY.  XPlusY can be either
     // X or Y.
     EArithmeticOperationResult Add(const CBigInteger &nX,
@@ -96,9 +98,13 @@ public:
                                            CBigInteger       &nGCD,
                                            CBigInteger       &nXCoef,
                                            CBigInteger       &nYCoef);
-
-    // sets nSqrt to the largest integer with nSqrt^2 <= nX on success.
+    // sets nSqrt to the largest integer with nSqrt^2 <= nX on success.  nX and nSqrt must be distinct big integers
     EArithmeticOperationResult SQRT(const CBigInteger &nX, CBigInteger &nSqrt);
+    // the big integers must be distinct
+    EArithmeticOperationResult Power(const CBigInteger &nX, unsigned int nPower, CBigInteger &nXToPower);
+    // computes the floor of the nth root of the nonnegative number X -- the largest integer m s.t. m^n <= X.
+    // You CAN replace X with its root
+    EArithmeticOperationResult NthRoot(const CBigInteger &nX, DIGIT n, CBigInteger &nNthRootOfX);
 
 protected: // functions
 public:    // variables

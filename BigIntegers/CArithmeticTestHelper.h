@@ -85,6 +85,9 @@ public:  // functions
     bool TestMontgomeryMultiply();
     bool TestMontgomeryPowerModulus();
     bool TestSquareRoot();
+    bool TestPower();
+    bool TestNthRootHelper();
+    bool TestNthRoot();
 };
 
 // class to determine where the various threshholds and parameters should be
@@ -157,6 +160,8 @@ public:  // functions
     void GCDTimes();
     void PowerModulusMontgomeryVsStandard();
     void SquareRootTimes();
+    void GeneralRootTimes();
+    void CompareNthRootProblemBreakdownTimes();
     void MatrixMultiplyTimes();
     void FFTTimes();
 private: // functions

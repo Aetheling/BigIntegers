@@ -184,7 +184,7 @@ int main()
         printf("Recursive multiply test succeeded\n");
     }
     cCorrectnessTester.ResetThresholdsForTest(true);
-    if(!cCorrectnessTester.TestDivide())
+    if(!cCorrectnessTester.TestDivide()) // long test -- even in retail
     {
         printf("Divide test failed\n");
         return 1;
@@ -369,6 +369,36 @@ int main()
         printf("Square root test succeeded\n");
     }
     cCorrectnessTester.ResetThresholdsForTest();
+    if(!cCorrectnessTester.TestPower())
+    {
+        printf("Power test failed\n");
+        return 1;
+    }
+    else
+    {
+        printf("Power test succeeded\n");
+    }
+    cCorrectnessTester.ResetThresholdsForTest();
+    if(!cCorrectnessTester.TestNthRootHelper())
+    {
+        printf("Nth root helper test failed\n");
+        return 1;
+    }
+    else
+    {
+        printf("Nth root helper test succeeded\n");
+    }
+    cCorrectnessTester.ResetThresholdsForTest();
+    if(!cCorrectnessTester.TestNthRoot())
+    {
+        printf("Nth root test failed\n");
+        return 1;
+    }
+    else
+    {
+        printf("Nth root test succeeded\n");
+    }
+    cCorrectnessTester.ResetThresholdsForTest();
     if(!cRSATester.TestProbablyPrime())
     {
         printf("Probably prime test failed\n");
@@ -436,6 +466,8 @@ int main()
     cPerfTester.CompareMultiplicationAlgorithms();
     cPerfTester.CompareDivideTimes();
     cPerfTester.SquareRootTimes();
+    cPerfTester.GeneralRootTimes();
+    cPerfTester.CompareNthRootProblemBreakdownTimes();
     cPerfTester.GCDTimes();
     cPerfTester.MatrixMultiplyTimes();
     cPerfTester.PowerModulusMontgomeryVsStandard();
