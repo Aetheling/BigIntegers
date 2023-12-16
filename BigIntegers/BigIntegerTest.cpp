@@ -133,7 +133,7 @@ int main()
 	//                              Test correctness                                      //
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
-    /*cCorrectnessTester.ResetThresholdsForTest();
+    cCorrectnessTester.ResetThresholdsForTest();
     if(!cCorrectnessTester.TestBigInteger())
     {
         printf("BigInteger test failed\n");
@@ -184,7 +184,7 @@ int main()
         printf("Recursive multiply test succeeded\n");
     }
     cCorrectnessTester.ResetThresholdsForTest(true);
-    if(!cCorrectnessTester.TestDivide())
+    if(!cCorrectnessTester.TestDivide()) // long test -- even in retail
     {
         printf("Divide test failed\n");
         return 1;
@@ -444,7 +444,7 @@ int main()
 	//                              Performance tests                                     //
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
-    */cPerfTester.ResetThresholdsForOptimization();
+    cPerfTester.ResetThresholdsForOptimization();
     if (!PinThreadToProcessor((DWORD)-1))
     {
         printf("Pinning processor failed!\n");
@@ -453,7 +453,7 @@ int main()
     else
     {
         printf("tests with processor pinned:\n");
-    }/*
+    }
     // on my machine, striped multiply is (almost) always faster than basic multiply.  But if basic multiply is faster on your
     // machine, you will want to adjust CUnsignedArithmeticHelper::MultUBackend, CUnsignedArithmeticHelper::MultAddUBackend,
     // and perhaps CUnsignedArithmeticHelper::SquareUBackend
@@ -466,10 +466,9 @@ int main()
     cPerfTester.CompareMultiplicationAlgorithms();
     cPerfTester.CompareDivideTimes();
     cPerfTester.SquareRootTimes();
-    cPerfTester.GeneralRootTimes();*/
-  //  cPerfTester.CompareNthRootProblemBreakdownTimes();
-    cPerfTester.TestDrive();
-   /* cPerfTester.GCDTimes();
+    cPerfTester.GeneralRootTimes();
+    cPerfTester.CompareNthRootProblemBreakdownTimes();
+    cPerfTester.GCDTimes();
     cPerfTester.MatrixMultiplyTimes();
     cPerfTester.PowerModulusMontgomeryVsStandard();
     cPerfTester.FFTTimes();
@@ -484,6 +483,6 @@ int main()
     {
         printf("Unpinning processor failed!\n");
         return 1;
-    }*/
+    }
     return 0;
 }

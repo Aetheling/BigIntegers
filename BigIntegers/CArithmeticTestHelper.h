@@ -164,7 +164,6 @@ public:  // functions
     void CompareNthRootProblemBreakdownTimes();
     void MatrixMultiplyTimes();
     void FFTTimes();
-    void TestDrive();
 private: // functions
     void SaveMultiplicationThresholds();
     void RestoreMultiplicationThresholds();
