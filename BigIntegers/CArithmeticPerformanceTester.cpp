@@ -1396,7 +1396,7 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         ReportMeasuredComponentTimingData(eMultiplicationMeasured);
         ResetTimingData();
         dwMultTime = dwStartTime;
-        if(nX.GetSize()<=1000000 && false) // debug restore todo
+        if(nX.GetSize()<=1000000)
         {
             c_nDivideThresholdSmall = 2000000000; // force the system to use basic division
             // bigger numbers just too slow!  Works fine.  You have been warned.
@@ -1452,7 +1452,7 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         printf("Time for %i divisions of %i BYTE number by %i BYTE number: %I64u microseconds (divide:multiply ratio: %f)\n", nIterations, (nX.GetSize() + nY.GetSize())*sizeof(DIGIT), nY.GetSize()*sizeof(DIGIT), dwStartTime, (float) dwStartTime/dwMultTime);
         ReportMeasuredComponentTimingData(eDivideMeasured);
     }
-    /*for(int nSize=100000; nSize<=c_nMaxSize; nSize *= 10)
+    for(int nSize=100000; nSize<=c_nMaxSize; nSize *= 10)
     {
         nX.SetRandom(16*nSize);
         nY.SetRandom(8*nSize);
@@ -1465,7 +1465,7 @@ void CArithmeticPerformanceTester::CompareDivideTimes()
         Divide(nX.GetSize(), nY.GetSize(), nDivSize, nRemainderSize, nXCopy.GetValue(), nY.GetValue(), nDiv.GetValue(), cWork.GetSpace());
         printf("Dividing a %i-BYTE number by a %i-BYTE one took %I64u microseconds\n", nX.GetSize()*sizeof(DIGIT), nY.GetSize()*sizeof(DIGIT), s_Timer.GetMicroseconds() - dwStartTime);
         ReportMeasuredComponentTimingData(eDivideMeasured);
-    }*/
+    }
 }
 
 /*
@@ -2094,10 +2094,12 @@ printf("compute the square root of 2 to 1,000,000 base 10 digits\n");
     nTime = ::GetTickCount() - nTime;
     printf("Time to compute the power: %i ms\n", nTime);
     nX2.ShiftLeft(1); // multiply by 2
+    ResetTimingData();
     nTime = ::GetTickCount();
     cBox.SQRT(nX2, nSqrtX);
     nTime = ::GetTickCount() - nTime;
     printf("Time to compute the root: %i ms (%u DIGIT base number)\n", nTime, nX2.GetSize());
+    ReportMeasuredComponentTimingData(eSQRTMeasured);
     FILE *f;
     nX2Copy = nSqrtX; // PrintNumberToBase10 is destructive
     nTime = ::GetTickCount();

@@ -9184,8 +9184,11 @@ void CUnsignedArithmeticHelper::Divide(size_t  nXSize,
                                        DIGIT   *pWorkspace)
 {
 #if(_CollectDetailedTimingData)
-    DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp  = s_Timer.GetMicroseconds();
+    DWORD64 dwTimestamp2 = dwTimestamp;
     DivideBackend(nXSize, nYSize, nXDivYSize, nRemainderSize, pXValue, pYValue, pXDivYValue, dwTimestamp, pWorkspace);
+    g_nDivideTime[eTotalDivideCalls]++;
+    g_nDivideTime[eTotalDivideTime] += dwTimestamp - dwTimestamp2;
 #else
     DivideBackend(nXSize, nYSize, nXDivYSize, nRemainderSize, pXValue, pYValue, pXDivYValue, pWorkspace);
 #endif
@@ -9284,11 +9287,6 @@ void CUnsignedArithmeticHelper::DivideBackend(size_t  nXSize,
             while(0<nRemainderSize && 0==pXValue[nRemainderSize-1]);
         }
     }
-#if _CollectDetailedTimingData
-    dwTimestamp                     =  s_Timer.GetMicroseconds();
-    g_nDivideTime[eTotalDivideTime] += dwTimestamp - dwTimestamp2;
-    g_nDivideTime[eTotalDivideCalls]++;
-#endif
 };
 
 void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
@@ -14909,7 +14907,12 @@ void CUnsignedArithmeticHelper::Power(size_t nXSize, size_t &nPowerSize, unsigne
         if((1<<nPowerSizeInBits)&nPower)
         {
             // need to multiply by x
+#if _CollectDetailedTimingData
+            DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+            MultUBackend(nXSize, nPowerSize, pnX, pnXb, pnXa, pnWorkspace, dwTimestamp);
+#else
             MultUBackend(nXSize, nPowerSize, pnX, pnXb, pnXa, pnWorkspace);
+#endif
             nPowerSize += nXSize;
             if(0==pnXa[nPowerSize-1]) nPowerSize--;
         }
@@ -15323,7 +15326,12 @@ void CUnsignedArithmeticHelper::NthRootRecursiveWithHint(DIGIT n, size_t &nASize
         // a^(n-1), a^n
         nIteration++;
         Power(nASize, nPowerSizeSmall, n - 1, pA, pBottom, pWorkspace);
+#if _CollectDetailedTimingData
+        DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
+        MultUBackend(nASize, nPowerSizeSmall, pA, pBottom, pTop, pWorkspace, dwTimestamp);
+#else
         MultUBackend(nASize, nPowerSizeSmall, pA, pBottom, pTop, pWorkspace);
+#endif
         nPowerSizeLarge = nPowerSizeSmall + nASize;
         if(0==pTop[nPowerSizeLarge-1]) nPowerSizeLarge--;
         // y - a^n.  Note that we don't need a^n after this is computed; put in pTop (overwriting a^n)
@@ -15462,7 +15470,12 @@ void CUnsignedArithmeticHelper::NthRootRecursiveWithHint(DIGIT n, size_t &nASize
         // (y - a^n)/(n*(a+e)^n-1)
         // No need to use extreme precision -- a 44 bit number divided by a 40 bit number can likely be pruned down to a 10 bit divided by an 6
         // bit without affecting the final result, since division truncates anyway.  DEBUG RESOLVE TODO!
+#if _CollectDetailedTimingData
+        dwTimestamp = s_Timer.GetMicroseconds();
+        DivideBackend(nTopSize, nPowerSizeSmall, nPowerSizeSmall, nBottomSize, pTop, pBottom, pWorkspace, dwTimestamp, pWorkspace + nTopSize - nPowerSizeSmall + 1);
+#else
         DivideBackend(nTopSize, nPowerSizeSmall, nPowerSizeSmall, nBottomSize, pTop, pBottom, pWorkspace, pWorkspace+nTopSize-nPowerSizeSmall+1);
+#endif
         if(0==nPowerSizeSmall)
         {
             // end of the line -- this approximation scheme has reached its limit
