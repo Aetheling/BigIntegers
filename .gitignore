@@ -9,7 +9,13 @@ BestThresholds
 *.exe
 *.obj
 *.dll
+*.exp
+*.lib
 
+# reference
+*.pdb
+*.log
+*.tlog
 
 # directories to ignore
 .vs/

@@ -11246,6 +11246,15 @@ void MultAVX5(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ,
     }
 }
 #endif
+/*
+tests with processor pinned:
+Computing 4 DIGIT x 2049 DIGIT 1000000 times using GMP took 2047 milliseconds
+Computing 8 DIGIT x 2049 DIGIT 1000000 times using GMP took 6000 milliseconds
+Computing 12 DIGIT x 2049 DIGIT 1000000 times using GMP took 11750 milliseconds
+Computing 4-DIGIT x 2049-DIGIT 1000000 times took 5437 milliseconds
+Computing 8-DIGIT x 2049-DIGIT 1000000 times took 9954 milliseconds
+Computing 12-DIGIT x 2049-DIGIT 1000000 times took 14859 milliseconds
+*/
 bool CArithmeticCorrectnessTester::TestAVXInstructions()
 {
     CArithmeticBox cBox;
