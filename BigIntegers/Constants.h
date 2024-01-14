@@ -1,5 +1,5 @@
 #pragma once
-#define _CollectDetailedTimingData 1
+//#define _CollectDetailedTimingData 1
 /* with detailed timing data turned on, you will get perf results (when requested) that loo like this:
 1 calls to multiply
   1032156 calls to Basic multiply:
