@@ -367,7 +367,7 @@ bool CBigInteger::Reserve(size_t nDigitsNeeded, bool bPreserveData)
     {
         if(BUFFERGUARD != m_pnValue[m_nAllocatedSize+j])
         {
-            printf("Overran big integer allocated size\n");  // debug restore todo
+            printf("Overran big integer allocated size\n");
         }
     }
 #endif

@@ -7,11 +7,21 @@
 #include "CBigIntegerMatrix.h"
 #include "SSystemData.h"
 #include "math.h"
+
 #pragma warning(disable:4267)    // conversion from 'size_t' to 'unsigned int' -- possible loss of data
 
-#if 1
 bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
 {
+    CBigIntegerForTest nX;
+    CBigIntegerForTest nX2;
+    CBigIntegerForTest nY;
+    CBigIntegerForTest nZ;
+    CBigIntegerForTest nNeg;
+    CBigIntegerForTest nBad;
+    CBigIntegerForTest nBaseTenTest;
+    CWorkspace         cWork;
+    DIGIT              *pWork;
+    size_t             nMemNeeds;
     const char *szBase                  = "FFFFFFFFFFFFFFFF";
     const char *szBase10TestHexA        = "123456789ABCDEF0";
     const char *szBase10TestDecimalA    = "1311768467463790320";
@@ -30,19 +40,14 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     DIGIT      *pnYData                 = NULL;
     size_t     nSize                    = 0;
     bool       bTestWorked              = false;
-    DIGIT      *pWork                   = (DIGIT *) malloc(sizeof(DIGIT)*1000000); // ample space for our simple usage
+
+    cWork.Reserve(1000000); // ample space for our simple usage
+    pWork = cWork.GetSpace();
     ResetThresholdsForTest();
     if(bVerbose)
     {
         printf("DIGIT size (in BYTES): %i\n",sizeof(DIGIT));
     }
-    CBigIntegerForTest nX;
-    CBigIntegerForTest nX2;
-    CBigIntegerForTest nY;
-    CBigIntegerForTest nZ;
-    CBigIntegerForTest nNeg;
-    CBigIntegerForTest nBad;
-    CBigIntegerForTest nBaseTenTest;
     // test set from string
     if(!nX.SetFromHexString(szBase))
     {
@@ -69,7 +74,10 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         goto exit;
     }
     printf("And with optimized print:     ");
-    PrintNumberToBase10(nBaseTenTest, pWork);
+    nMemNeeds          = PrintToBase10MemoryNeeds(nBaseTenTest.GetSize());
+    pWork[0]           = TEST_BUFFERGUARD;
+    pWork[nMemNeeds+1] = TEST_BUFFERGUARD;
+    PrintNumberToBase10(nBaseTenTest, pWork+1);
     nBaseTenTest.SetFromHexString(szBase10TestHexB);
     printf("Printing z, base 10.  Expect: %s\nGot:                          ",szBase10TestDecimalB);
     if(!nBaseTenTest.PrintDecimalToFile())
@@ -79,8 +87,16 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     }
     printf("And with optimized print:     ");
     PrintNumberToBase10(nBaseTenTest, pWork);
+    if (TEST_BUFFERGUARD != pWork[0] || TEST_BUFFERGUARD != pWork[nMemNeeds + 1])
+    {
+        printf("Print to base 10 wrote past (or before) workspace\n");
+        goto exit;
+    }
     nBaseTenTest.SetFromHexString(szSmall);
     printf("Printing z, base 10.  Base:      ");
+    nMemNeeds = PrintToBase10MemoryNeeds(nBaseTenTest.GetSize());
+    pWork[0] = TEST_BUFFERGUARD;
+    pWork[nMemNeeds + 1] = TEST_BUFFERGUARD;
     if (!nBaseTenTest.PrintDecimalToFile())
     {
         printf("<print to base 10 failed>\n");
@@ -88,6 +104,11 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     }
     printf("Printing z, base 10.  Optimized: ");
     PrintNumberToBase10(nBaseTenTest, pWork);
+    if (TEST_BUFFERGUARD != pWork[0] || TEST_BUFFERGUARD != pWork[nMemNeeds + 1])
+    {
+        printf("Print to base 10 wrote past (or before) workspace\n");
+        goto exit;
+    }
     nY.SetFromHexString(szBasePlusOne);
     nZ.SetFromHexString(szBasePlusOneMinusSeven);
     nX2.SetFromHexString(szShouldEqualBase);
@@ -156,8 +177,8 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         printf("assignment failed\n");
         goto exit;
     }
-    nX.SetFromHexString("1234567890ABCDE1234567890ABCDE");
-    nZ.SetFromHexString("1234567890ABCDE1234567890ABCDE");
+    nX.SetFromHexString("1234567890ABCDE1234567890ABCDE1234567890ABCDE");
+    nZ.SetFromHexString("1234567890ABCDE1234567890ABCDE1234567890ABCDE");
     nY = nX;
     if (nY.GetValue() == pnYData)
     {
@@ -488,17 +509,28 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     // test printing a few BIG numbers
     for(int i=0;i<100;i++)
     {
+        const unsigned int c_nStringBufferSize = 25000;
         int nTimeBase, nTimeFast;
         FILE *f;
         int c,j;
-        char s1[20001], s2[20001], *s;
+        char s1[c_nStringBufferSize], s2[c_nStringBufferSize], *s;
         nX.SetRandom(2000*_DIGIT_SIZE_IN_BITS);
         errno_t err = fopen_s(&f,"foo","w+");
+        if (0 != err)
+        {
+            printf("error opening file needed for test: 'foo'.  Aborting\n");
+            goto exit;
+        }
         nTimeBase = ::GetTickCount();
         nX.PrintDecimalToFile(f);
         nTimeBase = ::GetTickCount() - nTimeBase;
         fclose(f);
         err = fopen_s(&f, "foo", "r+");
+        if (0 != err)
+        {
+            printf("error re-opening file needed for test: 'foo'.  Aborting\n");
+            goto exit;
+        }
         j = 0;
         do
         {
@@ -507,10 +539,21 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         }
         while(c != EOF);
         fclose(f);
-        s = s2 + 20001;
+        if (c_nStringBufferSize < PrintToBase10StringLength(nX.GetSize()) + 1)
+        {
+            printf("Not enough memory for output string\n");
+            goto exit;
+        }
+        s     = s2 + PrintToBase10StringLength(nX.GetSize()) + 1; // note that print base 10 starts at the END of the memory buffer and works forward!
+        s2[0] = 'x';
         nTimeFast = ::GetTickCount();
         PrintNumberToBase10(nX, s, pWork);
         nTimeFast = ::GetTickCount() - nTimeFast;
+        if ('x' != s2[0])
+        {
+            printf("PrintNumberToBase10 wrote before buffer passed\n");
+            goto exit;
+        }
         // compare the values
         j = 0;
         do
@@ -518,7 +561,7 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
             if((s1[j]=='\0' || s1[j]=='\n') && (s[j]=='\0' || s[j]=='\n')) break;
             if (s1[j] != s[j])
             {
-                printf("two methods of printing to base 10 disagree\n");
+                printf("two methods of printing to base 10 disagree on iteration %i\n",i);
                 printf("%s\n----------------------\n%s\n", s1, s);
                 goto exit;
             }
@@ -938,6 +981,219 @@ bool CArithmeticCorrectnessTester::TestShortLongMultiply(bool bVerbose)
                         if(nTestProduct != nValidatedProduct)
                         {
                             printf("Multiply test failed: basic short/long add\n");
+                            goto exit;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    bTestWorked = true;
+exit:
+    return bTestWorked;
+}
+
+bool CArithmeticCorrectnessTester::TestStripedMultiply(bool bVerbose)
+{
+    CBigIntegerForTest nX, nY, nValidatedProduct, nTestProduct, nAdd;
+    CArithmeticBox cBox;
+    size_t         nProductSize;
+    bool           bTestWorked = false;
+    ResetThresholdsForTest();
+    for(size_t i=1;i<13;i++)
+    {
+        nX.Reserve(i);
+        for(size_t j=1;j<=200;j+=i)
+        {
+            nY.Reserve(j);
+            nAdd.Reserve(i+j+1);
+            nValidatedProduct.Reserve(i+j+1);
+            nTestProduct.Reserve(i+j+1);
+            for(size_t k=0;k<3;k++)
+            {
+                if(0==k)
+                {
+                    // Test multiplication of FFFF... -- maximum size operands, to make
+                    // sure assumptions about overflow are met
+                    for(size_t m=0;m<i;m++)
+                    {
+                        nX.GetValue()[m] = (DIGIT) -1;
+                    }
+                    for(size_t m=0;m<j;m++)
+                    {
+                        nY.GetValue()[m] = (DIGIT) -1;
+                    }
+                    nX.SetSize(i);
+                    nY.SetSize(j);
+                }
+                else if(1==k)
+                {
+                    // Test with the larger operand having lots of internal 0s
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    for(size_t m=0;m<j-1;m++)
+                    {
+                        nY.GetValue()[m] = 0;
+                    }
+                    nY.GetValue()[j-1] = 1;
+                    nY.SetSize(j);
+                }
+                else
+                {
+                    // test more general multiplication
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                }
+                size_t nXSize = nX.GetSize();
+                size_t nYSize = nY.GetSize();
+                if(0<nX.GetSize() && 0<nY.GetSize())
+                {
+                    nValidatedProduct.SetSize(CUnsignedArithmeticHelper::MultOracle(nXSize,
+                                                                                     nYSize,
+                                                                                     nX.GetValue(),
+                                                                                     nY.GetValue(),
+                                                                                     nValidatedProduct.GetValue()));
+                    if(nX.GetSize() <= nY.GetSize())
+                    {
+                        CUnsignedArithmeticHelper::MultUStriped(nXSize,
+                                                                nYSize,
+                                                                nX.GetValue(),
+                                                                nY.GetValue(),
+                                                                nTestProduct.GetValue(),
+                                                                false);
+                    }
+                    else
+                    {
+                        CUnsignedArithmeticHelper::MultUStriped(nYSize,
+                                                                nXSize,
+                                                                nY.GetValue(),
+                                                                nX.GetValue(),
+                                                                nTestProduct.GetValue(),
+                                                                false);
+                    }
+                    nProductSize = nXSize+nYSize;
+                    if(0==nTestProduct.GetValue()[nProductSize-1])
+                    {
+                        nProductSize--;
+                    }
+                    nTestProduct.SetSize(nProductSize);
+                    if(nTestProduct != nValidatedProduct || bVerbose)
+                    {
+                        printf("Multiply operands:\n");
+                        nX.PrintHexToFile();
+                        printf("\n");
+                        nY.PrintHexToFile();
+                        printf("\n");
+                        printf("Expected product:\n");
+                        nValidatedProduct.PrintHexToFile();
+                        printf("\nComputed product:\n");
+                        nTestProduct.PrintHexToFile();
+                        printf("\n");
+                        if(nTestProduct != nValidatedProduct)
+                        {
+                            printf("Multiply test failed: striped\n");
+                            goto exit;
+                        }
+                    }
+                }
+                // Then, MultAddUShortLong
+                if(k==0)
+                {
+                    // Test multiplication of FFFF... -- maximum size operands, to make
+                    // sure assumptions about overflow are met
+                    for(size_t m=0;m<i;m++)
+                    {
+                        nX.GetValue()[m] = (DIGIT) -1;
+                    }
+                    for(size_t m=0;m<j;m++)
+                    {
+                        nY.GetValue()[m] = (DIGIT) -1;
+                    }
+                    for(size_t m=0;m<i+j;m++)
+                    {
+                        nAdd.GetValue()[m] = (DIGIT) -1;
+                    }
+                    nX.SetSize(i);
+                    nY.SetSize(j);
+                    nAdd.SetSize(i+j);
+                }
+                else
+                {
+                    // test more general multiplication
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                    nAdd.SetRandom((i+j)*_DIGIT_SIZE_IN_BITS);
+                }
+                nXSize = nX.GetSize();
+                nYSize = nY.GetSize();
+                if(0==j%3)
+                {
+                    // prune back the size of Z for some variation
+                    nAdd.SetSize(1+(rand()%(i+j)));
+                }
+                if(0<nX.GetSize() && 0<nY.GetSize())
+                {
+                    // initialize Z to format expected by MultUBasic
+                    nTestProduct.Reserve(nXSize+nYSize+nTestProduct.GetSize(),true);
+                    nTestProduct = nAdd;
+                    // make sure pTestProduct has leading 0s
+                    for(size_t m=nTestProduct.GetSize();m<i+j+1;m++)
+                    {
+                        nTestProduct.GetValue()[m] = 0;
+                    }
+                    // perform x*y+z -- where "z" is the previous iteration's result
+                    nValidatedProduct.SetSize(CUnsignedArithmeticHelper::MultOracle(nXSize,
+                                                                                    nYSize,
+                                                                                    nX.GetValue(),
+                                                                                    nY.GetValue(),
+                                                                                    nValidatedProduct.GetValue()));
+                    cBox.Add(nValidatedProduct,nAdd,nValidatedProduct);
+                    nProductSize = nXSize+nYSize;
+                    if(nProductSize <= nTestProduct.GetSize())
+                    {
+                        nProductSize = nTestProduct.GetSize();
+                    }
+                    nProductSize++;
+                    if(nX.GetSize() <= nY.GetSize())
+                    {
+                        CUnsignedArithmeticHelper::MultUStriped(nXSize,
+                                                                nYSize,
+                                                                nX.GetValue(),
+                                                                nY.GetValue(),
+                                                                nTestProduct.GetValue(),
+                                                                true);
+                    }
+                    else
+                    {
+                        CUnsignedArithmeticHelper::MultUStriped(nYSize,
+                                                                nXSize,
+                                                                nY.GetValue(),
+                                                                nX.GetValue(),
+                                                                nTestProduct.GetValue(),
+                                                                true);
+                    }
+                    if(0==nTestProduct.GetValue()[nProductSize-1])
+                    {
+                        nProductSize--;
+                        if(0==nTestProduct.GetValue()[nProductSize-1])
+                        {
+                            nProductSize--;
+                        }
+                    }
+                    nTestProduct.SetSize(nProductSize);
+                    if(nTestProduct != nValidatedProduct || bVerbose)
+                    {
+                        printf("z = x*y+z:  x, y, z:\n");
+                        printf("x: ");  nX.PrintHexToFile();
+                        printf("y: ");  nY.PrintHexToFile();
+                        printf("z: ");  nAdd.PrintHexToFile();
+                        printf("Expected result:\n");
+                        nValidatedProduct.PrintHexToFile();
+                        printf("\nComputed result:\n");
+                        nTestProduct.PrintHexToFile();
+                        printf("\n");
+                        if(nTestProduct != nValidatedProduct)
+                        {
+                            printf("Multiply test failed: striped add\n");
                             goto exit;
                         }
                     }
@@ -1460,10 +1716,10 @@ bool CArithmeticCorrectnessTester::TestDivide(bool bVerbose)
     nDiv.Reserve(2*c_nMaxSize+1);
     nRemainder.Reserve(2*c_nMaxSize+1);
     nProduct.Reserve(2*c_nMaxSize+1);
-    for(size_t i=1;i<c_nMaxSize;i++)
+    for(size_t i=2;i<c_nMaxSize;i++)
     {
-        printf("%i digit divisor (up to %i) in to number of size %i to %i, inclusive\n", i, c_nMaxSize, i, c_nMaxSize);
-        for(size_t j=i;j<2*c_nMaxSize;j++)
+        printf("%i digit divisor (up to %i) in to number of size %i to %i, inclusive\n", i, c_nMaxSize, i-1, c_nMaxSize);
+        for(size_t j=i-1;j<2*c_nMaxSize;j++)
         {
             for(int k=0;k<5;k++)
             {
@@ -2473,7 +2729,7 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
             nBig.SetFromHexString("0");
             nMat1[i][j] = nBig;
             nBig.SetRandom(_DIGIT_SIZE_IN_BITS*c_nMatrixSize);
-			nBig.SetNegative(rand()%2);
+            nBig.SetNegative(rand()%2);
             nMat2[i][j] = nBig;
         }
         nBig.SetFromHexString("1");
@@ -2484,7 +2740,7 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
             nBig.SetFromHexString("0");
             nMat2[i][j] = nBig;
             nBig.SetRandom(_DIGIT_SIZE_IN_BITS*c_nMatrixSize);
-			nBig.SetNegative(rand()%2);
+            nBig.SetNegative(rand()%2);
             nMat1[i][j] = nBig;
         }
     }
@@ -3016,7 +3272,7 @@ bool CArithmeticCorrectnessTester::TestModBy2NPlus1(bool bVerbose)
     bool  bTestWorked = false;
     for(size_t n=1;n<1000;n++)
     {
-        printf("base size: %i\n",n);
+        printf("Base size: %i\n",n);
         pTwoTo2N       =  NewBigIntegerOnePlus2ToN(2*n);
         pOnePlusTwoToN =  NewBigIntegerOnePlus2ToN(n);
         *pTwoTo2N      -= 1;
@@ -4245,8 +4501,8 @@ bool CArithmeticCorrectnessTester::TestMontgomeryMultiply()
     CBigIntegerForTest nX, nY, nN, nNPrime, nRPrime, nMontgomeryX, nMontgomeryY, nProduct, nConvertedBack, nDiv, nRemainder;
     size_t             nNPrimeSize, nRPrimeSize, nMontSize, nConvertBackSize;
     DIGIT              *pWorkspace = (DIGIT *) malloc(sizeof(DIGIT)*1000000); // plenty for this test
-    // Note that 98096A1FC1FB69 is prime
-  //  nN.SetFromHexString("98096A1FC1FB69");
+    // Note that 70B7D90310FDB40C3F2BA643C039157EDA370D60E87F29B0E23AC3F52A185955994A40AECBC38EF4A9AE43CB3730B9679E614DA37C874D5F6994231DCBE1C1DDDE2A4E36FDCB11B8343B9C800AC83C1B8A949F9F91CEC5065E332BCC55C635CB15CEDB55BD0F9591794B8A1951FAF7D23447DC0E414DECDF5791B4BCDFC20C58D8AEBEC12286A7
+    // is prime
     nN.SetFromHexString("70B7D90310FDB40C3F2BA643C039157EDA370D60E87F29B0E23AC3F52A185955994A40AECBC38EF4A9AE43CB3730B9679E614DA37C874D5F6994231DCBE1C1DDDE2A4E36FDCB11B8343B9C800AC83C1B8A949F9F91CEC5065E332BCC55C635CB15CEDB55BD0F9591794B8A1951FAF7D23447DC0E414DECDF5791B4BCDFC20C58D8AEBEC12286A7");// 98096A1FC1FB69");
     nNumBits = (nN.GetSize() - 1)*_DIGIT_SIZE_IN_BITS;
     nMontgomeryX.Reserve(nN.GetSize()*2);
@@ -4579,7 +4835,7 @@ bool CArithmeticCorrectnessTester::TestMontgomeryPowerModulus()
                 }
                 if (nNPrime != nNPrimeCopy)
                 {
-                    printf("N' (modulus') value got changed\n");
+                    printf("N' (modulus) value got changed\n");
                     goto exit;
                 }
                 if (nRPrime != nRPrimeCopy)
@@ -5364,7 +5620,7 @@ bool CArithmeticCorrectnessTester::TestNthRootHelper()
     for(nRoot=2; nRoot<33; nRoot++)
     {
         printf("Testing %u root\n", nRoot);
-        for(size_t nRootSize=4; nRootSize<11; nRootSize++) // debug restore todo -- start at 1
+        for(size_t nRootSize=4; nRootSize<11; nRootSize++)
         {
             for(unsigned int nIteration=0; nIteration<c_nIterations; nIteration++)
             {
@@ -5389,7 +5645,6 @@ bool CArithmeticCorrectnessTester::TestNthRootHelper()
                     nRootSizeHint = nRootTruncated.GetSize();
                     nMemoryNeeds  = NthRootMemoryNeeds(nY.GetSize(), nRoot);
                     cBox.m_Workspace.Reserve(nMemoryNeeds + 1);
-                    cBox.m_Workspace.Reserve(nMemoryNeeds*10 + 1); // debug remove todo
                     cBox.m_Workspace.GetSpace()[nMemoryNeeds] = TEST_BUFFERGUARD;
                     NthRootRecursiveWithHint(nRoot, nRootSizeHint, nY.GetSize(), (nTrueRoot.GetSize()/2 - 1)*_DIGIT_SIZE_IN_BITS, nRootTruncated.GetValue(), nY.GetValue(), cBox.m_Workspace.GetSpace());
                     if(TEST_BUFFERGUARD != cBox.m_Workspace.GetSpace()[nMemoryNeeds])
@@ -5425,7 +5680,7 @@ bool CArithmeticCorrectnessTester::TestNthRootHelper()
                     {
                         printf("Nth root test overran purputed workspace needs\n");
                         goto exit;
-                    } // debug restore todo
+                    }
                     // nRootTruncated should be replaced with the true root
                     nRootTruncated.SetSize(nRootSizeHint);
                     if(nRootTruncated != nTrueRoot)
@@ -5451,7 +5706,7 @@ bool CArithmeticCorrectnessTester::TestNthRootHelper()
                     {
                         printf("Nth root test overran purputed workspace needs\n");
                         goto exit;
-                    } // debug restore todo
+                    }
                     // nRootTruncated should be replaced with the true root
                     nRootTruncated.SetSize(nRootSizeHint);
                     if(nRootTruncated != nTrueRoot)
@@ -5718,7 +5973,7 @@ bool CArithmeticCorrectnessTester::TestNthRoot()
                     if (pWorkspace[nMemoryNeedsRoot] != TEST_BUFFERGUARD)
                     {
                         printf("Workspace overflow computing root %u of %u DIGIT number\n", n, nSize);
-             //           goto exit; // debug restore todo
+                        goto exit;
                     }
                     // the computed root, taken to the nth power, should be at most nX
                     nMemoryNeedsPower             = PowerMemoryNeeds(nRoot.GetValue(), nRootSize, n);
@@ -5797,5861 +6052,495 @@ exit:
     return bTestWorked;
 }
 
-#include <immintrin.h>
-
-// upgrade: consider using _mm_prefetch as well
-// assumes y has at least 4 digits!
-// Simple: do in 4-DIGIT chunks.
-void MultAVX(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DIGIT       *yPtr;
-    DOUBLEDIGIT *zPtr, sum, carry;
-    __m128i raw;
-    __m256i x, y, mult, zLower, zUpper, multL;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pXLim = pX + nXDigits;
-    DIGIT *pYLim = pY + nYDigits - 3;
-    int nOffset = nXDigits-4;
-    int i = 0;
-    memset(pWork,0,sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    // assumes X has 4n digits, some 0<n
-    yPtr = pY;
-    for (pX = pX + nOffset; 0 <= nOffset; pX -= 4, nOffset -= 4)
-    {
-        zPtr    = pWork+nOffset;
-        // load x in reverse order -- instead of 0, 1, 2, 3 we load it as 3, 2, 1, 0
-        // then multiplying by y, in the standard order, gives the values for a single column
-        raw     = _mm_lddqu_si128((__m128i const*) pX);
-        pY      = yPtr;
-        y       = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) pY++));
-        // first few columns -- short
-        x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 1)); // digits 0, 0, 0, 1: 00,00,00,01
-        // first column: 1 value
-        sum     = _mm256_extract_epi64(y,0)*_mm256_extract_epi64(x,1);
-        carry   = sum>>32;
-        *zPtr++ += (sum&0xFFFFFFFF);
-        // second column: 2 values
-        mult    = _mm256_mul_epu32(x, y); // first 2 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult); // lower half of product values
-        mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-        carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-        // third column: 3 values
-        x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 6)); // digits 0, 0, 1, 2: 00,00,01,10
-        mult    = _mm256_mul_epu32(x, y); // first 3 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult); // lower half of product values
-        mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-        carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2);
-        // fourth column: 4 values
-        x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-        mult    = _mm256_mul_epu32(x, y);
-        multL   = _mm256_and_si256(mask, mult); // lower half of product values
-        mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + _mm256_extract_epi64(multL, 3) + carry;
-        carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2) + _mm256_extract_epi64(mult, 3);
-        // succeeding columns (while y lasts)
-        for(; pY<pYLim; pY++)
-        {
-            raw     = _mm_lddqu_si128((__m128i const*) pY);
-            y       = _mm256_cvtepu32_epi64(raw);
-            mult    = _mm256_mul_epu32(x, y);
-            multL   = _mm256_and_si256(mask, mult); // lower half of product values
-            mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-            // sum the digits of multL (low order bits)
-            y       = _mm256_permute4x64_epi64(multL, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-            y       = _mm256_add_epi64(y, multL);
-            *zPtr++ += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry;
-            // sum the digits of mult (high order bits)
-            y       = _mm256_add_epi64(mult, _mm256_permute4x64_epi64(mult, 0X4E));
-            carry   = _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-        }
-        // 3 values in column: last 3 digits of y; first 3 of x
-        y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 57)); // digits 1, 2, 3, 0: 00,11,10,01
-        mult    = _mm256_mul_epu32(x, y); // first 3 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult); // lower half of product values
-        mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-        carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2);
-        // 2 values in column: last 2 digits of y; first 2 of x
-        y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw,14)); // digits 2, 3, 0, 0: 10,11,00,00 : 00,00,11,10
-        mult    = _mm256_mul_epu32(x, y); // first 2 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult); // lower half of product values
-        mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-        carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-        // 1 value in column: last digit of y; first digit of x
-        sum     = _mm256_extract_epi64(x, 0)*_mm256_extract_epi64(y, 1);
-        *zPtr++ += (sum&c_nClearHigh) + carry;
-        *zPtr   += (sum>>_DIGIT_SIZE_IN_BITS);
-    }
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-// assumes y has at least 4 digits!
-// Simple: do in 4-DIGIT chunks.
-// assumes x has exactly 4 DIGITs
-void MultAVX_b(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DOUBLEDIGIT *zPtr, sum, carry;
-    __m128i raw;
-    __m256i x, y, mult, zLower, zUpper, multL;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pXLim = pX + nXDigits;
-    DIGIT *pYLim = pY + nYDigits - 3;
-    int i = 0;
-    memset(pWork,0,sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    zPtr    = pWork;
-    // load x in reverse order -- instead of 0, 1, 2, 3 we load it as 3, 2, 1, 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    raw     = _mm_lddqu_si128((__m128i const*) pX);
-    y       = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) pY++));
-    // first few columns -- short
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 1)); // digits 0, 0, 0, 1: 00,00,00,01
-    // first column: 1 value
-    sum     = _mm256_extract_epi64(y,0)*_mm256_extract_epi64(x,1);
-    carry   = sum>>32;
-    *zPtr++ += (sum&0xFFFFFFFF);
-    // second column: 2 values
-    mult    = _mm256_mul_epu32(x, y); // first 2 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-    // third column: 3 values
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 6)); // digits 0, 0, 1, 2: 00,00,01,10
-    mult    = _mm256_mul_epu32(x, y); // first 3 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2);
-    // fourth column: 4 values
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-    mult    = _mm256_mul_epu32(x, y);
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + _mm256_extract_epi64(multL, 3) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2) + _mm256_extract_epi64(mult, 3);
-    // succeeding columns (while y lasts)
-    for(; pY<pYLim; pY++)
-    {
-        raw     = _mm_lddqu_si128((__m128i const*) pY);
-        y       = _mm256_cvtepu32_epi64(raw);
-        mult    = _mm256_mul_epu32(x, y);
-        multL   = _mm256_and_si256(mask, mult); // lower half of product values
-        mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-        // sum the digits of multL (low order bits)
-        y       = _mm256_permute4x64_epi64(multL, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-        y       = _mm256_add_epi64(y, multL);
-        *zPtr++ += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry;
-        // sum the digits of mult (high order bits)
-        mult    = _mm256_add_epi64(mult, _mm256_permute4x64_epi64(mult, 0X4E));
-        carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-    }
-    // 3 values in column: last 3 digits of y; first 3 of x
-    y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 57)); // digits 1, 2, 3, 0: 00,11,10,01
-    mult    = _mm256_mul_epu32(x, y); // first 3 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2);
-    // 2 values in column: last 2 digits of y; first 2 of x
-    y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw,14)); // digits 2, 3, 0, 0: 10,11,00,00 : 00,00,11,10
-    mult    = _mm256_mul_epu32(x, y); // first 2 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-    // 1 value in column: last digit of y; first digit of x
-    sum     = _mm256_extract_epi64(x, 0)*_mm256_extract_epi64(y, 1);
-    *zPtr++ += (sum&c_nClearHigh) + carry;
-    *zPtr   += (sum>>_DIGIT_SIZE_IN_BITS);
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-__forceinline void Mult4Cols(DIGIT y0, DIGIT y1, DIGIT y2, DIGIT y3, __m256i &x, __m256i &carry, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i mult0, mult1, mult2, mult3, acc;
-    mult0 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y0));
-    mult1 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y1));
-    mult2 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y2));
-    mult3 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y3));
-    acc   = _mm256_add_epi64(carry, _mm256_and_si256(mult0, mask)); // mult0, low order: cols 0-3
-    carry = _mm256_srli_epi64(mult3, 32);  // carry: cols 4-7
-    mult3 = _mm256_add_epi64(_mm256_srli_epi64(mult2, 32), _mm256_and_si256(mult3, mask)); // mult3: cols 3-6
-    mult2 = _mm256_add_epi64(_mm256_srli_epi64(mult1, 32), _mm256_and_si256(mult2, mask)); // mult2: cols 2-5
-    mult1 = _mm256_add_epi64(_mm256_srli_epi64(mult0, 32), _mm256_and_si256(mult1, mask)); // mult1: cols 1-4
-    mult3 = _mm256_permute4x64_epi64(mult3, 57);  // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    mult2 = _mm256_permute4x64_epi64(mult2, 78);  // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    mult1 = _mm256_permute4x64_epi64(mult1, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // add first 3 digits of mult3 to carry; last digit to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult3, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult3, 63));
-    // add first 2 digits of mult2 to carry; last 2 to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult2, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult2, 15));
-    // add first digit of mult1 to carry; last 3 to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult1, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult1, 3));
-    // store the results
-    _mm256_store_si256(pDest, acc);
-}
-
-// on entry mult0 - mult3 are y_i * <x> from previous 4 columns
-__forceinline void Mult4Cols(DIGIT y0, DIGIT y1, DIGIT y2, DIGIT y3, __m256i &x, __m256i &mult0, __m256i &mult1, __m256i &mult2, __m256i &mult3, __m256i &carry, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i acc;
-    // cols 0-3
-    acc   = _mm256_add_epi64(carry, _mm256_and_si256(mult0, mask)); // mult0, low order: cols 0-3
-    // cols 1-4
-    mult0 = _mm256_add_epi64(_mm256_srli_epi64(mult0, 32), _mm256_and_si256(mult1, mask));
-    mult0 = _mm256_permute4x64_epi64(mult0, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // add first digit of mult0 to carry; last 3 to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult0, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carry = _mm256_blend_epi32(_mm256_setzero_si256(), mult0, 3);
-    // done wth mult0.  Set it up for the next iteration
-    mult0 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y0));
-
-    // cols 2-5
-    mult1 = _mm256_add_epi64(_mm256_srli_epi64(mult1, 32), _mm256_and_si256(mult2, mask)); // mult2: cols 2-5
-    mult1 = _mm256_permute4x64_epi64(mult1, 78);  // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // add first 2 digits of mult1 to carry; last 2 to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult1, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult1, 15));
-    // done with mult1.  Set it up for the next iteration
-    mult1 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y1));
-
-    // cols 3-6
-    mult2 = _mm256_add_epi64(_mm256_srli_epi64(mult2, 32), _mm256_and_si256(mult3, mask)); // mult3: cols 3-6
-    mult2 = _mm256_permute4x64_epi64(mult2, 57);  // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // add first 3 digits of mult3 to carry; last digit to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult2, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult2, 63));
-    // done with mult2.  Set it up for the next iteration
-    mult2 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y2));
-
-    // cols 4-7
-    carry = _mm256_add_epi64(carry, _mm256_srli_epi64(mult3, 32));
-    // done with mult3.  Set it up for the next iteration
-    mult3 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y3));
-
-    // store the results
-    _mm256_store_si256(pDest, acc);
-}
-
-// Notation: when x is an __m256i containing 4 64-bit values, write x = (x3, x2, x1, x0) where x0 is x[0], x1 is x[1], etc
-// carryLow has data for cols (3, 2, 1, 0) on entry; carryMid cols (7,6,5,4).  carryHigh has junk
-__forceinline void Mult4Cols(DIGIT y0, DIGIT y1, DIGIT y2, DIGIT y3, __m256i &xLow, __m256i &xHigh, __m256i &mult0Low, __m256i &mult0High, __m256i &mult1Low, __m256i &mult1High, __m256i &carryLow, __m256i &carryMid, __m256i &carryHigh, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i tempA, tempB, y;
-    // cols 0-7 (low & mid)
-    // mult0Low has cols (3, 2, 1, 0) in low-order bits and cols (4, 3, 2, 1) in high-order bits
-    // mult0High has cols (7, 6, 5, 4) in low-order bits and cols (8, 7, 6, 5) in high-order bits
-    y         = _mm256_set1_epi64x(y2); // set up for next multiply
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_and_si256(mult0Low, mask)); // mult0, low order: cols 0-3
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_and_si256(mult0High, mask)); // mult0, low order: cols 4-7
-
-    // cols 1-8 (low, mid, high):
-    // mult0Low has data for cols 1-4 (high-order bits)
-    // mult0High has data for 5-8 (high-order bits)
-    // mult1Low has data for cols 1-4 (low-order bits)
-    // mult1High has data for cols 5-8 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y0<xLow> any more.  Use mult0Low for y2<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y0<xHigh> any more.  Use mult0High for y2<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y3); // set up for next mutiply
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147.  So (a,b,c,d) -> (b,c,d,a) with leftmost slot high-order
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // tempA now has data for cols (3, 2, 1 ,4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 147); // tempB now has data for cols (7, 6, 5, 8)
-    // add cols 3, 2, 1 (from tempA) to carryLow and cols (7, 6, 5, 4) (from tempA and tempB) to carryMid
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 3));
-    // set carryHigh to col 8
-    carryHigh = _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 3);
-
-    // cols 2-9
-    // mult1Low has data for cols 2-5 (high-order bits)
-    // mult1High has data for 6-9 (high-order bits)
-    // mult0Low has data for cols 2-5 (low-order bits)
-    // mult0High has data for cols 6-9 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), _mm256_and_si256(mult0Low, mask));
-    // note we don't need y2<xLow> any more.  Use mult1Low for y3<xLow>
-    mult1Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), _mm256_and_si256(mult0High, mask));
-    // note we don't need y2<xHigh> any more.  Use mult1High for y3<xHigh>
-    mult1High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y0); // set up for next mutiply
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78); // tempA now has data for cols (3, 2, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 78); // tempB now has data for cols (7, 6, 9, 8)
-    // add cols 3, 2 (from tempA) to carryLow and cols 7, 6, 5, 4 (from tempB, tempA) to carryMid and cols 9, 8 (tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 15));
-    // add cols 9, 8 to carryHigh
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 15));
-
-    // cols 3-10
-    // mult0Low has data for cols 3-6 (high-order bits)
-    // mult0High has data for 7-10 (high-order bits)
-    // mult1Low has data for cols 3-6 (low-order bits)
-    // mult1High has data for cols 7-10 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y3<xLow> any more.  Use mult0Low for y0<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y3<xHigh> any more.  Use mult0High for y0<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y1); // set up for next mutiply
-    // slot 0: 01, slot 1 : 10, slot 2 : 11, slot 3 : 0 -> 111001 = 57  So (a, b, c, d) -> (d, a, b, c)
-    tempA     = _mm256_permute4x64_epi64(tempA, 57); // tempA now has data for cols (3, 6, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 57); // tempB now has data for cols (7, 10, 9, 8)
-    // add col 3 (from tempA) to carryLow.  Add cols 7, 6, 5, 4 (from tempA, tempB) to carryMid.  Add cols 10, 9, 8 (from tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 63));
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 63));
-
-    // cols 4-11
-    // mult1Low has data for cols 4-7 (high-order bits)
-    // mult1High has data for cols 8-11 (high-order bits)
-    carryMid  = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), carryMid);
-    // note we don't need y0<xLow> any more.  Use mult1Low for y1<xLow>
-    mult1Low  = _mm256_mul_epu32(xLow, y);
-    carryHigh = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), carryHigh);
-    // note we don't need y3<xHigh> any more.  Use mult1High for y1<xHigh>
-    mult1High = _mm256_mul_epu32(xHigh, y);
-
-    // store the results.  Note just carryLow is complete.
-    _mm256_store_si256(pDest, carryLow);
-}
-
-// same, but don't need to precompute mult0, mult1 for next iteration
-void Mult4Cols(DIGIT y2, DIGIT y3, __m256i &xLow, __m256i &xHigh, __m256i &mult0Low, __m256i &mult0High, __m256i &mult1Low, __m256i &mult1High, __m256i &carryLow, __m256i &carryMid, __m256i &carryHigh, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    //printf("mult0 low:  ");  for (int i = 0; i < 4; i++) printf("%u ", mult0Low.m256i_u64[3 - i]>>32); printf("\n");
-    //printf("mult0 high: ");  for (int i = 0; i < 4; i++) printf("%u ", mult0High.m256i_u64[3 - i]>>32); printf("\n");
-    //printf("mult1 low:  ");  for (int i = 0; i < 4; i++) printf("%u ", mult1Low.m256i_u64[3 - i]>>32); printf("\n");
-    //printf("mult1 high: ");  for (int i = 0; i < 4; i++) printf("%u ", mult1High.m256i_u64[3 - i]>>32); printf("\n");
-    //printf("carryLow: "); for (int i = 0; i < 4; i++) printf("%u ", carryLow.m256i_u64[3 - i]); printf("\n");
-    //printf("carryMid: "); for (int i = 0; i < 4; i++) printf("%u ", carryMid.m256i_u64[3 - i]); printf("\n");
-    __m256i tempA, tempB, y;
-    y = _mm256_set1_epi64x(y2); // set up for next multiply
-    // cols 0-7 (low & mid)
-    // mult0Low has cols (3, 2, 1, 0) in low-order bits and cols (4, 3, 2, 1) in high-order bits
-    // mult0High has cols (7, 6, 5, 4) in low-order bits and cols (8, 7, 6, 5) in high-order bits
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_and_si256(mult0Low, mask)); // mult0, low order: cols 0-3
-//    printf("carryLow a: "); for (int i = 0; i < 4; i++) printf("%u ", carryLow.m256i_u64[3 - i]); printf("\n");
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_and_si256(mult0High, mask)); // mult0, low order: cols 4-7
-//    printf("carryMid a: "); for (int i = 0; i < 4; i++) printf("%u ", carryMid.m256i_u64[3 - i]); printf("\n");
-
-    // cols 1-8 (low, mid, high):
-    // mult0Low has data for cols 1-4 (high-order bits)
-    // mult0High has data for 5-8 (high-order bits)
-    // mult1Low has data for cols 1-4 (low-order bits)
-    // mult1High has data for cols 5-8 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y0<xLow> any more.  Use mult0Low for y2<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y0<xHigh> any more.  Use mult0High for y2<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    //printf("mult2 low:  ");  for (int i = 0; i < 4; i++) printf("%u ", mult0Low.m256i_u64[3 - i]>>32); printf("\n");
-    //printf("mult2 high: ");  for (int i = 0; i < 4; i++) printf("%u ", mult0High.m256i_u64[3 - i]>>32); printf("\n");
-    y         = _mm256_set1_epi64x(y3); // set up for next mutiply
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147.  So (a,b,c,d) -> (b,c,d,a) with leftmost slot high-order
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // tempA now has data for cols (3, 2, 1 ,4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 147); // tempB now has data for cols (7, 6, 5, 8)
-    // add cols 3, 2, 1 (from tempA) to carryLow and cols (7, 6, 5, 4) (from tempA and tempB) to carryMid
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-//    printf("carryLow b: "); for (int i = 0; i < 4; i++) printf("%u ", carryLow.m256i_u64[3 - i]); printf("\n");
-    // should be: last from b, first 3 from a\n");
-    //printf("temp low:   "); for (int i = 0; i < 4; i++) printf("%u ", tempA.m256i_u64[3 - i]); printf("\n");
-    //printf("temp high:  "); for (int i = 0; i < 4; i++) printf("%u ", tempB.m256i_u64[3 - i]); printf("\n");
-    //printf("temp blend: "); for (int i = 0; i < 4; i++) printf("%u ", _mm256_blend_epi32(tempB, tempA, 3).m256i_u64[3 - i]); printf("\n");
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 3));
-//    printf("carryMid b: "); for (int i = 0; i < 4; i++) printf("%u ", carryMid.m256i_u64[3 - i]); printf("\n");
-    // set carryHigh to col 8
-    carryHigh = _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 3);
- //   printf("carryHigh b: "); for (int i = 0; i < 4; i++) printf("%u ", carryHigh.m256i_u64[3 - i]); printf("\n");
-
-    // cols 2-9
-    // mult1Low has data for cols 2-5 (high-order bits)
-    // mult1High has data for 6-9 (high-order bits)
-    // mult0Low has data for cols 2-5 (low-order bits)
-    // mult0High has data for cols 6-9 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), _mm256_and_si256(mult0Low, mask));
-    // note we don't need y2<xLow> any more.  Use mult1Low for y3<xLow>
-    mult1Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), _mm256_and_si256(mult0High, mask));
-    // note we don't need y2<xHigh> any more.  Use mult1High for y3<xHigh>
-    mult1High = _mm256_mul_epu32(xHigh, y);
-    //printf("mult3 low:  ");  for (int i = 0; i < 4; i++) printf("%u ", mult1Low.m256i_u64[3 - i]>>32); printf("\n");
-    //printf("mult3 high: ");  for (int i = 0; i < 4; i++) printf("%u ", mult1High.m256i_u64[3 - i]>>32); printf("\n");
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78); // tempA now has data for cols (3, 2, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 78); // tempB now has data for cols (7, 6, 9, 8)
-    // add cols 3, 2 (from tempA) to carryLow and cols 7, 6, 5, 4 (from tempB, tempA) to carryMid and cols 9, 8 (tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-//    printf("carryLow c: "); for (int i = 0; i < 4; i++) printf("%u ", carryLow.m256i_u64[3 - i]); printf("\n");
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 15));
- //   printf("carryMid c: "); for (int i = 0; i < 4; i++) printf("%u ", carryMid.m256i_u64[3 - i]); printf("\n");
-    // add cols 9, 8 to carryHigh
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 15));
- //   printf("carryHigh c: "); for (int i = 0; i < 4; i++) printf("%u ", carryHigh.m256i_u64[3 - i]); printf("\n");
-
-    // cols 3-10
-    // mult0Low has data for cols 3-6 (high-order bits)
-    // mult0High has data for 7-10 (high-order bits)
-    // mult1Low has data for cols 3-6 (low-order bits)
-    // mult1High has data for cols 7-10 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // slot 0: 01, slot 1 : 10, slot 2 : 11, slot 3 : 0 -> 111001 = 57  So (a, b, c, d) -> (d, a, b, c)
-    tempA     = _mm256_permute4x64_epi64(tempA, 57); // tempA now has data for cols (3, 6, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 57); // tempB now has data for cols (7, 10, 9, 8)
-    // add col 3 (from tempA) to carryLow.  Add cols 7, 6, 5, 4 (from tampA, tampB) to carryMid.  Add cols 10, 9, 8 (from tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
- //   printf("carryLow d: "); for (int i = 0; i < 4; i++) printf("%u ", carryLow.m256i_u64[3 - i]); printf("\n");
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 63));
- //   printf("carryMid d: "); for (int i = 0; i < 4; i++) printf("%u ", carryMid.m256i_u64[3 - i]); printf("\n");
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 63));
-//    printf("carryHigh d: "); for (int i = 0; i < 4; i++) printf("%u ", carryHigh.m256i_u64[3 - i]); printf("\n");
-
-    // cols 4-11
-    // mult1Low has data for cols 4-7 (high-order bits)
-    // mult1High has data for cols 8-11 (high-order bits)
-    carryMid  = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), carryMid);
-//    printf("carryMid e: "); for (int i = 0; i < 4; i++) printf("%u ", carryMid.m256i_u64[3 - i]); printf("\n");
-    carryHigh = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), carryHigh);
-//    printf("carryHigh e: "); for (int i = 0; i < 4; i++) printf("%u ", carryHigh.m256i_u64[3 - i]); printf("\n");
-
-    // store the results.  Note just carryLow is complete.
- //   printf("out: "); for (int i = 0; i < 4; i++) printf("%u ", carryLow.m256i_u64[3 - i]); printf("\n");
-    _mm256_store_si256(pDest, carryLow);
-}
-
-// Only care about mult0Low, mult0High, mult1Low, mult1High, y2, y3, y0
-void Mult4ColsTruncated(DIGIT y0, DIGIT y2, DIGIT y3, __m256i &xLow, __m256i &xHigh, __m256i &mult0Low, __m256i &mult0High, __m256i &mult1Low, __m256i &mult1High, __m256i &carryLow, __m256i &carryMid, __m256i &carryHigh, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i tempA, tempB, y;
-    // cols 0-7 (low & mid)
-    // mult0Low has cols (3, 2, 1, 0) in low-order bits and cols (4, 3, 2, 1) in high-order bits
-    // mult0High has cols (7, 6, 5, 4) in low-order bits and cols (8, 7, 6, 5) in high-order bits
-    y         = _mm256_set1_epi64x(y2); // set up for next multiply
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_and_si256(mult0Low, mask)); // mult0, low order: cols 0-3
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_and_si256(mult0High, mask)); // mult0, low order: cols 4-7
-
-    // cols 1-8 (low, mid, high):
-    // mult0Low has data for cols 1-4 (high-order bits)
-    // mult0High has data for 5-8 (high-order bits)
-    // mult1Low has data for cols 1-4 (low-order bits)
-    // mult1High has data for cols 5-8 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y0<xLow> any more.  Use mult0Low for y2<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y0<xHigh> any more.  Use mult0High for y2<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y3); // set up for next mutiply
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147.  So (a,b,c,d) -> (b,c,d,a) with leftmost slot high-order
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // tempA now has data for cols (3, 2, 1 ,4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 147); // tempB now has data for cols (7, 6, 5, 8)
-    // add cols 3, 2, 1 (from tempA) to carryLow and cols (7, 6, 5, 4) (from tempA and tempB) to carryMid
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 3));
-    // set carryHigh to col 8
-    carryHigh = _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 3);
-
-    // cols 2-9
-    // mult1Low has data for cols 2-5 (high-order bits)
-    // mult1High has data for 6-9 (high-order bits)
-    // mult0Low has data for cols 2-5 (low-order bits)
-    // mult0High has data for cols 6-9 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), _mm256_and_si256(mult0Low, mask));
-    // note we don't need y2<xLow> any more.  Use mult1Low for y3<xLow>
-    mult1Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), _mm256_and_si256(mult0High, mask));
-    // note we don't need y2<xHigh> any more.  Use mult1High for y3<xHigh>
-    mult1High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y0); // set up for next mutiply
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78); // tempA now has data for cols (3, 2, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 78); // tempB now has data for cols (7, 6, 9, 8)
-    // add cols 3, 2 (from tempA) to carryLow and cols 7, 6, 5, 4 (from tempB, tempA) to carryMid and cols 9, 8 (tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 15));
-    // add cols 9, 8 to carryHigh
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 15));
-
-    // cols 3-10
-    // mult0Low has data for cols 3-6 (high-order bits)
-    // mult0High has data for 7-10 (high-order bits)
-    // mult1Low has data for cols 3-6 (low-order bits)
-    // mult1High has data for cols 7-10 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y3<xLow> any more.  Use mult0Low for y0<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y3<xHigh> any more.  Use mult0High for y0<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    // slot 0: 01, slot 1 : 10, slot 2 : 11, slot 3 : 0 -> 111001 = 57  So (a, b, c, d) -> (d, a, b, c)
-    tempA     = _mm256_permute4x64_epi64(tempA, 57); // tempA now has data for cols (3, 6, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 57); // tempB now has data for cols (7, 10, 9, 8)
-    // add col 3 (from tempA) to carryLow.  Add cols 7, 6, 5, 4 (from tempA, tempB) to carryMid.  Add cols 10, 9, 8 (from tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 63));
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 63));
-
-    // cols 4-11
-    // mult1Low has data for cols 4-7 (high-order bits)
-    // mult1High has data for cols 8-11 (high-order bits)
-    carryMid  = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), carryMid);
-    carryHigh = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), carryHigh);
-
-    // store the results.  Note just carryLow is complete.
-    _mm256_store_si256(pDest, carryLow);
-}
-
-// only care about mult0Low, mult0High, mult1Low, mult1High, y2, y3
-void Mult4ColsTruncated(DIGIT y2, DIGIT y3, __m256i &xLow, __m256i &xHigh, __m256i &mult0Low, __m256i &mult0High, __m256i &mult1Low, __m256i &mult1High, __m256i &carryLow, __m256i &carryMid, __m256i &carryHigh, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i tempA, tempB, y;
-    // cols 0-7 (low & mid)
-    // mult0Low has cols (3, 2, 1, 0) in low-order bits and cols (4, 3, 2, 1) in high-order bits
-    // mult0High has cols (7, 6, 5, 4) in low-order bits and cols (8, 7, 6, 5) in high-order bits
-    y         = _mm256_set1_epi64x(y2); // set up for next multiply
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_and_si256(mult0Low, mask)); // mult0, low order: cols 0-3
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_and_si256(mult0High, mask)); // mult0, low order: cols 4-7
-
-    // cols 1-8 (low, mid, high):
-    // mult0Low has data for cols 1-4 (high-order bits)
-    // mult0High has data for 5-8 (high-order bits)
-    // mult1Low has data for cols 1-4 (low-order bits)
-    // mult1High has data for cols 5-8 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y0<xLow> any more.  Use mult0Low for y2<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y0<xHigh> any more.  Use mult0High for y2<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y3); // set up for next mutiply
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147.  So (a,b,c,d) -> (b,c,d,a) with leftmost slot high-order
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // tempA now has data for cols (3, 2, 1 ,4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 147); // tempB now has data for cols (7, 6, 5, 8)
-    // add cols 3, 2, 1 (from tempA) to carryLow and cols (7, 6, 5, 4) (from tempA and tempB) to carryMid
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 3));
-    // set carryHigh to col 8
-    carryHigh = _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 3);
-
-    // cols 2-9
-    // mult1Low has data for cols 2-5 (high-order bits)
-    // mult1High has data for 6-9 (high-order bits)
-    // mult0Low has data for cols 2-5 (low-order bits)
-    // mult0High has data for cols 6-9 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), _mm256_and_si256(mult0Low, mask));
-    // note we don't need y2<xLow> any more.  Use mult1Low for y3<xLow>
-    mult1Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), _mm256_and_si256(mult0High, mask));
-    // note we don't need y2<xHigh> any more.  Use mult1High for y3<xHigh>
-    mult1High = _mm256_mul_epu32(xHigh, y);
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78); // tempA now has data for cols (3, 2, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 78); // tempB now has data for cols (7, 6, 9, 8)
-    // add cols 3, 2 (from tempA) to carryLow and cols 7, 6, 5, 4 (from tempB, tempA) to carryMid and cols 9, 8 (tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 15));
-    // add cols 9, 8 to carryHigh
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 15));
-
-    // cols 3-10
-    // mult0Low has data for cols 3-6 (high-order bits)
-    // mult0High has data for 7-10 (high-order bits)
-    // mult1Low has data for cols 3-6 (low-order bits)
-    // mult1High has data for cols 7-10 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // slot 0: 01, slot 1 : 10, slot 2 : 11, slot 3 : 0 -> 111001 = 57  So (a, b, c, d) -> (d, a, b, c)
-    tempA     = _mm256_permute4x64_epi64(tempA, 57); // tempA now has data for cols (3, 6, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 57); // tempB now has data for cols (7, 10, 9, 8)
-    // add col 3 (from tempA) to carryLow.  Add cols 7, 6, 5, 4 (from tempA, tempB) to carryMid.  Add cols 10, 9, 8 (from tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 63));
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 63));
-
-    // cols 4-11
-    // mult1Low has data for cols 4-7 (high-order bits)
-    // mult1High has data for cols 8-11 (high-order bits)
-    carryMid  = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), carryMid);
-    carryHigh = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), carryHigh);
-
-    // store the results.  Note just carryLow is complete.
-    _mm256_store_si256(pDest, carryLow);
-}
-
-// Only care about mult0Low, mult0High, mult1Low, mult1High, y2
-void Mult4ColsTruncated(DIGIT y2, __m256i &xLow, __m256i &xHigh, __m256i &mult0Low, __m256i &mult0High, __m256i &mult1Low, __m256i &mult1High, __m256i &carryLow, __m256i &carryMid, __m256i &carryHigh, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i tempA, tempB, y;
-    // cols 0-7 (low & mid)
-    // mult0Low has cols (3, 2, 1, 0) in low-order bits and cols (4, 3, 2, 1) in high-order bits
-    // mult0High has cols (7, 6, 5, 4) in low-order bits and cols (8, 7, 6, 5) in high-order bits
-    y         = _mm256_set1_epi64x(y2); // set up for next multiply
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_and_si256(mult0Low, mask)); // mult0, low order: cols 0-3
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_and_si256(mult0High, mask)); // mult0, low order: cols 4-7
-
-    // cols 1-8 (low, mid, high):
-    // mult0Low has data for cols 1-4 (high-order bits)
-    // mult0High has data for 5-8 (high-order bits)
-    // mult1Low has data for cols 1-4 (low-order bits)
-    // mult1High has data for cols 5-8 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y0<xLow> any more.  Use mult0Low for y2<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y0<xHigh> any more.  Use mult0High for y2<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147.  So (a,b,c,d) -> (b,c,d,a) with leftmost slot high-order
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // tempA now has data for cols (3, 2, 1 ,4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 147); // tempB now has data for cols (7, 6, 5, 8)
-    // add cols 3, 2, 1 (from tempA) to carryLow and cols (7, 6, 5, 4) (from tempA and tempB) to carryMid
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 3));
-    // set carryHigh to col 8
-    carryHigh = _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 3);
-
-    // cols 2-9
-    // mult1Low has data for cols 2-5 (high-order bits)
-    // mult1High has data for 6-9 (high-order bits)
-    // mult0Low has data for cols 2-5 (low-order bits)
-    // mult0High has data for cols 6-9 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), _mm256_and_si256(mult0Low, mask));
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), _mm256_and_si256(mult0High, mask));
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78); // tempA now has data for cols (3, 2, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 78); // tempB now has data for cols (7, 6, 9, 8)
-    // add cols 3, 2 (from tempA) to carryLow and cols 7, 6, 5, 4 (from tempB, tempA) to carryMid and cols 9, 8 (tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 15));
-    // add cols 9, 8 to carryHigh
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 15));
-
-    // cols 3-10
-    // mult0Low has data for cols 3-6 (high-order bits)
-    // mult0High has data for 7-10 (high-order bits)
-    tempA     = _mm256_srli_epi64(mult0Low, 32);
-    tempB     = _mm256_srli_epi64(mult0High, 32);
-    // slot 0: 01, slot 1 : 10, slot 2 : 11, slot 3 : 0 -> 111001 = 57  So (a, b, c, d) -> (d, a, b, c)
-    tempA     = _mm256_permute4x64_epi64(tempA, 57); // tempA now has data for cols (3, 6, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 57); // tempB now has data for cols (7, 10, 9, 8)
-    // add col 3 (from tempA) to carryLow.  Add cols 7, 6, 5, 4 (from tempA, tempB) to carryMid.  Add cols 10, 9, 8 (from tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 63));
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 63));
-
-    // store the results.  Note just carryLow is complete.
-    _mm256_store_si256(pDest, carryLow);
-}
-
-// Only care about mult0Low, mult0High, mult1Low, mult1High
-void Mult4ColsTruncated(__m256i &xLow, __m256i &xHigh, __m256i &mult0Low, __m256i &mult0High, __m256i &mult1Low, __m256i &mult1High, __m256i &carryLow, __m256i &carryMid, __m256i &carryHigh, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i tempA, tempB;
-    // cols 0-7 (low & mid)
-    // mult0Low has cols (3, 2, 1, 0) in low-order bits and cols (4, 3, 2, 1) in high-order bits
-    // mult0High has cols (7, 6, 5, 4) in low-order bits and cols (8, 7, 6, 5) in high-order bits
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_and_si256(mult0Low, mask)); // mult0, low order: cols 0-3
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_and_si256(mult0High, mask)); // mult0, low order: cols 4-7
-
-    // cols 1-8 (low, mid, high):
-    // mult0Low has data for cols 1-4 (high-order bits)
-    // mult0High has data for 5-8 (high-order bits)
-    // mult1Low has data for cols 1-4 (low-order bits)
-    // mult1High has data for cols 5-8 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147.  So (a,b,c,d) -> (b,c,d,a) with leftmost slot high-order
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // tempA now has data for cols (3, 2, 1 ,4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 147); // tempB now has data for cols (7, 6, 5, 8)
-    // add cols 3, 2, 1 (from tempA) to carryLow and cols (7, 6, 5, 4) (from tempA and tempB) to carryMid
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 3));
-    // set carryHigh to col 8
-    carryHigh = _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 3);
-
-    // cols 2-9
-    // mult1Low has data for cols 2-5 (high-order bits)
-    // mult1High has data for 6-9 (high-order bits)
-    // mult0Low has data for cols 2-5 (low-order bits)
-    // mult0High has data for cols 6-9 (low-order bits)
-    tempA     = _mm256_srli_epi64(mult1Low, 32);
-    tempB     = _mm256_srli_epi64(mult1High, 32);
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78); // tempA now has data for cols (3, 2, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 78); // tempB now has data for cols (7, 6, 9, 8)
-    // add cols 3, 2 (from tempA) to carryLow and cols 7, 6, 5, 4 (from tempB, tempA) to carryMid and cols 9, 8 (tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 15));
-    // add cols 9, 8 to carryHigh
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 15));
-
-    // store the results.  Note just carryLow is complete.
-    _mm256_store_si256(pDest, carryLow);
-}
-
-// Only care about mult0Low, mult0High
-void Mult4ColsTruncated(__m256i &mult0Low, __m256i &mult0High, __m256i &carryLow, __m256i &carryMid, __m256i &carryHigh, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    //printf("mult0 low:  ");  for (int i = 0; i < 4; i++) printf("%u ", mult0Low.m256i_u64[3 - i]); printf("\n");
-    //printf("mult0 high: ");  for (int i = 0; i < 4; i++) printf("%u ", mult0High.m256i_u64[3 - i]); printf("\n");
-    __m256i tempA, tempB, y;
-    // cols 0-7 (low & mid)
-    // mult0Low has cols (3, 2, 1, 0) in low-order bits and cols (4, 3, 2, 1) in high-order bits
-    // mult0High has cols (7, 6, 5, 4) in low-order bits and cols (8, 7, 6, 5) in high-order bits
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_and_si256(mult0Low, mask)); // mult0, low order: cols 0-3
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_and_si256(mult0High, mask)); // mult0, low order: cols 4-7
-
-    // cols 1-8 (low, mid, high):
-    // mult0Low has data for cols 1-4 (high-order bits)
-    // mult0High has data for 5-8 (high-order bits)
-    tempA     = _mm256_srli_epi64(mult0Low, 32);
-    tempB     = _mm256_srli_epi64(mult0High, 32);
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147.  So (a,b,c,d) -> (b,c,d,a) with leftmost slot high-order
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // tempA now has data for cols (3, 2, 1 ,4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 147); // tempB now has data for cols (7, 6, 5, 8)
-    // add cols 3, 2, 1 (from tempA) to carryLow and cols (7, 6, 5, 4) (from tempA and tempB) to carryMid
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 3));
-    // set carryHigh to col 8
-    carryHigh = _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 3);
-    // store the results.  Note just carryLow is complete.
-    _mm256_store_si256(pDest, carryLow);
-}
-
-// Notation: when x is an __m256i containing 4 64-bit values, write x = (x3, x2, x1, x0) where x0 is x[0], x1 is x[1], etc
-// carry0 has data for cols (3, 2, 1, 0) on entry; carry1 cols (7,6,5,4). carry2 (11, 10, 9, 8), carry3 (15, 14, 13, 12) and carry4 has junk
-// mult_i contains y0*<x_i> on entry; on exit, y0*<x_i> for the next iteration
-void Mult4Cols(DIGIT y0, DIGIT y1, DIGIT y2, DIGIT y3, __m256i &x0, __m256i &x1, __m256i &x2, __m256i &x3, __m256i &mult0, __m256i &mult1, __m256i &mult2, __m256i &mult3, __m256i &carry0, __m256i &carry1, __m256i &carry2, __m256i &carry3, __m256i &carry4, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i temp0, temp1, temp2, temp3, y;
-    // cols 0-15
-    // mult0 has cols (3, 2, 1, 0) in low-order bits and cols (4, 3, 2, 1) in high-order bits
-    // mult1 has cols (7, 6, 5, 4) in low-order bits and cols (8, 7, 6, 5) in high-order bits
-    // etc for mult 2, 3
-    y       = _mm256_set1_epi64x(y2); // set up for next multiply
-    carry0  = _mm256_add_epi64(carry0, _mm256_and_si256(mult0, mask)); // mult0, low order: cols 0-3
-    carry1  = _mm256_add_epi64(carry1, _mm256_and_si256(mult1, mask)); // mult1, low order: cols 4-7
-    carry2  = _mm256_add_epi64(carry2, _mm256_and_si256(mult2, mask)); // mult2, low order: cols 8-11
-    carry3  = _mm256_add_epi64(carry3, _mm256_and_si256(mult3, mask)); // mult3, low order: cols 12-15
-
-    // cols 1-16:
-    // mult0 has data for cols 1-4 (high-order bits)
-    // mult1 has data for 5-8 (high-order bits)
-    // mult2 has data for cols 9-12 (high-order bits)
-    // mult3 has data for cols 13-16 (high-order bits)
-    temp0   = _mm256_srli_epi64(mult0, 32);
-    temp1   = _mm256_srli_epi64(mult1, 32);
-    temp2   = _mm256_srli_epi64(mult2, 32);
-    temp3   = _mm256_srli_epi64(mult3, 32);
-    // don't need mult0-3 anymore.  Do next multiplications
-    mult0   = _mm256_mul_epu32(x0,y);
-    mult1   = _mm256_mul_epu32(x1,y);
-    mult2   = _mm256_mul_epu32(x2,y);
-    mult3   = _mm256_mul_epu32(x3,y);
-
-/*
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y0<xLow> any more.  Use mult0Low for y2<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y0<xHigh> any more.  Use mult0High for y2<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y3); // set up for next mutiply
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147.  So (a,b,c,d) -> (b,c,d,a) with leftmost slot high-order
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // tempA now has data for cols (3, 2, 1 ,4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 147); // tempB now has data for cols (7, 6, 5, 8)
-    // add cols 3, 2, 1 (from tempA) to carryLow and cols (7, 6, 5, 4) (from tempA and tempB) to carryMid
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 3));
-    // set carryHigh to col 8
-    carryHigh = _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 3);
-
-    // cols 2-9
-    // mult1Low has data for cols 2-5 (high-order bits)
-    // mult1High has data for 6-9 (high-order bits)
-    // mult0Low has data for cols 2-5 (low-order bits)
-    // mult0High has data for cols 6-9 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), _mm256_and_si256(mult0Low, mask));
-    // note we don't need y2<xLow> any more.  Use mult1Low for y3<xLow>
-    mult1Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), _mm256_and_si256(mult0High, mask));
-    // note we don't need y2<xHigh> any more.  Use mult1High for y3<xHigh>
-    mult1High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y0); // set up for next mutiply
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78); // tempA now has data for cols (3, 2, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 78); // tempB now has data for cols (7, 6, 9, 8)
-    // add cols 3, 2 (from tempA) to carryLow and cols 7, 6, 5, 4 (from tempB, tempA) to carryMid and cols 9, 8 (tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 15));
-    // add cols 9, 8 to carryHigh
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 15));
-
-    // cols 3-10
-    // mult0Low has data for cols 3-6 (high-order bits)
-    // mult0High has data for 7-10 (high-order bits)
-    // mult1Low has data for cols 3-6 (low-order bits)
-    // mult1High has data for cols 7-10 (low-order bits)
-    tempA     = _mm256_add_epi64(_mm256_srli_epi64(mult0Low, 32), _mm256_and_si256(mult1Low, mask));
-    // note we don't need y3<xLow> any more.  Use mult0Low for y0<xLow>
-    mult0Low  = _mm256_mul_epu32(xLow, y);
-    tempB     = _mm256_add_epi64(_mm256_srli_epi64(mult0High, 32), _mm256_and_si256(mult1High, mask));
-    // note we don't need y3<xHigh> any more.  Use mult0High for y0<xHigh>
-    mult0High = _mm256_mul_epu32(xHigh, y);
-    y         = _mm256_set1_epi64x(y1); // set up for next mutiply
-    // slot 0: 01, slot 1 : 10, slot 2 : 11, slot 3 : 0 -> 111001 = 57  So (a, b, c, d) -> (d, a, b, c)
-    tempA     = _mm256_permute4x64_epi64(tempA, 57); // tempA now has data for cols (3, 6, 5, 4)
-    tempB     = _mm256_permute4x64_epi64(tempB, 57); // tempB now has data for cols (7, 10, 9, 8)
-    // add col 3 (from tempA) to carryLow.  Add cols 7, 6, 5, 4 (from tempA, tempB) to carryMid.  Add cols 10, 9, 8 (from tempB) to carryHigh
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carryMid  = _mm256_add_epi64(carryMid, _mm256_blend_epi32(tempB, tempA, 63));
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(_mm256_setzero_si256(), tempB, 63));
-
-    // cols 4-11
-    // mult1Low has data for cols 4-7 (high-order bits)
-    // mult1High has data for cols 8-11 (high-order bits)
-    carryMid  = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), carryMid);
-    // note we don't need y0<xLow> any more.  Use mult1Low for y1<xLow>
-    mult1Low  = _mm256_mul_epu32(xLow, y);
-    carryHigh = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), carryHigh);
-    // note we don't need y3<xHigh> any more.  Use mult1High for y1<xHigh>
-    mult1High = _mm256_mul_epu32(xHigh, y);
-
-    // store the results.  Note just carryLow is complete.
-    _mm256_store_si256(pDest, carryLow);
-    */
-}
-
-// on entry mult0L,H are y0*<xLow> and y0*<xHigh>; mult1L,H for y1
-
-// for final step of Mult4Cols -- don't need to set up for next iteration
-__forceinline void Mult4Cols(__m256i &x, __m256i &mult0, __m256i &mult1, __m256i &mult2, __m256i &mult3, __m256i &carry, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-  //  const __m256i zero = _mm256_setzero_si256();
-    __m256i acc;
-    // cols 0-3
-    acc   = _mm256_add_epi64(carry, _mm256_and_si256(mult0, mask)); // mult0, low order: cols 0-3
-    // cols 1-4
-    mult0 = _mm256_add_epi64(_mm256_srli_epi64(mult0, 32), _mm256_and_si256(mult1, mask));
-    mult0 = _mm256_permute4x64_epi64(mult0, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // add first digit of mult0 to carry; last 3 to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult0, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carry = _mm256_blend_epi32(_mm256_setzero_si256(), mult0, 3);
-
-    // cols 2-5
-    mult1 = _mm256_add_epi64(_mm256_srli_epi64(mult1, 32), _mm256_and_si256(mult2, mask)); // mult2: cols 2-5
-    mult1 = _mm256_permute4x64_epi64(mult1, 78);  // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // add first 2 digits of mult1 to carry; last 2 to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult1, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult1, 15));
-
-    // cols 3-6
-    mult2 = _mm256_add_epi64(_mm256_srli_epi64(mult2, 32), _mm256_and_si256(mult3, mask)); // mult3: cols 3-6
-    mult2 = _mm256_permute4x64_epi64(mult2, 57);  // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // add first 3 digits of mult3 to carry; last digit to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult2, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult2, 63));
-
-    // cols 4-7
-    carry = _mm256_add_epi64(carry, _mm256_srli_epi64(mult3, 32));
-
-    // store the results
-    _mm256_store_si256(pDest, acc);
-}
-
-// on entry mult0 - mult3 are y_i * <x> from previous 4 columns
-// assumes Y is padded with 0s
-__forceinline void Mult4ColsPadded(DIGIT &y0, DIGIT &y1, DIGIT &y2, DIGIT &y3, DIGIT *pY,__m256i &x, __m256i &mult0, __m256i &mult1, __m256i &mult2, __m256i &mult3, __m256i &carry, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-
-    __m256i acc;
-    // cols 0-3
-    acc = _mm256_add_epi64(carry, _mm256_and_si256(mult0, mask)); // mult0, low order: cols 0-3
-    // cols 1-4
-    mult0 = _mm256_add_epi64(_mm256_srli_epi64(mult0, 32), _mm256_and_si256(mult1, mask));
-//    printf("Mult0:      "); for(int i=3;0<=i;i--) printf("%u ",mult0.m256i_u64[i]); printf("\n");
-    mult0 = _mm256_permute4x64_epi64(mult0, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-//    printf("Carry pre:  "); for(int i=3;0<=i;i--) printf("%u ",mult0.m256i_u64[i]); printf("\n");
- //   printf("Carry post: "); for(int i=3;0<=i;i--) printf("%u ", _mm256_blend_epi32(_mm256_setzero_si256(), mult0, 3).m256i_u64[i]); printf("\n");
-    // add first digit of mult0 to carry; last 3 to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult0, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from mult1; rest are 0
-    carry = _mm256_blend_epi32(_mm256_setzero_si256(), mult0, 3);
-    // done wth mult0.  Set it up for the next iteration
-    mult0 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y0));
-    y0    = *pY;
-
-    // cols 2-5
-    mult1 = _mm256_add_epi64(_mm256_srli_epi64(mult1, 32), _mm256_and_si256(mult2, mask)); // mult2: cols 2-5
-//    printf("Mult1:      "); for(int i=3;0<=i;i--) printf("%u ",mult1.m256i_u64[i]); printf("\n");
-    mult1 = _mm256_permute4x64_epi64(mult1, 78);  // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-//    printf("Carry pre:  "); for(int i=3;0<=i;i--) printf("%u ",mult1.m256i_u64[i]); printf("\n");
-//    printf("Carry post: "); for(int i=3;0<=i;i--) printf("%u ", _mm256_blend_epi32(_mm256_setzero_si256(), mult1, 15).m256i_u64[i]); printf("\n");
-    // add first 2 digits of mult1 to carry; last 2 to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult1, _mm256_setzero_si256(), 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult2; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult1, 15));
-    // done with mult1.  Set it up for the next iteration
-    mult1 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y1));
-    y1    = pY[1];
-
-    // cols 3-6
-    mult2 = _mm256_add_epi64(_mm256_srli_epi64(mult2, 32), _mm256_and_si256(mult3, mask)); // mult3: cols 3-6
-//    printf("Mult2:      "); for(int i=3;0<=i;i--) printf("%u ",mult2.m256i_u64[i]); printf("\n");
-    mult2 = _mm256_permute4x64_epi64(mult2, 57);  // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-//    printf("Carry pre:  "); for(int i=3;0<=i;i--) printf("%u ",mult2.m256i_u64[i]); printf("\n");
-//    printf("Carry post: "); for(int i=3;0<=i;i--) printf("%u ", _mm256_blend_epi32(_mm256_setzero_si256(), mult2, 63).m256i_u64[i]); printf("\n");
-    // add first 3 digits of mult3 to carry; last digit to acc
-    acc   = _mm256_add_epi64(acc, _mm256_blend_epi32(mult2, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carry = _mm256_add_epi64(carry, _mm256_blend_epi32(_mm256_setzero_si256(), mult2, 63));
-    // done with mult2.  Set it up for the next iteration
-    mult2 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y2));
-    y2    = pY[2];
-
-    // cols 4-7
-    carry = _mm256_add_epi64(carry, _mm256_srli_epi64(mult3, 32));
-    // done with mult3.  Set it up for the next iteration
-    mult3 = _mm256_mul_epu32(x, _mm256_set1_epi64x(y3));
-    y3    = pY[3];
-
-    // store the results
-    _mm256_store_si256(pDest, acc);
-}
-
-void Mult4DigitX(DIGIT *pX, DIGIT *pY, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xVec, carryVec, *pDest = (__m256i*) pWork;
-    DIGIT               *yLim = pY + nYDigits;
-
-    xVec     = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pX));
-    carryVec = _mm256_setzero_si256();
-    for(; pY<yLim-3; pY += 4)
-    {
-        Mult4Cols(pY[0], pY[1], pY[2], pY[3], xVec, carryVec, pDest++);
-    }
-    if(pY<yLim)
-    {
-        DIGIT y0, y1=0, y2=0, y3=0;
-        y0 = *pY++;
-        if (pY < yLim)
-        {
-            y1 = *pY++;
-            if (pY < yLim)
-            {
-                y2 = *pY;
-            }
-        }
-        Mult4Cols(y0, y1, y2, y3, xVec, carryVec, pDest++);
-    }
-    // push the data out left in carryVec
-    _mm256_store_si256(pDest, carryVec);
-    // finsL carry
-    carry = 0;
-    for (size_t i=0; i < nYDigits + 4; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-void Mult4DigitY(DIGIT *pX, DIGIT *pY, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xVec, carryVec, *pDest = (__m256i*) pWork;
-    __m256i             mult0, mult1, mult2, mult3;
-    DIGIT               *yLim = pY + nYDigits;
-
-    xVec     = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) pX));
-    carryVec = _mm256_setzero_si256();
-    mult0    = _mm256_mul_epu32(xVec, _mm256_set1_epi64x(*pY++));
-    mult1    = _mm256_mul_epu32(xVec, _mm256_set1_epi64x(*pY++));
-    mult2    = _mm256_mul_epu32(xVec, _mm256_set1_epi64x(*pY++));
-    mult3    = _mm256_mul_epu32(xVec, _mm256_set1_epi64x(*pY++));
-    for(; pY<yLim-4; pY += 4)
-    {
-        Mult4Cols(pY[0], pY[1], pY[2], pY[3], xVec, mult0, mult1, mult2, mult3, carryVec, pDest++);
-    }
-    DIGIT y0, y1=0, y2=0, y3=0;
-    y0 = *pY++;
-    if (pY < yLim)
-    {
-        y1 = *pY++;
-        if (pY < yLim)
-        {
-            y2 = *pY++;
-            if (pY < yLim)
-            {
-                y3 = *pY;
-            }
-        }
-    }
-    Mult4Cols(y0, y1, y2, y3, xVec, mult0, mult1, mult2, mult3, carryVec, pDest++);
-    Mult4Cols(xVec, mult0, mult1, mult2, mult3, carryVec, pDest++);
-    // push the data out left in carryVec
-    _mm256_store_si256(pDest, carryVec);
-    // finsL carry
-    carry = 0;
-    for (size_t i=0; i < nYDigits + 4; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-void Mult8DigitY(DIGIT *pX, DIGIT *pY, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xLow, xHigh, carryLow, carryMid, carryHigh, *pDest = (__m256i*) pWork;
-    __m256i             mult0, mult1, mult2, mult3;
-    DIGIT               *yLim = pY + nYDigits;
-    DIGIT y0, y1 = 0, y2 = 0, y3 = 0;
-
-    xLow     = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) pX));
-    xHigh    = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) (pX+4)));
-    y0       = *pY++;
-    y1       = *pY++;
-    mult1    = _mm256_set1_epi64x(y0);
-    mult3    = _mm256_set1_epi64x(y1);
-    mult0    = _mm256_mul_epu32(xLow, mult1);
-    mult1    = _mm256_mul_epu32(xHigh, mult1);
-    mult2    = _mm256_mul_epu32(xLow, mult3);
-    mult3    = _mm256_mul_epu32(xHigh, mult3);
-    carryLow = _mm256_setzero_si256();
-    carryMid = _mm256_setzero_si256();
-    if (13 < nYDigits)
-    {
-        // at least 12 more DIGITs of y to read
-        yLim -= 11;
-        for (; pY<yLim;)
-        {
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            // use digits 0-3, read through digit 5
-            Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryLow, carryMid, carryHigh, pDest++);
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            // use digits 4-7, read through digit 9
-            Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryMid, carryHigh, carryLow, pDest++);
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            // use digits 8-11, read through digit 13
-            Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryHigh, carryLow, carryMid, pDest++);
-        }
-        yLim += 11;
-    }
-    // at this point we have between 0 and 11 more DIGITs of y to read, and 2-13 more DIGITs to compute
-    if (pY + 3 < yLim)
-    {
-        // slurp through another 4 digits
-        y2 = *pY++;
-        y3 = *pY++;
-        y0 = *pY++;
-        y1 = *pY++;
-        // use digits 0-3, read through digit 5
-        Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryLow, carryMid, carryHigh, pDest++);
-        if (pY + 3 < yLim)
-        {
-            // slurp through ANOTHER 4 digits -- last we can do
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            // use digits 4-7, read through digit 9
-            Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryMid, carryHigh, carryLow, pDest++);
-            // limited digits to slurp
-            if (pY == yLim)
-            {
-                // done reading
-                // final: don't need to precompute mult for next iteration
-                Mult4Cols(0, 0, xLow, xHigh, mult0, mult1, mult2, mult3, carryHigh, carryLow, carryMid, pDest++);
-                // push the data out left in carryLow
-                _mm256_store_si256(pDest++, carryLow);
-                // and carryMid
-                _mm256_store_si256(pDest, carryMid);
-            }
-            else
-            {
-                // more DIGITs to read
-                y0 = 0;
-                y1 = 0;
-                y3 = 0;
-                y2 = *pY++;
-                if (pY < yLim)
-                {
-                    y3 = *pY++;
-                    if (pY < yLim)
-                    {
-                        y0 = *pY++;
-                    }
-                }
-                if (y0)
-                {
-                    // two more multiplies.  Could have an abbreviated version for Mult4Cols; know 0 == y1
-                    Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryHigh, carryLow, carryMid, pDest++);
-                    // final: don't need to precompute mult for next iteration.  In fact, only mult0, mult1 are relevant -- and precomputed
-                    Mult4ColsTruncated(mult0, mult1, carryLow, carryMid, carryHigh, pDest++);
-                    // push the data out left in carryMid
-                    _mm256_store_si256(pDest++, carryMid);
-                    // and carryHigh
-                    _mm256_store_si256(pDest, carryHigh);
-                }
-                else
-                {
-                    // one more multiply, and we're done.  Don't need to precompute mult for next iteration
-                    Mult4Cols(y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryHigh, carryLow, carryMid, pDest++);
-                    // push the data out left in carryLow
-                    _mm256_store_si256(pDest++, carryLow);
-                    // and carryMid
-                    _mm256_store_si256(pDest, carryMid);
-                }
-            }
-        }
-        else
-        {
-            // limited digits
-            if (pY == yLim)
-            {
-                // done reading
-                // final: don't need to precompute mult for next iteration
-                Mult4Cols(0, 0, xLow, xHigh, mult0, mult1, mult2, mult3, carryMid, carryHigh, carryLow, pDest++);
-                // push the data out left in carryHigh
-                _mm256_store_si256(pDest++, carryHigh);
-                // and carryLow
-                _mm256_store_si256(pDest, carryLow);
-            }
-            else
-            {
-                // more DIGITs to read
-                y0 = 0;
-                y1 = 0;
-                y3 = 0;
-                y2 = *pY++;
-                if (pY < yLim)
-                {
-                    y3 = *pY++;
-                    if (pY < yLim)
-                    {
-                        y0 = *pY++;
-                    }
-                }
-                if (y0)
-                {
-                    // two more multiplies.  Could have an abbreviated version for Mult4Cols; know 0 == y1
-                    Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryMid, carryHigh, carryLow, pDest++);
-                    // final: don't need to precompute mult for next iteration.  In fact, only mult0, mult1 are relevant -- and precomputed
-                    Mult4ColsTruncated(mult0, mult1, carryHigh, carryLow, carryMid, pDest++);
-                    // push the data out left in carryLow
-                    _mm256_store_si256(pDest++, carryLow);
-                    // and carryMid
-                    _mm256_store_si256(pDest, carryMid);
-                }
-                else
-                {
-                    // one more multiply, and we're done.  Don't need to precompute mult for next iteration
-                    Mult4Cols(y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryMid, carryHigh, carryLow, pDest++);
-                    // push the data out left in carryHigh
-                    _mm256_store_si256(pDest++, carryHigh);
-                    // and carryLow
-                    _mm256_store_si256(pDest, carryLow);
-                }
-            }
-        }
-    }
-    else
-    {
-        // 16, 17, 18, 19 DIGIts on small end
-        // limited digits to slurp
-        if (pY == yLim)
-        {
-            // done reading
-            // final: don't need to precompute mult for next iteration
-            Mult4Cols(0, 0, xLow, xHigh, mult0, mult1, mult2, mult3, carryLow, carryMid, carryHigh, pDest++);
-            // push the data out left in carryMid
-            _mm256_store_si256(pDest++, carryMid);
-            // and carryHigh
-            _mm256_store_si256(pDest, carryHigh);
-        }
-        else
-        {
-            // more DIGITs to read
-            y0 = 0;
-            y1 = 0;
-            y3 = 0;
-            y2 = *pY++;
-            if (pY < yLim)
-            {
-                y3 = *pY++;
-                if (pY < yLim)
-                {
-                    y0 = *pY++;
-                }
-            }
-            if (y0)
-            {
-                // two more multiplies.  Could have an abbreviated version for Mult4Cols; know 0 == y1
-                Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryLow, carryMid, carryHigh, pDest++);
-                // final: don't need to precompute mult for next iteration.  In fact, only mult0, mult1 are relevant -- and precomputed
-                Mult4ColsTruncated(mult0, mult1, carryMid, carryHigh, carryLow, pDest++);
-                // push the data out left in carryHigh
-                _mm256_store_si256(pDest++, carryHigh);
-                // and carryLow
-                _mm256_store_si256(pDest, carryLow);
-            }
-            else
-            {
-                // one more multiply, and we're done.  Don't need to precompute mult for next iteration
-                Mult4Cols(y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryLow, carryMid, carryHigh, pDest++);
-                // push the data out left in carryMid
-                _mm256_store_si256(pDest++, carryMid);
-                // and carryHigh
-                _mm256_store_si256(pDest, carryHigh);
-            }
-        }
-    }
-    // finsL carry
-    carry = 0;
-    for (size_t i=0; i < nYDigits + 8; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-void Mult8DigitsFinish(DIGIT *pY, DIGIT *yLim, __m256i &xLow, __m256i &xHigh, __m256i &mult0Low, __m256i &mult0High, __m256i &mult1Low, __m256i &mult1High, __m256i &carryLow, __m256i &carryMid, __m256i &carryHigh, __m256i *pDest)
-{
-    DIGIT y0, y2, y3;
-    int count;
-    count = 0;
-    y0    = 0;
-    y2    = 0;
-    y3    = 0;
-    if (pY < yLim)
-    {
-        y2 = *pY++;
-        count++;
-        if (pY < yLim)
-        {
-            count++;
-            y3 = *pY++;
-            if (pY < yLim)
-            {
-                count++;
-                y0 = *pY++;
-            }
-        }
-    }
-  //  printf("count: %i\n",count); // debug remove todo
-    switch (count)
-    {
-    case 0:
-        Mult4ColsTruncated(xLow, xHigh, mult0Low, mult0High, mult1Low, mult1High, carryLow, carryMid, carryHigh, pDest++);
-        // push the data out left in carryMid
-        _mm256_store_si256(pDest++, carryMid);
-        // and carryHigh
-        _mm256_store_si256(pDest, carryHigh);
-        break;
-    case 1:
-        Mult4ColsTruncated(y2, xLow, xHigh, mult0Low, mult0High, mult1Low, mult1High, carryLow, carryMid, carryHigh, pDest++);
-        // push the data out left in carryMid
-        _mm256_store_si256(pDest++, carryMid);
-        // and carryHigh
-        _mm256_store_si256(pDest, carryHigh);
-        break;
-    case 2:
-        Mult4ColsTruncated(y2, y3, xLow, xHigh, mult0Low, mult0High, mult1Low, mult1High, carryLow, carryMid, carryHigh, pDest++);
-        // push the data out left in carryMid
-        _mm256_store_si256(pDest++, carryMid);
-        // and carryHigh
-        _mm256_store_si256(pDest, carryHigh);
-        break;
-    case 3:
-        // two more multiplies.  Could have an abbreviated version for Mult4Cols; know 0 == y1
-        Mult4ColsTruncated(y0, y2, y3, xLow, xHigh, mult0Low, mult0High, mult1Low, mult1High, carryLow, carryMid, carryHigh, pDest++);
-        // final: don't need to precompute mult for next iteration.  In fact, only mult0, mult1 are relevant -- and precomputed
-        Mult4ColsTruncated(mult0Low, mult0High, carryMid, carryHigh, carryLow, pDest++);
-        // push the data out left in carryHigh
-        _mm256_store_si256(pDest++, carryHigh);
-        // and carryLow
-        _mm256_store_si256(pDest, carryLow);
-        break;
-    }
-}
-
-void Mult8DigitZ(DIGIT *pX, DIGIT *pY, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    int                 count;
-    unsigned long long  sum, carry;
-    __m256i             xLow, xHigh, carryLow, carryMid, carryHigh, *pDest = (__m256i*) pWork;
-    __m256i             mult0, mult1, mult2, mult3;
-    DIGIT               *yLim = pY + nYDigits;
-    DIGIT y0, y1 = 0, y2 = 0, y3 = 0;
-
-    xLow     = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) pX));
-    xHigh    = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) (pX+4)));
-    y0       = *pY++;
-    y1       = *pY++;
-    mult1    = _mm256_set1_epi64x(y0);
-    mult3    = _mm256_set1_epi64x(y1);
-    mult0    = _mm256_mul_epu32(xLow, mult1);
-    mult1    = _mm256_mul_epu32(xHigh, mult1);
-    mult2    = _mm256_mul_epu32(xLow, mult3);
-    mult3    = _mm256_mul_epu32(xHigh, mult3);
-    carryLow = _mm256_setzero_si256();
-    carryMid = _mm256_setzero_si256();
-    if (13 < nYDigits)
-    {
-        // at least 12 more DIGITs of y to read
-        yLim -= 11;
-        for (; pY<yLim;)
-        {
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            // use digits 0-3, read through digit 5
-            Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryLow, carryMid, carryHigh, pDest++);
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            // use digits 4-7, read through digit 9
-            Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryMid, carryHigh, carryLow, pDest++);
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            // use digits 8-11, read through digit 13
-            Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryHigh, carryLow, carryMid, pDest++);
-        }
-        yLim += 11;
-    }
-    // at this point we have between 0 and 11 more DIGITs of y to read, and 2-13 more DIGITs to compute
-    if (pY + 3 < yLim)
-    {
-        // slurp through another 4 digits
-        y2 = *pY++;
-        y3 = *pY++;
-        y0 = *pY++;
-        y1 = *pY++;
-        // use digits 0-3, read through digit 5
-        Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryLow, carryMid, carryHigh, pDest++);
-        if (pY + 3 < yLim)
-        {
-            // slurp through ANOTHER 4 digits -- last we can
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            // use digits 4-7, read through digit 9
-            Mult4Cols(y0, y1, y2, y3, xLow, xHigh, mult0, mult1, mult2, mult3, carryMid, carryHigh, carryLow, pDest++);
-            // fast few DIGITs
-            Mult8DigitsFinish(pY, yLim, xLow, xHigh, mult0, mult1, mult2, mult3, carryHigh, carryLow, carryMid, pDest);
-        }
-        else
-        {
-            // fast few DIGITs
-            Mult8DigitsFinish(pY, yLim, xLow, xHigh, mult0, mult1, mult2, mult3, carryMid, carryHigh, carryLow, pDest);
-        }
-    }
-    else
-    {
-        // fast few DIGITs
-        Mult8DigitsFinish(pY, yLim, xLow, xHigh, mult0, mult1, mult2, mult3, carryLow, carryMid, carryHigh, pDest);
-    }
-    // finsL carry
-    carry = 0;
-    for (size_t i=0; i < nYDigits + 8; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-void Mult4DigitZ(DIGIT *pX, DIGIT *pY, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xVec, carryVec, *pDest = (__m256i*) pWork;
-    __m256i             mult0, mult1, mult2, mult3;
-    DIGIT               *yLim = pY + nYDigits;
-    DIGIT               y0, y1, y2, y3;
-
-    xVec     = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) pX));
-    y0       = *pY++;
-    y1       = *pY++;
-    y2       = *pY++;
-    y3       = *pY++;
-    carryVec = _mm256_setzero_si256();
-    mult0    = _mm256_mul_epu32(xVec, _mm256_set1_epi64x(y0));
-    y0       = *pY++;
-    mult1    = _mm256_mul_epu32(xVec, _mm256_set1_epi64x(y1));
-    y1       = *pY++;
-    mult2    = _mm256_mul_epu32(xVec, _mm256_set1_epi64x(y2));
-    y2       = *pY++;
-    mult3    = _mm256_mul_epu32(xVec, _mm256_set1_epi64x(y3));
-    y3       = *pY++;
-    for(; pY<yLim; pY += 4)
-    {
-        Mult4ColsPadded(y0, y1, y2, y3, pY, xVec, mult0, mult1, mult2, mult3, carryVec, pDest++);
-    }
-    Mult4Cols(y0, y1, y2, y3, xVec, mult0, mult1, mult2, mult3, carryVec, pDest++);
-    Mult4Cols(xVec, mult0, mult1, mult2, mult3, carryVec, pDest++);
-    // push the data out left in carryVec
-    _mm256_store_si256(pDest, carryVec);
-    // finsL carry
-    carry = 0;
-    for (size_t i=0; i < nYDigits + 4; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-// on entry, carryLow contains columns 4, 5, 6, 7 with that many of the mults done; carryHigh the same for cols 0, 1, 2, 3
-void Mult8Cols(DIGIT y0, DIGIT y1, DIGIT y2, DIGIT y3, DIGIT y4, DIGIT y5, DIGIT y6, DIGIT y7, __m256i &xLow, __m256i &xHigh, __m256i &carryLow, __m256i &carryHigh, __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    const __m256i zero = _mm256_setzero_si256();
-    __m256i mult0, mult1, mult2, mult3, mult4, mult5, mult6, mult7, acc;
-    mult0     = _mm256_set1_epi64x(y0);
-    mult1     = _mm256_set1_epi64x(y1);
-    mult0     = _mm256_mul_epu32(xLow, mult0);
-    mult1     = _mm256_mul_epu32(xLow, mult1);
-    mult2     = _mm256_set1_epi64x(y2);
-    mult3     = _mm256_set1_epi64x(y3);
-    mult2     = _mm256_mul_epu32(xLow, mult2);
-    mult3     = _mm256_mul_epu32(xLow, mult3);
-    mult4     = _mm256_set1_epi64x(y4);
-    mult5     = _mm256_set1_epi64x(y5);
-    mult4     = _mm256_mul_epu32(xLow, mult4);
-    mult5     = _mm256_mul_epu32(xLow, mult5);
-    mult6     = _mm256_set1_epi64x(y6);
-    mult7     = _mm256_set1_epi64x(y7);
-    mult6     = _mm256_mul_epu32(xLow, mult6);
-    mult7     = _mm256_mul_epu32(xLow, mult7);
-    // add low-order DIGITS of mult0 to carryLow
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_and_si256(mult0, mask));                     // cols 0-3
-    // add high-order bits of mult0 to low order bits of mult1.
-    mult0     = _mm256_add_epi64(_mm256_srli_epi64(mult0, 32), _mm256_and_si256(mult1, mask)); // cols 1-4
-    // add cols 1-4 to carryLow, carryHigh
-    mult0     = _mm256_permute4x64_epi64(mult0, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(mult0, zero, 3)); // 3 = 00000011: slots 0, 1 from mult0; rest are 0
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(zero, mult0, 3));
-    // done with y0*<xLow>.  Use mult0 for y0*<xHigh> now
-    mult0     = _mm256_mul_epu32(_mm256_set1_epi64x(y0), xHigh);
-    // add high-order bits of mult1 to low-order bits of mult2
-    mult1     = _mm256_add_epi64(_mm256_srli_epi64(mult1, 32), _mm256_and_si256(mult2, mask)); // cols 2-5
-    // add cols 2-5 to carryLow, carryHigh
-    mult1     = _mm256_permute4x64_epi64(mult1, 78);  // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(mult1, zero, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from mult1; rest are 0
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(zero, mult1, 15));
-    // done with y1*<xLow>.  Use mult1 for y1*<xHigh> now
-    mult1     = _mm256_mul_epu32(_mm256_set1_epi64x(y1), xHigh);
-    // add high-order bits of mult2 to low-order bits of mult3
-    mult2     = _mm256_add_epi64(_mm256_srli_epi64(mult2, 32), _mm256_and_si256(mult3, mask)); // cols 3-6
-    // add cols 3-5 to carryLow, carryHigh
-    mult2     = _mm256_permute4x64_epi64(mult2, 57);  // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    carryLow  = _mm256_add_epi64(carryLow, _mm256_blend_epi32(mult2, zero, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carryHigh = _mm256_add_epi64(carryHigh, _mm256_blend_epi32(zero, mult2, 15));
-    // done with y2*<xLow>.  Use mult2 for y2*<xHigh> now
-    mult2     = _mm256_mul_epu32(_mm256_set1_epi64x(y2), xHigh);
-    // done with carryLow -- write it to memory
-    _mm256_store_si256(pDest++, carryLow);
-    // add high order bits of mult3 to low order bits of mult4 (mult0)
-    mult3     = _mm256_add_epi64(_mm256_srli_epi64(mult3, 32), _mm256_and_si256(mult0, mask)); // cols 4-7
-}
-
-// On entry, carryA contains data for cols 0-3, carryB for cols 4-7, carryC cols 8-11, and carryD garbage
-// mult0Low/Mid/High contains y0*<x>
-// mult1Low/Mid/High
-// on exit, mult0 contains y0*<x> for the NEXT iteration; mult1 for y1*<x>
-// Notation: when x is an __m256i containing 4 64-bit values, write x = (x3, x2, x1, x0) where x0 is x[0], x1 is x[1], etc
-// PROBABLY 16 vector registers on my computer -- see https://stackoverflow.com/questions/62419256/how-can-i-determine-how-many-avx-registers-my-processor-has
-__forceinline void FourStepsF(DIGIT y2, DIGIT y3, DIGIT y0_next, DIGIT y1_next,
-                __m256i &xLow,     __m256i &xMid,     __m256i &xHigh,
-                __m256i &mult0Low, __m256i &mult0Mid, __m256i &mult0High,
-                __m256i &mult1Low, __m256i &mult1Mid, __m256i &mult1High,
-                __m256i &carryA,   __m256i &carryB,   __m256i &carryC, __m256i &carryD,
-                __m256i *pDest)
-{
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i y, tempA, tempB, tempC;
-
-    // prep y for the next multiplication
-    y         = _mm256_set1_epi64x(y2); // latency 3, throughput 1? That's what _mm256_set_m128d is listed at
-    // cols 0-11
-    carryA    = _mm256_add_epi64(carryA, _mm256_and_si256(mult0Low, mask));
-    carryB    = _mm256_add_epi64(carryB, _mm256_and_si256(mult0Mid, mask));
-    carryC    = _mm256_add_epi64(carryC, _mm256_and_si256(mult0High, mask));
-
-    // cols 1-12
-    tempA     = _mm256_srli_epi64(mult0Low, 32);
-    tempB     = _mm256_srli_epi64(mult0Mid, 32);
-    tempC     = _mm256_srli_epi64(mult0High, 32);
-    // note we don't need y0*<x> anymore.  Use mult0 to hold y2*<x>
-    mult0Low  = _mm256_mul_epu32(y, xLow); // latency 5, throughput 0.5
-    mult0Mid  = _mm256_mul_epu32(y, xMid);
-    mult0High = _mm256_mul_epu32(y, xHigh);
-    y         = _mm256_set1_epi64x(y3);
-    tempA     = _mm256_add_epi64(tempA, _mm256_and_si256(mult1Low, mask)); // _mm256_add_epi64: latency 1, throughput 0.33
-    tempB     = _mm256_add_epi64(tempB, _mm256_and_si256(mult1Mid, mask)); // _mm256_and_si256: latency 1, throughput 0.33
-    tempC     = _mm256_add_epi64(tempC, _mm256_and_si256(mult1High, mask));
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // So (a,b,c,d) -> (b,c,d,a)
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // latency 3; throughput 1
-    tempB     = _mm256_permute4x64_epi64(tempB, 147);
-    tempC     = _mm256_permute4x64_epi64(tempC, 147);
-    // add cols 3, 2, 1 (from tempA) to carryA and cols (7, 6, 5, 4) (from tempA and tempB) to carryB and cols (11, 10, 9, 8) (tempB, tempC) to carryC
-    carryA    = _mm256_add_epi64(carryA, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from are 0; rest from tempA
-    carryB    = _mm256_add_epi64(carryB, _mm256_blend_epi32(tempB, tempA, 3)); // _mm256_add_epi64: latency 1, throughput 0.33
-    carryC    = _mm256_add_epi64(carryC, _mm256_blend_epi32(tempC, tempB, 3)); // _mm256_blend_epi32: latency 1, throughput 0.33
-    // set carryD to col 12
-    carryD    = _mm256_blend_epi32(_mm256_setzero_si256(), tempC, 3); // _mm256_setzero_si256: latency 1, throughput 0.33
-
-    // cols 2-13
-    tempA     = _mm256_srli_epi64(mult1Low, 32);  // latency 1, throughput 0.5
-    tempB     = _mm256_srli_epi64(mult1Mid, 32);
-    tempC     = _mm256_srli_epi64(mult1High, 32);
-    // note we don't need y1*<x> anymore.  Use mult1 to hold y3*<x>
-    mult1Low  = _mm256_mul_epu32(y, xLow);
-    mult1Mid  = _mm256_mul_epu32(y, xMid);
-    mult1High = _mm256_mul_epu32(y, xHigh);
-    y         = _mm256_set1_epi64x(y0_next);
-    tempA     = _mm256_add_epi64(tempA, _mm256_and_si256(mult0Low, mask));
-    tempB     = _mm256_add_epi64(tempB, _mm256_and_si256(mult0Mid, mask));
-    tempC     = _mm256_add_epi64(tempC, _mm256_and_si256(mult0High, mask));
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78);
-    tempB     = _mm256_permute4x64_epi64(tempB, 78);
-    tempC     = _mm256_permute4x64_epi64(tempC, 78);
-    // add cols in to the carry.
-    carryA    = _mm256_add_epi64(carryA, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: (x3, x2) from tempA; rest are 0
-    carryB    = _mm256_add_epi64(carryB, _mm256_blend_epi32(tempB, tempA, 15));
-    carryC    = _mm256_add_epi64(carryC, _mm256_blend_epi32(tempC, tempB, 15));
-    carryD    = _mm256_add_epi64(carryD, _mm256_blend_epi32(_mm256_setzero_si256(), tempC, 15));
-
-    // cols 3-14
-    tempA     = _mm256_srli_epi64(mult0Low, 32);
-    tempB     = _mm256_srli_epi64(mult0Mid, 32);
-    tempC     = _mm256_srli_epi64(mult0High, 32);
-    // note we don't need y2*<x> anymore.  Use mult0 to hold y0_next*<x>
-    mult0Low  = _mm256_mul_epu32(y, xLow);
-    mult0Mid  = _mm256_mul_epu32(y, xMid);
-    mult0High = _mm256_mul_epu32(y, xHigh);
-    y         = _mm256_set1_epi64x(y1_next);
-    tempA     = _mm256_add_epi64(tempA, _mm256_and_si256(mult1Low, mask));
-    tempB     = _mm256_add_epi64(tempB, _mm256_and_si256(mult1Mid, mask));
-    tempC     = _mm256_add_epi64(tempC, _mm256_and_si256(mult1High, mask));
-    // slot 0: 01, slot 1 : 10, slot 2 : 11, slot 3 : 0 -> 111001 = 57  So (a, b, c, d) -> (d, a, b, c)
-    tempA     = _mm256_permute4x64_epi64(tempA, 57);
-    tempB     = _mm256_permute4x64_epi64(tempB, 57);
-    tempC     = _mm256_permute4x64_epi64(tempC, 57);
-    // add cols in to the carry.
-    carryA    = _mm256_add_epi64(carryA, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carryB    = _mm256_add_epi64(carryB, _mm256_blend_epi32(tempB, tempA, 63));
-    carryC    = _mm256_add_epi64(carryC, _mm256_blend_epi32(tempC, tempB, 63));
-    carryD    = _mm256_add_epi64(carryD, _mm256_blend_epi32(_mm256_setzero_si256(), tempC, 63));
-
-    // cols 4-15
-    carryB    = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), carryB);
-    carryC    = _mm256_add_epi64(_mm256_srli_epi64(mult1Mid, 32), carryC);
-    carryD    = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), carryD);
-    // note we don't need y3*<x> anymore.  Use mult1 to hold y1_next*<x>
-    mult1Low  = _mm256_mul_epu32(y, xLow);
-    mult1Mid  = _mm256_mul_epu32(y, xMid);
-    mult1High = _mm256_mul_epu32(y, xHigh);
-
-    // store results.  Note only carryA is complete
-    _mm256_store_si256(pDest, carryA);
-}
-
-_forceinline void FourColsAgain(__m256i &x0, __m256i &x1, __m256i &x2, __m256i &x3, __m256i &carry, __m256i &yA, __m256i &yB, __m256i &yC, __m256i &yD, DIGIT *&pSource, __m256i *pDest)
-{
-    static const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i mult0 = _mm256_mul_epu32(x3, yA); // latency 5, throughput 0.5
-    __m256i mult1 = _mm256_mul_epu32(x2, yB);
-    yA = _mm256_loadu_si256((__m256i*) (pSource++)); // latency 7, throughput 0.5
-    yB = _mm256_loadu_si256((__m256i*) (pSource++));
-    __m256i mult2 = _mm256_mul_epu32(x1, yC);
-    __m256i mult3 = _mm256_mul_epu32(x0, yD);
-    yC = _mm256_loadu_si256((__m256i*) (pSource++));
-    yD = _mm256_loadu_si256((__m256i*) (pSource++));
-    // gap -- latency 1 before mult available for use
-    __m256i tempA       = _mm256_srli_epi64(mult0, 32); // latency 1, throughput 0.5
-    __m256i tempB       = _mm256_srli_epi64(mult1, 32); // latency 1, throughput 0.5
-
-    __m256i accumulator = _mm256_and_si256(mult0, mask); // latency 1, throughput 0.33
-    accumulator = _mm256_add_epi64(carry, accumulator); // latency 1, throughput 0.33
-    carry       = _mm256_add_epi64(tempA, tempB); // latency 1, throughput 0.33
-
-    tempA       = _mm256_and_si256(mult1, mask); // latency 1, throughput 0.33
-    tempB       = _mm256_and_si256(mult2, mask); // latency 1, throughput 0.33
-    accumulator = _mm256_add_epi64(tempA, accumulator); // latency 1, throughput 0.33
-
-    mult2       = _mm256_srli_epi64(mult2, 32); // latency 1, throughput 0.5
-    tempA       = _mm256_srli_epi64(mult3, 32); // latency 1, throughput 0.5
-
-    accumulator = _mm256_add_epi64(tempB, accumulator); // latency 1, throughput 0.33
-    carry       = _mm256_add_epi64(tempA, carry); // latency 1, throughput 0.33
-    tempA       = _mm256_and_si256(mult3, mask); // latency 1, throughput 0.33
-
-    carry       = _mm256_add_epi64(mult2, carry); // latency 1, throughput 0.33
-    accumulator = _mm256_add_epi64(accumulator, carry); // latency 1, throughput 0.33
-
-    // store the results
-    _mm256_store_si256(pDest, accumulator); // latency 1, throughput 0.5 or latency 5, throughput 1
-}
-
-// assumes mult0, mult1 ready on entry and yC, yD contain data needed for mult2, mult3
-// Compute mult0, mult1 for NEXT iteration and load yA, yB for same
- void FourColsAgain(__m256i &x0, __m256i &x1, __m256i &x2, __m256i &x3,
-                                __m256i &mult0, __m256i &mult1, __m256i &mult2, __m256i &mult3,
-                                __m256i &yA_next, __m256i &yB_next, __m256i &yC, __m256i &yD,
-                                __m256i &carry,
-                                DIGIT   *&pSource,
-                                __m256i *&pDest)
-{
-    static const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-    __m256i accumulator, temp;
-
- //   mult2       = _mm256_mul_epu32(x1, yC); // latency 5, throughput 0.5
- //   mult3       = _mm256_mul_epu32(x0, yD); // latency 5, throughput 0.5
-    mult2 = _mm256_add_epi64(x1, yC); mult3 = _mm256_add_epi64(x1, yC);
-
-   // yC          = _mm256_loadu_si256((__m256i*) (pSource++)); // latency 7, throughput 0.5
- //   yD          = _mm256_loadu_si256((__m256i*) (pSource++)); // latency 7, throughput 0.5
-    yC = mult0; yD = mult1; pSource += 2;
-
-    accumulator = _mm256_and_si256(mult0, mask); // latency 1, throughput 0.33
-    temp        = _mm256_and_si256(mult1, mask); // latency 1, throughput 0.33
-    accumulator = _mm256_add_epi64(carry, accumulator); // latency 1, throughput 0.33
-
-    carry       = _mm256_srli_epi64(mult0, 32); // latency 1, throughput 0.5
-    mult1       = _mm256_srli_epi64(mult1, 32); // latency 1, throughput 0.5
-
-    accumulator = _mm256_add_epi64(temp, accumulator); // latency 1, throughput 0.33
-    carry       = _mm256_add_epi64(carry, mult1); // latency 1, throughput 0.33
-
-//    mult0       = _mm256_mul_epu32(x3, yA_next); // latency 5, throughput 0.5
- //   mult1       = _mm256_mul_epu32(x2, yB_next); // latency 5, throughput 0.5
-    mult0 = _mm256_add_epi64(x2, yA_next); mult1 = _mm256_add_epi64(x3, yB_next);
-
-    temp        = _mm256_srli_epi64(mult2, 32); // latency 1, throughput 0.5
-    yA_next     = _mm256_srli_epi64(mult3, 32); // latency 1, throughput 0.5
-
-    carry       = _mm256_add_epi64(carry, yA_next); // latency 1, throughput 0.33
-    mult2       = _mm256_and_si256(mult2, mask); // latency 1, throughput 0.33
-    mult3       = _mm256_and_si256(mult3, mask); // latency 1, throughput 0.33
-    
-   // yA_next     = _mm256_loadu_si256((__m256i*) (pSource++)); // latency 7, throughput 0.5
- //   yB_next     = _mm256_loadu_si256((__m256i*) (pSource++)); // latency 7, throughput 0.5
-    yA_next = carry; pSource += 2; yB_next = carry;
-    
-    carry       = _mm256_add_epi64(carry, temp); // latency 1, throughput 0.33
-    accumulator = _mm256_add_epi64(mult2, accumulator); // latency 1, throughput 0.33
-    accumulator = _mm256_add_epi64(mult3, accumulator); // latency 1, throughput 0.33
-
-    // store the results
-    _mm256_store_si256(pDest++, accumulator); // latency 1, throughput 0.5 or latency 5, throughput 1
-}
-
-void Mult4DigitW(DIGIT *pX, DIGIT *pY, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             *pDest = (__m256i*) pWork;
-    DIGIT               *yLim = pY + nYDigits;
-    __m256i             mult2, mult3, yA, yB;
-
-    __m256i x0       = _mm256_set1_epi64x(*pX++);
-    __m256i x1       = _mm256_set1_epi64x(*pX++);
-    __m256i x2       = _mm256_set1_epi64x(*pX++);
-    __m256i x3       = _mm256_set1_epi64x(*pX);
-    __m256i yD       = _mm256_set_epi64x(0, 0, 0, *pY++);
-    __m256i mult0    = _mm256_setzero_si256();
-    __m256i mult1    = _mm256_setzero_si256();
-    __m256i yC       = _mm256_setzero_si256();
-    __m256i carryVec = _mm256_setzero_si256();
-    int nCalls = 0;
-    for(; pY<yLim-3; )
-    {
-        FourColsAgain(x0, x1, x2, x3, mult0, mult1, mult2, mult3, yA, yB, yC, yD, carryVec, pY, pDest);
-        nCalls++;
-    }
-    if(pY<yLim)
-    {
-        // do a little more work
-        // xxx
-    }
-    // push the data out left in carryVec
-    _mm256_store_si256(pDest, carryVec);
-    // finsL carry
-    carry = 0;
-    for (size_t i=0; i < nYDigits + 4; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-#if 0
-// on entry carryD should contain the mask -- _mm256_set1_epi64x(0xFFFFFFFF)
-void FourStepsG(DIGIT y2, DIGIT y3, DIGIT y0_next, DIGIT y1_next,
-                __m256i &tempA,    __m256i &tempB,    __m256i &tempC,
-                __m256i &xLow,     __m256i &xMid,     __m256i &xHigh,
-                __m256i &mult0Low, __m256i &mult0Mid, __m256i &mult0High,
-                __m256i &mult1Low, __m256i &mult1Mid, __m256i &mult1High,
-                __m256i &carryA,   __m256i &carryB,   __m256i &carryC, __m256i &carryD,
-                __m256i *pDest)
-{
- //   const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF);
-//    __m256i y;
-
-    // prep y for the next multiplication
- //   y         = _mm256_set1_epi64x(y2); // latency 3, throughput 1? That's what _mm256_set_m128d is listed at
-    // cols 0-11
-    tempA     = _mm256_and_si256(mult0Low, carryD); // latency 1, throughput 0.33
-    tempB     = _mm256_and_si256(mult0Low, carryD);
-    tempC     = _mm256_and_si256(mult0Low, carryD);
-    carryA    = _mm256_add_epi64(carryA, tempA); // latency 1, throughput 0.33
-    carryB    = _mm256_add_epi64(carryB, tempB);
-    carryD    = _mm256_add_epi64(carryC, tempC);
-
-    // prepare for the next multiply
-    tempC     = _mm256_set1_epi64x(y2);
-
-    // cols 1-12
-    // note this is our final use of mult0
-    tempA     = _mm256_srli_epi64(mult0Low, 32); // latency 1, throughput 0.5
-    tempB     = _mm256_srli_epi64(mult0Mid, 32);
-    mult0High = _mm256_srli_epi64(mult0High, 32);
-    // note we don't need y0*<x> anymore.  Use mult0 for temporary storage
-    mult0Low  = _mm256_and_si256(mult1Low, carryD);
-    mult0Mid  = _mm256_and_si256(mult1Mid, carryD);
-    carryD    = _mm256_and_si256(mult1High, carryD);
-    tempA     = _mm256_add_epi64(tempA, mult0Low);
-    tempB     = _mm256_add_epi64(tempB, mult0Mid);
-    carryD    = _mm256_add_epi64(carryD, mult0High);
-    // Use mult0 to hold y2*<x>
-    mult0Low  = _mm256_mul_epu32(tempC, xLow); // latency 5, throughput 0.5
-    mult0Mid  = _mm256_mul_epu32(tempC, xMid);
-    mult0High = _mm256_mul_epu32(tempC, xHigh);
-    tempC     = _mm256_set1_epi64x(y3);
-    // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // So (a,b,c,d) -> (b,c,d,a)
-    tempA     = _mm256_permute4x64_epi64(tempA, 147); // latency 3; throughput 1
-    tempB     = _mm256_permute4x64_epi64(tempB, 147);
-    carryD    = _mm256_permute4x64_epi64(carryD, 147);
-    // add cols 3, 2, 1 (from tempA) to carryA and cols (7, 6, 5, 4) (from tempA and tempB) to carryB and cols (11, 10, 9, 8) (tempB, tempC) to carryC
-    carryA    = _mm256_add_epi64(carryA, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 3)); // a5 = 00000011: slots 0, 1 from are 0; rest from tempA
-    carryB    = _mm256_add_epi64(carryB, _mm256_blend_epi32(tempB, tempA, 3));
-    carryC    = _mm256_add_epi64(carryC, _mm256_blend_epi32(carryD, tempB, 3)); // _mm256_blend_epi32: latency 1, throughput 0.33
-    // set carryD to col 12
-    carryD    = _mm256_blend_epi32(_mm256_setzero_si256(), carryD, 3); // _mm256_setzero_si256: latency 1, throughput 0.33
-
-    // xxx
-    // cols 2-13
-    tempA     = _mm256_srli_epi64(mult1Low, 32);
-    tempB     = _mm256_srli_epi64(mult1Mid, 32);
-    tempC     = _mm256_srli_epi64(mult1High, 32);
-    // note we don't need y1*<x> anymore.  Use mult1 to hold y3*<x>
-    mult1Low  = _mm256_mul_epu32(y, xLow);
-    mult1Mid  = _mm256_mul_epu32(y, xMid);
-    mult1High = _mm256_mul_epu32(y, xHigh);
-    y         = _mm256_set1_epi64x(y0_next);
-    tempA     = _mm256_add_epi64(tempA, _mm256_and_si256(mult0Low, mask));
-    tempB     = _mm256_add_epi64(tempB, _mm256_and_si256(mult0Mid, mask));
-    tempC     = _mm256_add_epi64(tempC, _mm256_and_si256(mult0High, mask));
-    // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78.  So (a,b,c,d) -> (c,d,a,b)
-    tempA     = _mm256_permute4x64_epi64(tempA, 78);
-    tempB     = _mm256_permute4x64_epi64(tempB, 78);
-    tempC     = _mm256_permute4x64_epi64(tempC, 78);
-    // add cols in to the carry.
-    carryA    = _mm256_add_epi64(carryA, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 15)); // a5 = 00001111: (x3, x2) from tempA; rest are 0
-    carryB    = _mm256_add_epi64(carryB, _mm256_blend_epi32(tempB, tempA, 15));
-    carryC    = _mm256_add_epi64(carryC, _mm256_blend_epi32(tempC, tempB, 15));
-    carryD    = _mm256_add_epi64(carryD, _mm256_blend_epi32(_mm256_setzero_si256(), tempC, 15));
-
-    // cols 3-14
-    tempA     = _mm256_srli_epi64(mult0Low, 32);
-    tempB     = _mm256_srli_epi64(mult0Mid, 32);
-    tempC     = _mm256_srli_epi64(mult0High, 32);
-    // note we don't need y2*<x> anymore.  Use mult0 to hold y0_next*<x>
-    mult0Low  = _mm256_mul_epu32(y, xLow);
-    mult0Mid  = _mm256_mul_epu32(y, xMid);
-    mult0High = _mm256_mul_epu32(y, xHigh);
-    y         = _mm256_set1_epi64x(y1_next);
-    tempA     = _mm256_add_epi64(tempA, _mm256_and_si256(mult1Low, mask));
-    tempB     = _mm256_add_epi64(tempB, _mm256_and_si256(mult1Mid, mask));
-    tempC     = _mm256_add_epi64(tempC, _mm256_and_si256(mult1High, mask));
-    // slot 0: 01, slot 1 : 10, slot 2 : 11, slot 3 : 0 -> 111001 = 57  So (a, b, c, d) -> (d, a, b, c)
-    tempA     = _mm256_permute4x64_epi64(tempA, 57);
-    tempB     = _mm256_permute4x64_epi64(tempB, 57);
-    tempC     = _mm256_permute4x64_epi64(tempC, 57);
-    // add cols in to the carry.
-    carryA    = _mm256_add_epi64(carryA, _mm256_blend_epi32(tempA, _mm256_setzero_si256(), 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from mult3; rest are 0
-    carryB    = _mm256_add_epi64(carryB, _mm256_blend_epi32(tempB, tempA, 63));
-    carryC    = _mm256_add_epi64(carryC, _mm256_blend_epi32(tempC, tempB, 63));
-    carryD    = _mm256_add_epi64(carryD, _mm256_blend_epi32(_mm256_setzero_si256(), tempC, 63));
-
-    // cols 4-15
-    carryB    = _mm256_add_epi64(_mm256_srli_epi64(mult1Low, 32), carryB);
-    carryC    = _mm256_add_epi64(_mm256_srli_epi64(mult1Mid, 32), carryC);
-    carryD    = _mm256_add_epi64(_mm256_srli_epi64(mult1High, 32), carryD);
-    // note we don't need y3*<x> anymore.  Use mult1 to hold y1_next*<x>
-    mult1Low  = _mm256_mul_epu32(y, xLow);
-    mult1Mid  = _mm256_mul_epu32(y, xMid);
-    mult1High = _mm256_mul_epu32(y, xHigh);
-
-    // store results.  Note only carryA is complete
-    _mm256_store_si256(pDest, carryA);
-}
-#endif
-void Mult12DigitsFinish(DIGIT *pY, DIGIT *yLim, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &mult0Low, __m256i &mult0Mid, __m256i &mult0High, __m256i &mult1Low, __m256i &mult1Mid, __m256i &mult1High, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i &carryD, __m256i *pDest)
-{
-    DIGIT y0_next, y1_next, y2, y3, dummy;
-    y0_next = 0;
-    y1_next = 0;
-    y2      = 0;
-    y3      = 0;
-    if (pY < yLim)
-    {
-        y2 = *pY++;
-        if (pY < yLim)
-        {
-            y3 = *pY++;
-            if (pY < yLim)
-            {
-                y0_next = *pY++;
-            }
-        }
-    }
-    // really, overkill using the full FourStepsF -- don't need to compute the mults for the next iteration (mostly), and many of the
-    // mults will be of 0.  But simple.
-    FourStepsF(y2, y3, y0_next, y1_next, xLow, xMid, xHigh, mult0Low, mult0Mid, mult0High, mult1Low, mult1Mid, mult1High, carryA, carryB, carryC, carryD, pDest++);
-    if (y0_next)
-    {
-        // one more multiply to do
-        FourStepsF(0, 0, 0, 0, xLow, xMid, xHigh, mult0Low, mult0Mid, mult0High, mult1Low, mult1Mid, mult1High, carryB, carryC, carryD, carryA, pDest++);
-        // push out residual data
-        _mm256_store_si256(pDest++, carryC);
-        _mm256_store_si256(pDest++, carryD);
-        _mm256_store_si256(pDest, carryA);
-    }
-    else
-    {
-        // push out residual data
-        _mm256_store_si256(pDest++, carryB);
-        _mm256_store_si256(pDest++, carryC);
-        _mm256_store_si256(pDest, carryD);
-    }
-}
-
-void Mult12DigitY(DIGIT *pX, DIGIT *pY, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xLow, xMid, xHigh, carryA, carryB, carryC, carryD, *pDest = (__m256i*) pWork;
-    __m256i             mult0A, mult0B, mult0C, mult1A, mult1B, mult1C;
-    DIGIT *yLim = pY + nYDigits;
-    DIGIT y0, y1 = 0, y2 = 0, y3 = 0;
-
-    xLow   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pX));
-    xMid   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX + 4)));
-    xHigh  = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX + 8)));
-    y0     = *pY++;
-    y1     = *pY++;
-    mult0C = _mm256_set1_epi64x(y0);
-    mult1C = _mm256_set1_epi64x(y1);
-    mult0A = _mm256_mul_epu32(xLow, mult0C);
-    mult0B = _mm256_mul_epu32(xMid, mult0C);
-    mult0C = _mm256_mul_epu32(xHigh, mult0C);
-    mult1A = _mm256_mul_epu32(xLow, mult1C);
-    mult1B = _mm256_mul_epu32(xMid, mult1C);
-    mult1C = _mm256_mul_epu32(xHigh, mult1C);
-    carryA = _mm256_setzero_si256();
-    carryB = _mm256_setzero_si256();
-    carryC = _mm256_setzero_si256();
-    if (17 < nYDigits)
-    {
-        // at least 12 more DIGITs of y to read
-        yLim -= 15;
-        for (; pY < yLim;)
-        {
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            FourStepsF(y2, y3, y0, y1, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryA, carryB, carryC, carryD, pDest++);
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            FourStepsF(y2, y3, y0, y1, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryB, carryC, carryD, carryA, pDest++);
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            FourStepsF(y2, y3, y0, y1, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryC, carryD, carryA, carryB, pDest++);
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            FourStepsF(y2, y3, y0, y1, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryD, carryA, carryB, carryC, pDest++);
-        }
-        yLim += 15;
-    }
-    // at this point we have between 0 and 15 more DIGITs of y to read, and 2-15 more DIGITs to compute
-    if (pY + 3 < yLim)
-    {
-        // slurp through another 4 digits
-        y2 = *pY++;
-        y3 = *pY++;
-        y0 = *pY++;
-        y1 = *pY++;
-        FourStepsF(y2, y3, y0, y1, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryA, carryB, carryC, carryD, pDest++);
-        if (pY + 3 < yLim)
-        {
-            // slurp through another 4 digits
-            y2 = *pY++;
-            y3 = *pY++;
-            y0 = *pY++;
-            y1 = *pY++;
-            FourStepsF(y2, y3, y0, y1, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryB, carryC, carryD, carryA, pDest++);
-            if (pY + 3 < yLim)
-            {
-                // slurp through ANOTHER 4 digits -- last full chunk left
-                y2 = *pY++;
-                y3 = *pY++;
-                y0 = *pY++;
-                y1 = *pY++;
-                FourStepsF(y2, y3, y0, y1, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryC, carryD, carryA, carryB, pDest++);
-                // residual digits
-                Mult12DigitsFinish(pY, yLim, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryD, carryA, carryB, carryC, pDest);
-            }
-            else
-            {
-                // residual digits
-                Mult12DigitsFinish(pY, yLim, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryC, carryD, carryA, carryB, pDest);
-            }
-        }
-        else
-        {
-            // residual digits
-            Mult12DigitsFinish(pY, yLim, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryB, carryC, carryD, carryA, pDest);
-        }
-    }
-    else
-    {
-        // residual digits
-        Mult12DigitsFinish(pY, yLim, xLow, xMid, xHigh, mult0A, mult0B, mult0C, mult1A, mult1B, mult1C, carryA, carryB, carryC, carryD, pDest);
-    }
-    // finsL carry
-    carry = 0;
-    for (size_t i=0; i < nYDigits + 12; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-#if 0
-// as MultAVX_b, but with reordering of the inner loop.  Seems to make no difference
-void MultAVX_c(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DOUBLEDIGIT *zPtr, sum, carry;
-    __m128i raw;
-    __m256i x, y, mult, zLower, zUpper, multL;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pXLim = pX + nXDigits;
-    DIGIT *pYLim = pY + nYDigits - 3;
-    int i = 0;
-    memset(pWork,0,sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    zPtr    = pWork;
-    // load x in reverse order -- instead of 0, 1, 2, 3 we load it as 3, 2, 1, 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    raw     = _mm_lddqu_si128((__m128i const*) pX);
-    y       = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) pY++));
-    // first few columns -- short
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 1)); // digits 0, 0, 0, 1: 00,00,00,01
-    // first column: 1 value
-    sum     = _mm256_extract_epi64(y,0)*_mm256_extract_epi64(x,1);
-    carry   = sum>>32;
-    *zPtr++ += (sum&0xFFFFFFFF);
-    // second column: 2 values
-    mult    = _mm256_mul_epu32(x, y); // first 2 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-    // third column: 3 values
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 6)); // digits 0, 0, 1, 2: 00,00,01,10
-    mult    = _mm256_mul_epu32(x, y); // first 3 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2);
-    // fourth column: 4 values
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-    mult    = _mm256_mul_epu32(x, y);
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + _mm256_extract_epi64(multL, 3) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2) + _mm256_extract_epi64(mult, 3);
-    // succeeding columns (while y lasts)
-    for(; pY<pYLim; pY++)
-    {
-        raw     = _mm_lddqu_si128((__m128i const*) pY);
-        y       = _mm256_cvtepu32_epi64(raw);
-        mult    = _mm256_mul_epu32(x, y);
-        multL   = _mm256_and_si256(mask, mult); // lower half of product values
-        mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-        // sum the digits of multL (low order bits)
-        zLower  = _mm256_permute4x64_epi64(multL, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-        zUpper  = _mm256_permute4x64_epi64(mult, 0X4E);
-        y       = _mm256_add_epi64(zLower, multL);
-        *zPtr++ += _mm256_extract_epi64(y, 0) +_mm256_extract_epi64(y, 1) + carry;
-        // sum the digits of mult (high order bits)
-        mult    = _mm256_add_epi64(mult, zUpper);
-        carry   = _mm256_extract_epi64(mult, 0) +_mm256_extract_epi64(mult, 1);
-    }
-    // 3 values in column: last 3 digits of y; first 3 of x
-    y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 57)); // digits 1, 2, 3, 0: 00,11,10,01
-    mult    = _mm256_mul_epu32(x, y); // first 3 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2);
-    // 2 values in column: last 2 digits of y; first 2 of x
-    y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw,14)); // digits 2, 3, 0, 0: 10,11,00,00 : 00,00,11,10
-    mult    = _mm256_mul_epu32(x, y); // first 2 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-    // 1 value in column: last digit of y; first digit of x
-    sum     = _mm256_extract_epi64(x, 0)*_mm256_extract_epi64(y, 1);
-    *zPtr++ += (sum&c_nClearHigh) + carry;
-    *zPtr   += (sum>>_DIGIT_SIZE_IN_BITS);
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-#endif
-
-void HorizontalSum(__m256i &accLow, __m256i &accHigh, DOUBLEDIGIT *dest, DOUBLEDIGIT &carryInOut)
-{
-    DOUBLEDIGIT h1, h2, h3, h4;
-    // shuffle: from low to high, (x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b) -> (x1a, x1b, x0a, x0b, x3a, x3b, x2a, x2b)
-    // digits (2, 3, 0, 1, 6, 7, 4, 5) -> (2, 3, 0, 1, 2, 3, 0, 1) for _mm256_shuffle_epi32
-    // 01 00 11 10 getting bits from right to left
-    // 78
-    // sum is in slots 0 and 2 (or 1 and 3)
-    accLow     = _mm256_add_epi64(accLow, _mm256_shuffle_epi32(accLow, 78));
-    accHigh    = _mm256_add_epi64(accHigh, _mm256_shuffle_epi32(accHigh, 78));
-    h1 = _mm256_extract_epi64(accLow, 0);
-    h2 = _mm256_extract_epi64(accLow, 2);
-    h3 = _mm256_extract_epi64(accHigh, 0);
-    h4 = _mm256_extract_epi64(accHigh, 2);
-    *dest = h1 + h2 + carryInOut;
-    carryInOut = h3 + h4;
- //   *dest      = _mm256_extract_epi64(accLow, 0) + _mm256_extract_epi64(accLow, 2) + carryInOut;
-  //  carryInOut = _mm256_extract_epi64(accHigh, 0) + _mm256_extract_epi64(accHigh, 2);
-}
-
-// slightly quicker than the basic horizontal sum.  For mult/add
-const __m256i zeroVec = _mm256_set_epi64x(0, 0, 0, 0);
-void HorizontalSum2(__m256i &accLow, __m256i &accHigh, __m256i &zVec, __m256i &zCarry, int zIndex, DOUBLEDIGIT *&zDest)
-{
-    __m256i h1, h2;
-    // shuffle: from low to high, (x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b) -> (x1a, x1b, x0a, x0b, x3a, x3b, x2a, x2b)
-    // digits (2, 3, 0, 1, 6, 7, 4, 5) -> (2, 3, 0, 1, 2, 3, 0, 1) for _mm256_shuffle_epi32
-    // 01 00 11 10 getting bits from right to left
-    // 78
-    h1         = _mm256_shuffle_epi32(accLow, 78);
-    h2         = _mm256_shuffle_epi32(accHigh, 78);
-    accLow     = _mm256_add_epi64(accLow, h1);
-    accHigh    = _mm256_add_epi64(accHigh, h2);
-    // now accLow, accHigh = (<0>+<1>, <0>+<1>, <2>+<3>, <2>,<3>)
-    // set h1 to (<2>+<3>, <2+3>, <0>+<1>, <0>+<1>) for accLow and h2 the same for accHigh: slot 0: 2, slot 1: 2, slot 2: 0, slot 3: 0: 10
-    h1         = _mm256_permute4x64_epi64(accLow, 10);
-    h2         = _mm256_permute4x64_epi64(accHigh, 10);
-    // set accLow to the sum of its original digits in each slot; same for accHigh
-    accLow     = _mm256_add_epi64(h1, accLow);
-    accHigh    = _mm256_add_epi64(h2, accHigh);
-    // add the horizontal sum, digit zIndex, to z.
-    // for _mm256_blend_epi32 want slots 2*zIndex and 2*zIndex+1 from h1 and the rest from zeroVec
-    // note that _mm256_blend_epi32 wants a constant slot, not a variable.  Fortunately we only have 4 cases, and 3 is a special case anyway
-    switch (zIndex&3)
-    {
-    case 0:
-        h1     = _mm256_blend_epi32(zeroVec, accLow, 3);
-        h2     = _mm256_blend_epi32(zeroVec, accHigh, 3<<2);
-        zVec   = _mm256_add_epi64(zVec, h1);
-        zCarry = _mm256_add_epi64(zCarry, h2);
-        break;
-    case 1:
-        h1     = _mm256_blend_epi32(zeroVec, accLow, 3<<2);
-        h2     = _mm256_blend_epi32(zeroVec, accHigh, 3<<4);
-        zVec   = _mm256_add_epi64(zVec, h1);
-        zCarry = _mm256_add_epi64(zCarry, h2);
-        break;
-    case 2:
-        h1     = _mm256_blend_epi32(zeroVec, accLow, 3<<4);
-        h2     = _mm256_blend_epi32(zeroVec, accHigh, 3<<6);
-        zVec   = _mm256_add_epi64(zVec, h1);
-        zCarry = _mm256_add_epi64(zCarry, h2);
-        break;
-    case 3:
-        // time to flush the results
-        h1     = _mm256_blend_epi32(zeroVec, accLow, 3<<6);
-        h2     = _mm256_add_epi64(h1, zCarry);
-        zVec   = _mm256_add_epi64(zVec, h2);
-        // this store is taking pretty much ALL of the time for the horizontal sum
-        _mm256_store_si256((__m256i *) zDest, zVec);
-        zDest += 4;
-        // load the next chunk of the destination
-        zVec   = _mm256_lddqu_si256((__m256i*) zDest);
-        zCarry = _mm256_blend_epi32(zeroVec, accHigh, 3);
-        break;
-    }
-}
-
-// for mult
-void HorizontalSum3(__m256i &accLow, __m256i &accHigh, __m256i &zVec, __m256i &zCarry, int zIndex, DOUBLEDIGIT *&zDest)
-{
-    __m256i h1, h2;
-    // shuffle: from low to high, (x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b) -> (x1a, x1b, x0a, x0b, x3a, x3b, x2a, x2b)
-    // digits (2, 3, 0, 1, 6, 7, 4, 5) -> (2, 3, 0, 1, 2, 3, 0, 1) for _mm256_shuffle_epi32
-    // 01 00 11 10 getting bits from right to left
-    // 78
-    h1         = _mm256_shuffle_epi32(accLow, 78);
-    h2         = _mm256_shuffle_epi32(accHigh, 78);
-    accLow     = _mm256_add_epi64(accLow, h1);
-    accHigh    = _mm256_add_epi64(accHigh, h2);
-    // now accLow, accHigh = (<0>+<1>, <0>+<1>, <2>+<3>, <2>,<3>)
-    // set h1 to (<2>+<3>, <2+3>, <0>+<1>, <0>+<1>) for accLow and h2 the same for accHigh: slot 0: 2, slot 1: 2, slot 2: 0, slot 3: 0: 10
-    h1         = _mm256_permute4x64_epi64(accLow, 10);
-    h2         = _mm256_permute4x64_epi64(accHigh, 10);
-    // set accLow to the sum of its original digits in each slot; same for accHigh
-    accLow     = _mm256_add_epi64(h1, accLow);
-    accHigh    = _mm256_add_epi64(h2, accHigh);
-    // add the horizontal sum, digit zIndex, to z.
-    // for _mm256_blend_epi32 want slots 2*zIndex and 2*zIndex+1 from h1 and the rest from zeroVec
-    // note that _mm256_blend_epi32 wants a constant slot, not a variable.  Fortunately we only have 4 cases, and 3 is a special case anyway
-    switch (zIndex&3)
-    {
-    case 0:
-        h1     =  _mm256_blend_epi32(zeroVec, accLow, 3);
-        h2     =  _mm256_blend_epi32(zeroVec, accHigh, 3<<2);
-        zVec   =  _mm256_add_epi64(zVec, h1);
-        zCarry =  _mm256_add_epi64(zCarry, h2);
-        break;
-    case 1:
-        h1     =  _mm256_blend_epi32(zeroVec, accLow, 3<<2);
-        h2     =  _mm256_blend_epi32(zeroVec, accHigh, 3<<4);
-        zVec   =  _mm256_add_epi64(zVec, h1);
-        zCarry =  _mm256_add_epi64(zCarry, h2);
-        break;
-    case 2:
-        h1     =  _mm256_blend_epi32(zeroVec, accLow, 3<<4);
-        h2     =  _mm256_blend_epi32(zeroVec, accHigh, 3<<6);
-        zVec   =  _mm256_add_epi64(zVec, h1);
-        zCarry =  _mm256_add_epi64(zCarry, h2);
-        break;
-    case 3:
-        // time to flush the results
-        h1     =  _mm256_blend_epi32(zeroVec, accLow, 3<<6);
-        h2     =  _mm256_add_epi64(h1, zCarry);
-        zVec   =  _mm256_add_epi64(zVec, h2);
-        _mm256_store_si256((__m256i *) zDest, zVec);
-        zDest  += 4;
-        // reset the next chunk of the destination
-        zVec   =  _mm256_setzero_si256();
-        zCarry =  _mm256_blend_epi32(zVec, accHigh, 3); // use zVec for convenience -- want to blend with 0
-        break;
-    }
-}
-
-void HorizontalSum2(__m256i &accLow, __m256i &accHigh, __m256i &zVec, __m256i &zCarry, int zIndex, DIGIT *&zSource, DOUBLEDIGIT *&zDest)
-{
-    __m256i h1, h2;
-    // shuffle: from low to high, (x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b) -> (x1a, x1b, x0a, x0b, x3a, x3b, x2a, x2b)
-    // digits (2, 3, 0, 1, 6, 7, 4, 5) -> (2, 3, 0, 1, 2, 3, 0, 1) for _mm256_shuffle_epi32
-    // 01 00 11 10 getting bits from right to left
-    // 78
-    h1         = _mm256_shuffle_epi32(accLow, 78);
-    h2         = _mm256_shuffle_epi32(accHigh, 78);
-    accLow     = _mm256_add_epi64(accLow, h1);
-    accHigh    = _mm256_add_epi64(accHigh, h2);
-    // now accLow, accHigh = (<0>+<1>, <0>+<1>, <2>+<3>, <2>,<3>)
-    // set h1 to (<2>+<3>, <2+3>, <0>+<1>, <0>+<1>) for accLow and h2 the same for accHigh: slot 0: 2, slot 1: 2, slot 2: 0, slot 3: 0: 10
-    h1         = _mm256_permute4x64_epi64(accLow, 10);
-    h2         = _mm256_permute4x64_epi64(accHigh, 10);
-    // set accLow to the sum of its original digits in each slot; same for accHigh
-    accLow     = _mm256_add_epi64(h1, accLow);
-    accHigh    = _mm256_add_epi64(h2, accHigh);
-    // add the horizontal sum, digit zIndex, to z.
-    // for _mm256_blend_epi32 want slots 2*zIndex and 2*zIndex+1 from h1 and the rest from zeroVec
-    // note that _mm256_blend_epi32 wants a constant slot, not a variable.  Fortunately we only have 4 cases, and 3 is a special case anyway
-    switch (zIndex&3)
-    {
-    case 0:
-        h1      =  _mm256_blend_epi32(zeroVec, accLow, 3);
-        h2      =  _mm256_blend_epi32(zeroVec, accHigh, 3<<2);
-        zVec    =  _mm256_add_epi64(zVec, h1);
-        zCarry  =  _mm256_add_epi64(zCarry, h2);
-        break;
-    case 1:
-        h1      =  _mm256_blend_epi32(zeroVec, accLow, 3<<2);
-        h2      =  _mm256_blend_epi32(zeroVec, accHigh, 3<<4);
-        zVec    =  _mm256_add_epi64(zVec, h1);
-        zCarry  =  _mm256_add_epi64(zCarry, h2);
-        break;
-    case 2:
-        h1      =  _mm256_blend_epi32(zeroVec, accLow, 3<<4);
-        h2      =  _mm256_blend_epi32(zeroVec, accHigh, 3<<6);
-        zVec    =  _mm256_add_epi64(zVec, h1);
-        zCarry  =  _mm256_add_epi64(zCarry, h2);
-        break;
-    case 3:
-        // time to flush the results
-        h1      =  _mm256_blend_epi32(zeroVec, accLow, 3<<6);
-        h2      =  _mm256_add_epi64(h1, zCarry);
-        zVec    =  _mm256_add_epi64(zVec, h2);
-        _mm256_store_si256((__m256i *) zDest, zVec);
-        zDest   += 4;
-        // load the next chunk of the destination
-        zVec    =  _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) zSource));
-        zCarry  =  _mm256_blend_epi32(zeroVec, accHigh, 3);
-        zSource += 4;
-        break;
-    }
-}
-#include "Macros.h"
-// assumes x has exactly 8 DIGITs.  Do in 8-DIGIT chunks
-void MultAVX_c(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DOUBLEDIGIT *zPtr, sum, carry, carry0, carry1, nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY0, nY1, nY2, nY3, nY4, nY5, nY6, nY7, nProd;
-    __m128i raw;
-    __m256i xLower, xUpper, y, multA, yLower, yUpper, multB, accLow, accHigh, zVec;// , acc2Low, acc2High;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pYLim = pY + nYDigits-8;
-    int i = 0;
-    memset(pWork, 0, sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    zPtr = pWork;
-    // load x in reverse order -- instead of 0, 1, 2, 3, ..., 7 we load it as 7, 6, ..., 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    xUpper = _mm256_loadu_si256((__m256i const*) pX);
-    xUpper = _mm256_permutevar8x32_epi32(xUpper, _mm256_set_epi32(0,1,2,3,4,5,6,7));
-    xLower = _mm256_srli_epi64(xUpper, 32);
-    yLower = _mm256_loadu_si256((__m256i const*) pY);
-    yUpper = _mm256_srli_epi64(yLower, 32);
-    // first 7 columns -- short
-    nX0 = xUpper.m256i_u32[7];
-    nX1 = xUpper.m256i_u32[6];
-    nX2 = xUpper.m256i_u32[5];
-    nX3 = xUpper.m256i_u32[4];
-    nX4 = xUpper.m256i_u32[3];
-    nX5 = xUpper.m256i_u32[2];
-    nX6 = xUpper.m256i_u32[1];
-    nX7 = xUpper.m256i_u32[0];
-    nY7 = yLower.m256i_u32[0];
-    nY0 = yLower.m256i_u32[1];
-    nY1 = yLower.m256i_u32[2];
-    nY2 = yLower.m256i_u32[3];
-    nY3 = yLower.m256i_u32[4];
-    nY4 = yLower.m256i_u32[5];
-    nY5 = yLower.m256i_u32[6];
-    nY6 = yLower.m256i_u32[7];
-    pY++; // load for next column
-    yLower = _mm256_loadu_si256((__m256i const*) pY);
-    yUpper = _mm256_srli_epi64(yLower, 32);
-    nProd = nX0*nY7;
-    sum = (nProd&0xFFFFFFFF) + *zPtr;
-    carry0 = ((sum>>32) + (nProd>>32));
-    *zPtr++ = (DIGIT) sum;
-    DotMultAdd2(nX0, nX1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd3(nX0, nX1, nX2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd4(nX0, nX1, nX2, nX3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd5(nX0, nX1, nX2, nX3, nX4, nY3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd6(nX0, nX1, nX2, nX3, nX4, nX5, nY4, nY3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd7(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd8(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    for (; pY < pYLim; pY++, zPtr++)
-    {
-        multA = _mm256_mul_epu32(xLower, yUpper);
-        multB = _mm256_mul_epu32(xUpper, yLower);
-        // load for next column
-        yLower  = _mm256_loadu_si256((__m256i const*) (pY+1));
-        yUpper  = _mm256_srli_epi64(yLower, 32);
-        accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-        accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-        HorizontalSum(accLow, accHigh, zPtr, carry0);
-    }
-    // last full-sized column
-    multA   = _mm256_mul_epu32(xLower, yUpper);
-    multB   = _mm256_mul_epu32(xUpper, yLower);
-    accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-    accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-    HorizontalSum(accLow, accHigh, zPtr, carry0);
-    // Short columns don't use AVX
-    nY0 = yLower.m256i_u32[0];
-    nY1 = yLower.m256i_u32[1];
-    nY2 = yLower.m256i_u32[2];
-    nY3 = yLower.m256i_u32[3];
-    nY4 = yLower.m256i_u32[4];
-    nY5 = yLower.m256i_u32[5];
-    nY6 = yLower.m256i_u32[6];
-    nY7 = yLower.m256i_u32[7];
-    zPtr = pWork + nXDigits + nYDigits - 8;
-    DotMultAdd7(nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, nY1, carry0, sum, nProd, zPtr);
-    DotMultAdd6(nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, carry0, sum, nProd, zPtr);
-    DotMultAdd5(nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, carry0, sum, nProd, zPtr);
-    DotMultAdd4(nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, carry0, sum, nProd, zPtr);
-    DotMultAdd3(nX5, nX6, nX7, nY7, nY6, nY5, carry0, sum, nProd, zPtr);
-    DotMultAdd2(nX6, nX7, nY7, nY6, carry0, sum, nProd, zPtr);
-    nProd = nX7*nY7;
-    sum = (nProd&c_nClearHigh) + carry0 + *zPtr;
-    *zPtr++ = (DIGIT) sum;
-    *zPtr = ((sum>>32) + (nProd>>32));
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-// assumes x has exactly 8 DIGITs.  Do in 8-DIGIT chunks
-void MultAVX_d(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DOUBLEDIGIT *zPtr, sum, carry, carry0, carry1, nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY0, nY1, nY2, nY3, nY4, nY5, nY6, nY7, nProd;
-    __m128i raw;
-    __m256i xLower, xUpper, y, multA, yLower, yUpper, multB, accLow, accHigh, zVec, zCarry;// , acc2Low, acc2High;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pYLim = pY + nYDigits-8;
-    int i = 0;
-    zPtr = pWork;
-    memset(pWork, 0, sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    // load x in reverse order -- instead of 0, 1, 2, 3, ..., 7 we load it as 7, 6, ..., 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    xUpper = _mm256_loadu_si256((__m256i const*) pX);
-    xUpper = _mm256_permutevar8x32_epi32(xUpper, _mm256_set_epi32(0,1,2,3,4,5,6,7));
-    xLower = _mm256_srli_epi64(xUpper, 32);
-    yLower = _mm256_loadu_si256((__m256i const*) pY);
-    yUpper = _mm256_srli_epi64(yLower, 32);
-    // first 7 columns -- short
-    nX0 = xUpper.m256i_u32[7];
-    nX1 = xUpper.m256i_u32[6];
-    nX2 = xUpper.m256i_u32[5];
-    nX3 = xUpper.m256i_u32[4];
-    nX4 = xUpper.m256i_u32[3];
-    nX5 = xUpper.m256i_u32[2];
-    nX6 = xUpper.m256i_u32[1];
-    nX7 = xUpper.m256i_u32[0];
-    nY7 = yLower.m256i_u32[0];
-    nY0 = yLower.m256i_u32[1];
-    nY1 = yLower.m256i_u32[2];
-    nY2 = yLower.m256i_u32[3];
-    nY3 = yLower.m256i_u32[4];
-    nY4 = yLower.m256i_u32[5];
-    nY5 = yLower.m256i_u32[6];
-    nY6 = yLower.m256i_u32[7];
-    pY++; // load for next column
-    yLower = _mm256_loadu_si256((__m256i const*) pY);
-    yUpper = _mm256_srli_epi64(yLower, 32);
-    nProd = nX0*nY7;
-    sum = (nProd&0xFFFFFFFF) + *zPtr;
-    carry0 = ((sum>>32) + (nProd>>32));
-    *zPtr++ = (DIGIT) sum;
-    DotMultAdd2(nX0, nX1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd3(nX0, nX1, nX2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd4(nX0, nX1, nX2, nX3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd5(nX0, nX1, nX2, nX3, nX4, nY3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd6(nX0, nX1, nX2, nX3, nX4, nX5, nY4, nY3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd7(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    DotMultAdd8(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry0, sum, nProd, zPtr);
-    zVec = _mm256_lddqu_si256((__m256i*) zPtr);
-    zCarry = _mm256_set_epi64x(0, 0, 0, carry0);
-    int index = 0;
-    for (; pY < pYLim; pY++)
-    {
-        multA = _mm256_mul_epu32(xLower, yUpper);
-        multB = _mm256_mul_epu32(xUpper, yLower);
-
-        // load for next column
-        yLower  = _mm256_loadu_si256((__m256i const*) (pY+1));
-        yUpper  = _mm256_srli_epi64(yLower, 32);
-        accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-        accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-        HorizontalSum2(accLow, accHigh, zVec, zCarry, index++, zPtr);
-    }
-    // last full-sized column
-    multA   = _mm256_mul_epu32(xLower, yUpper);
-    multB   = _mm256_mul_epu32(xUpper, yLower);
-    accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-    accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-    HorizontalSum2(accLow, accHigh, zVec, zCarry, index, zPtr);
-    // last, unwritten bits of zVec, zCarry
-    _mm256_store_si256((__m256i*) zPtr, _mm256_add_epi64(zVec, zCarry));
-    // Short columns don't use AVX
-    carry0 = 0;
-    nY0 = yLower.m256i_u32[0];
-    nY1 = yLower.m256i_u32[1];
-    nY2 = yLower.m256i_u32[2];
-    nY3 = yLower.m256i_u32[3];
-    nY4 = yLower.m256i_u32[4];
-    nY5 = yLower.m256i_u32[5];
-    nY6 = yLower.m256i_u32[6];
-    nY7 = yLower.m256i_u32[7];
-    zPtr = pWork + nXDigits + nYDigits - 8;
-    DotMultAdd7(nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, nY1, carry0, sum, nProd, zPtr);
-    DotMultAdd6(nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, carry0, sum, nProd, zPtr);
-    DotMultAdd5(nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, carry0, sum, nProd, zPtr);
-    DotMultAdd4(nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, carry0, sum, nProd, zPtr);
-    DotMultAdd3(nX5, nX6, nX7, nY7, nY6, nY5, carry0, sum, nProd, zPtr);
-    DotMultAdd2(nX6, nX7, nY7, nY6, carry0, sum, nProd, zPtr);
-    nProd = nX7*nY7;
-    sum = (nProd&c_nClearHigh) + carry0 + *zPtr;
-    *zPtr++ = (DIGIT) sum;
-    *zPtr = ((sum>>32) + (nProd>>32));
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-// assumes x has exactly 8 DIGITs.  Do in 8-DIGIT chunks
-void avxMult(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DOUBLEDIGIT *zPtr, sum, carry, nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY0, nY1, nY2, nY3, nY4, nY5, nY6, nY7, nProd;
-    __m128i     raw;
-    int         index;
-    __m256i     xLower, xUpper, y, multA, yLower, yUpper, multB, accLow, accHigh, zVec, zCarry;// , acc2Low, acc2High;
-    const       __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT       *pYLim = pY + nYDigits-8;
-    zPtr = pWork;
-    // load x in reverse order -- instead of 0, 1, 2, 3, ..., 7 we load it as 7, 6, ..., 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    xUpper = _mm256_loadu_si256((__m256i const*) pX);
-    xUpper = _mm256_permutevar8x32_epi32(xUpper, _mm256_set_epi32(0,1,2,3,4,5,6,7));
-    xLower = _mm256_srli_epi64(xUpper, 32);
-    yLower = _mm256_loadu_si256((__m256i const*) pY);
-    yUpper = _mm256_srli_epi64(yLower, 32);
-    // first 7 columns -- short
-    nX0 = xUpper.m256i_u32[7];
-    nX1 = xUpper.m256i_u32[6];
-    nX2 = xUpper.m256i_u32[5];
-    nX3 = xUpper.m256i_u32[4];
-    nX4 = xUpper.m256i_u32[3];
-    nX5 = xUpper.m256i_u32[2];
-    nX6 = xUpper.m256i_u32[1];
-    nX7 = xUpper.m256i_u32[0];
-    nY7 = yLower.m256i_u32[0];
-    nY0 = yLower.m256i_u32[1];
-    nY1 = yLower.m256i_u32[2];
-    nY2 = yLower.m256i_u32[3];
-    nY3 = yLower.m256i_u32[4];
-    nY4 = yLower.m256i_u32[5];
-    nY5 = yLower.m256i_u32[6];
-    nY6 = yLower.m256i_u32[7];
-    pY++; // load for next column
-    yLower  = _mm256_loadu_si256((__m256i const*) pY);
-    yUpper  = _mm256_srli_epi64(yLower, 32);
-    nProd   = nX0*nY7;
-    sum     = (nProd&0xFFFFFFFF);
-    carry   = ((sum>>32) + (nProd>>32));
-    *zPtr++ = (DIGIT) sum;
-    DotMult2(nX0, nX1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult3(nX0, nX1, nX2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult4(nX0, nX1, nX2, nX3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult5(nX0, nX1, nX2, nX3, nX4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult6(nX0, nX1, nX2, nX3, nX4, nX5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult7(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult8(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    zCarry = _mm256_set_epi64x(0, 0, 0, carry);
-    zVec   = _mm256_setzero_si256();
-    index  = 0;
-    for (; pY < pYLim; pY++)
-    {
-        // perform the multiplications
-        multA = _mm256_mul_epu32(xLower, yUpper);
-        multB = _mm256_mul_epu32(xUpper, yLower);
-        // load for next column
-        yLower  = _mm256_loadu_si256((__m256i const*) (pY+1));
-        yUpper  = _mm256_srli_epi64(yLower, 32);
-        // separate the high- and low-order bits for summation
-        accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-        accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-        // add up the computed  values to get the two relevant digits (ignoring carry)
-        HorizontalSum3(accLow, accHigh, zVec, zCarry, index++, zPtr);
-    }
-    // last full-sized column
-    multA   = _mm256_mul_epu32(xLower, yUpper);
-    multB   = _mm256_mul_epu32(xUpper, yLower);
-    accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-    accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-    HorizontalSum3(accLow, accHigh, zVec, zCarry, index, zPtr);
-    // last, unwritten bits of zVec, zCarry
-    _mm256_store_si256((__m256i*) zPtr, _mm256_add_epi64(zVec, zCarry));
-    // Short columns don't use AVX
-    zPtr  = pWork + nXDigits + nYDigits - 8;
-    carry = *zPtr;
-    nY0   = yLower.m256i_u32[0];
-    nY1   = yLower.m256i_u32[1];
-    nY2   = yLower.m256i_u32[2];
-    nY3   = yLower.m256i_u32[3];
-    nY4   = yLower.m256i_u32[4];
-    nY5   = yLower.m256i_u32[5];
-    nY6   = yLower.m256i_u32[6];
-    nY7   = yLower.m256i_u32[7];
-    DotMult7(nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, nY1, carry, sum, nProd, zPtr);
-    DotMult6(nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, carry, sum, nProd, zPtr);
-    DotMult5(nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, carry, sum, nProd, zPtr);
-    DotMult4(nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, carry, sum, nProd, zPtr);
-    DotMult3(nX5, nX6, nX7, nY7, nY6, nY5, carry, sum, nProd, zPtr);
-    DotMult2(nX6, nX7, nY7, nY6, carry, sum, nProd, zPtr);
-    nProd   = nX7*nY7;
-    sum     = (nProd&c_nClearHigh) + carry;
-    *zPtr++ = (DIGIT) sum;
-    *zPtr   = ((sum>>32) + (nProd>>32));
-    // final carry
-    carry   = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-// assumes x has exactly 8 DIGITs.  Do in 8-DIGIT chunks
-void MultAVX_e(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DOUBLEDIGIT *zPtr, sum, carry, nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY0, nY1, nY2, nY3, nY4, nY5, nY6, nY7, nProd;
-    __m128i raw;
-    __m256i xLower, xUpper, y, multA, yLower, yUpper, multB, accLow, accHigh, zVec, zCarry;// , acc2Low, acc2High;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pYLim = pY + nYDigits-8, *pZBase = pZ;
-    int i = 0;
-    zPtr = pWork;
-    // load x in reverse order -- instead of 0, 1, 2, 3, ..., 7 we load it as 7, 6, ..., 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    xUpper = _mm256_loadu_si256((__m256i const*) pX);
-    xUpper = _mm256_permutevar8x32_epi32(xUpper, _mm256_set_epi32(0,1,2,3,4,5,6,7));
-    xLower = _mm256_srli_epi64(xUpper, 32);
-    yLower = _mm256_loadu_si256((__m256i const*) pY);
-    yUpper = _mm256_srli_epi64(yLower, 32);
-    // first 7 columns -- short
-    nX0 = xUpper.m256i_u32[7];
-    nX1 = xUpper.m256i_u32[6];
-    nX2 = xUpper.m256i_u32[5];
-    nX3 = xUpper.m256i_u32[4];
-    nX4 = xUpper.m256i_u32[3];
-    nX5 = xUpper.m256i_u32[2];
-    nX6 = xUpper.m256i_u32[1];
-    nX7 = xUpper.m256i_u32[0];
-    nY7 = yLower.m256i_u32[0];
-    nY0 = yLower.m256i_u32[1];
-    nY1 = yLower.m256i_u32[2];
-    nY2 = yLower.m256i_u32[3];
-    nY3 = yLower.m256i_u32[4];
-    nY4 = yLower.m256i_u32[5];
-    nY5 = yLower.m256i_u32[6];
-    nY6 = yLower.m256i_u32[7];
-    pY++; // load for next column
-    yLower = _mm256_loadu_si256((__m256i const*) pY);
-    yUpper = _mm256_srli_epi64(yLower, 32);
-    nProd = nX0*nY7;
-    sum = (nProd&0xFFFFFFFF) + *zPtr;
-    carry = ((sum>>32) + (nProd>>32)) + *pZ++;
-    *zPtr++ = (DIGIT) sum;
-    DotMult2(nX0, nX1, nY0, nY7, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult3(nX0, nX1, nX2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult4(nX0, nX1, nX2, nX3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult5(nX0, nX1, nX2, nX3, nX4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult6(nX0, nX1, nX2, nX3, nX4, nX5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult7(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult8(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    int index = 0;
-    zVec   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pZ));
-    zCarry = _mm256_set_epi64x(0, 0, 0, carry);
-    for (; pY < pYLim; pY++)
-    {
-        multA = _mm256_mul_epu32(xLower, yUpper);
-        multB = _mm256_mul_epu32(xUpper, yLower);
-
-        // load for next column
-        yLower  = _mm256_loadu_si256((__m256i const*) (pY+1));
-        yUpper  = _mm256_srli_epi64(yLower, 32);
-        accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-        accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-        HorizontalSum2(accLow, accHigh, zVec, zCarry, index++, pZ, zPtr);
-    }
-    // last full-sized column
-    multA   = _mm256_mul_epu32(xLower, yUpper);
-    multB   = _mm256_mul_epu32(xUpper, yLower);
-    accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-    accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-    HorizontalSum2(accLow, accHigh, zVec, zCarry, index, pZ, zPtr);
-    // last, unwritten bits of zVec, zCarry
-    _mm256_store_si256((__m256i*) zPtr, _mm256_add_epi64(zVec, zCarry));
-    // Short columns don't use AVX
-    carry = 0;
-    nY0 = yLower.m256i_u32[0];
-    nY1 = yLower.m256i_u32[1];
-    nY2 = yLower.m256i_u32[2];
-    nY3 = yLower.m256i_u32[3];
-    nY4 = yLower.m256i_u32[4];
-    nY5 = yLower.m256i_u32[5];
-    nY6 = yLower.m256i_u32[6];
-    nY7 = yLower.m256i_u32[7];
-    zPtr = pWork + nXDigits + nYDigits - 8;
-    DotMult7(nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, nY1, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult6(nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult5(nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult4(nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult3(nX5, nX6, nX7, nY7, nY6, nY5, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    DotMult2(nX6, nX7, nY7, nY6, carry, sum, nProd, zPtr);
-    carry += *pZ++;
-    nProd = nX7*nY7;
-    sum = (nProd&c_nClearHigh) + carry + *zPtr;
-    *zPtr++ = (DIGIT) sum;
-    *zPtr = ((sum>>32) + (nProd>>32)) + (carry>>32);
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry     += pWork[i];
-        pZBase[i] =  carry;
-        carry     =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-void HorizontalSum(__m256i &accLow, __m256i &accHigh, DOUBLEDIGIT &carryInOut, DIGIT *dest)
-{
-    DOUBLEDIGIT sum;
-    // zounds a
-    // shuffle: from low to high, (x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b) -> (x1a, x1b, x0a, x0b, x3a, x3b, x2a, x2b)
-    // digits (2, 3, 0, 1, 6, 7, 4, 5) -> (2, 3, 0, 1, 2, 3, 0, 1) for _mm256_shuffle_epi32
-    // 01 00 11 10 getting bits from right to left
-    // 78
-    // sum is in slots 0 and 2 (or 1 and 3)
-    accLow     = _mm256_add_epi64(accLow, _mm256_shuffle_epi32(accLow, 78));
-    accHigh    = _mm256_add_epi64(accHigh, _mm256_shuffle_epi32(accHigh, 78));
-    sum        = _mm256_extract_epi64(accLow, 0) + _mm256_extract_epi64(accLow, 2) + carryInOut;
-    *dest      = sum;
-    // foo in one
-    carryInOut = _mm256_extract_epi64(accHigh, 0) + _mm256_extract_epi64(accHigh, 2) + (sum>>32);
-    // foo out one
-}
-
-void HorizontalSumZounds(__m256i &accLow, __m256i &accHigh, DOUBLEDIGIT &carryInOut, DIGIT *dest)
-{
-    DOUBLEDIGIT sum;
-    // zounds b
-    // shuffle: from low to high, (x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b) -> (x1a, x1b, x0a, x0b, x3a, x3b, x2a, x2b)
-    // digits (2, 3, 0, 1, 6, 7, 4, 5) -> (2, 3, 0, 1, 2, 3, 0, 1) for _mm256_shuffle_epi32
-    // 01 00 11 10 getting bits from right to left
-    // 78
-    // sum is in slots 0 and 2 (or 1 and 3)
-    accLow     = _mm256_add_epi64(accLow, _mm256_shuffle_epi32(accLow, 78));
-    accHigh    = _mm256_add_epi64(accHigh, _mm256_shuffle_epi32(accHigh, 78));
-    sum        = _mm256_extract_epi64(accLow, 0) + _mm256_extract_epi64(accLow, 2) + carryInOut;
-    *dest      = sum;
-    // foo in two
-    carryInOut = _mm256_extract_epi64(accHigh, 0) + _mm256_extract_epi64(accHigh, 2);
-    // foo out two
-}
-
-void HorizontalSumZounds2(__m256i &accLow, __m256i &accHigh, DOUBLEDIGIT &carryInOut, DIGIT *dest)
-{
-    DOUBLEDIGIT sum;
-    DOUBLEDIGIT h1, h2, h3, h4;
-    // zounds b
-    // shuffle: from low to high, (x0a, x0b, x1a, x1b, x2a, x2b, x3a, x3b) -> (x1a, x1b, x0a, x0b, x3a, x3b, x2a, x2b)
-    // digits (2, 3, 0, 1, 6, 7, 4, 5) -> (2, 3, 0, 1, 2, 3, 0, 1) for _mm256_shuffle_epi32
-    // 01 00 11 10 getting bits from right to left
-    // 78
-    // sum is in slots 0 and 2 (or 1 and 3)
-    printf("carry in: %I64u ", carryInOut);
-    printf("acc high: %I64u %I64u %I64u %I64u\tSum: ", accHigh.m256i_u64[0], accHigh.m256i_u64[1], accHigh.m256i_u64[2], accHigh.m256i_u64[3]);
-    accLow     = _mm256_add_epi64(accLow, _mm256_shuffle_epi32(accLow, 78));
-    accHigh    = _mm256_add_epi64(accHigh, _mm256_shuffle_epi32(accHigh, 78));
-    h1         = _mm256_extract_epi64(accLow, 0);
-    h2         = _mm256_extract_epi64(accLow, 2);
-    h3         = _mm256_extract_epi64(accHigh, 0);
-    h4         = _mm256_extract_epi64(accHigh, 2);
-    sum        = h1+h2+carryInOut;
-    *dest      = sum;
-    sum        = (sum>>32) + h3 + h4;
-    carryInOut = sum;
-    printf("%I64u\tWrote: %u\n", carryInOut, *dest);
-}
-
-// assumes x has exactly 8 DIGITs.  Do in pairs of 4-DIGIT chunks
-void MultAVX_f(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    __m256i            xLower, xUpper, y, multA, multB;
-    __m256i            accLow0, accHigh0, accLow4, accHigh4; // accumulkators for column 0, column 4
-    unsigned long long carry0, carry4, *yPtr;
-    const __m256i      mask   = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    __m256i            *pVec  = (__m256i *) (pWork+7);
-    unsigned int       *pYLim = pY + nYDigits - 3, *zPtr;
-    // expand Y from 32-bit values to 64-bit values; write to buffer with 7 leading and trailing 0s -- allows us to
-    // use the same code for all columns
-    memset(pWork, 0, sizeof(DOUBLEDIGIT)*7);
-    for(; pY<pYLim; pY += 4, pVec++)
-    {
-        _mm256_storeu_si256(pVec, _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pY)));
-    }
-    for(int i=0; pY+i< pYLim+3; i++)
-    {
-        ((unsigned long long*) pVec)[i] = pY[i];
-    }
-    memset(pWork+nYDigits+7,0,sizeof(DOUBLEDIGIT)*7);
-    // load x in reverse order -- instead of 0, 1, 2, 3, and 4, ..., 7 we load it as 7, ..., 4 and 3, ..., 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    xLower   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pX));
-    xUpper   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX + 4)));
-    xLower   = _mm256_permute4x64_epi64(xLower, 27); // slot 0: 3, slot 1: 2, slot 2: 1, slot 3: 0 -> 00,01,10,11 == 27
-    xUpper   = _mm256_permute4x64_epi64(xUpper, 27); // slot 0: 3, slot 1: 2, slot 2: 1, slot 3: 0 -> 00,01,10,11 == 27
-//    printf("x low:  %u %u %u %u\n", xLower.m256i_u64[0], xLower.m256i_u64[1], xLower.m256i_u64[2], xLower.m256i_u64[3]);
-  //  printf("x high: %u %u %u %u\n", xUpper.m256i_u64[0], xUpper.m256i_u64[1], xUpper.m256i_u64[2], xUpper.m256i_u64[3]);
-    for(int nOffset=0; nOffset<4; nOffset++)
-    {
-        zPtr     = pZ + nOffset;
-        carry0   = 0;
-        carry4   = 0;
-        yPtr     = pWork + nOffset + 4; // +4: if this is true, can just skip first 4 zeros of padding
-        y        = _mm256_loadu_si256((__m256i const*) yPtr);
-   //     printf("%u: %u %u %u %u\n", yPtr-pWork, y.m256i_u64[0], y.m256i_u64[1], y.m256i_u64[2], y.m256i_u64[3]);
-        accLow0  = _mm256_setzero_si256();
-        accHigh0 = _mm256_setzero_si256();
-        for(yPtr = yPtr+4; yPtr < pWork+nYDigits+14-3; yPtr += 8, zPtr += 8)
-        {
-            multA    = _mm256_mul_epu32(y, xLower);
-            multB    = _mm256_mul_epu32(y, xUpper);
-            // load the next set of y
-            y        = _mm256_loadu_si256((__m256i const*) yPtr);
-   //         printf("%u: %u %u %u %u\n", yPtr-pWork, y.m256i_u64[0], y.m256i_u64[1], y.m256i_u64[2], y.m256i_u64[3]);
-            accLow0  = _mm256_add_epi64(_mm256_and_si256(mask, multA), accLow0);
-            accHigh0 = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), accHigh0);
-            accLow4  = _mm256_and_si256(mask, multB);
-            accHigh4 = _mm256_srli_epi64(multB, 32);
-            multA    = _mm256_mul_epu32(y, xLower);
-            multB    = _mm256_mul_epu32(y, xUpper);
-            y        = _mm256_loadu_si256((__m256i const*) (yPtr+4));
-    //        printf("%u: %u %u %u %u\n", yPtr - pWork + 4, y.m256i_u64[0], y.m256i_u64[1], y.m256i_u64[2], y.m256i_u64[3]);
-            // done with acc0 -- do horizontal sum & record results
-            HorizontalSumZounds2(accLow0, accHigh0, carry0, zPtr);
-            printf("a %i %u\n", zPtr - pZ, *zPtr);
-            accLow4  = _mm256_add_epi64(_mm256_and_si256(mask, multA), accLow4);
-            accHigh4 = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), accHigh4);
-            accLow0  = _mm256_and_si256(mask, multB);
-            accHigh0 = _mm256_srli_epi64(multB, 32);
-            // done with acc4 -- do horizontal sum & record results
-            HorizontalSumZounds2(accLow4, accHigh4, carry4, zPtr+4);
-            printf("b %i %u\n", zPtr +4 - pZ, zPtr[4]);
-        }
-        // done with acc0
-        HorizontalSumZounds2(accLow0, accHigh0, carry0, zPtr);
-        printf("a %i %u\n", zPtr - pZ, *zPtr);
-    }
-}
-
-
-const __m256i c_mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-const __m256i c_zero = _mm256_setzero_si256();
-
-__forceinline void MultCols0To7(DIGIT *pY, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &carryA, __m256i &carryB)
-{
-    __m256i y, multA, multB;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step.
-    // carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-7 of the output
-    y           = _mm256_set1_epi64x(pY[0]);
-    accA        = _mm256_add_epi64(accA, carryA);
-    accB        = _mm256_add_epi64(accB, carryB);
-    multA       = _mm256_mul_epu32(y, xLow);
-    multB       = _mm256_mul_epu32(y, xHigh);
-    accA        = _mm256_add_epi64(accA, _mm256_and_si256(c_mask, multA));
-    accB        = _mm256_add_epi64(accB,_mm256_and_si256(c_mask, multB));
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-}
-
-__forceinline void MultCols1To8(DIGIT *pY, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB)
-{
-    __m256i y, multA, multB;
-    // y[1] gives digits 1-8 (low bits) and 2-9 (high bits)
-    // carryA contains carry from previous step for digits 1-4; carryB, for 5-8
-    y           = _mm256_set1_epi64x(pY[1]);
-    multB       = _mm256_mul_epu32(y, xHigh);
-    multA       = _mm256_mul_epu32(y, xLow);
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA));
-    // This section
-    // add slots 0, 1, 2 of carryA (digits 1, 2, and 3) to slots 1, 2, and 3 of accA
-    // add slot 3 of carryA and slots 0, 1, 2 of carryB to accB
-    // set slot 0 of accC to slot 3 of carryB and set the rest of it to 0
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryB      = _mm256_permute4x64_epi64(carryB, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // rotate carryA: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryA      = _mm256_permute4x64_epi64(carryA, 147);
-    // set accC to the high-order digit of carryB
-    accC        = _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 3);
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 3));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 3));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-}
-
-__forceinline void MultCols2To9(DIGIT *pY, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB)
-{
-    __m256i y, multA, multB;
-    // y[2] gives digits 2-9 (low bits) and 3-10 (high bits)
-    // carryA contains carry from previous step for digits 2-5; carryB, for 6-9
-    y           = _mm256_set1_epi64x(pY[2]);
-    multB       = _mm256_mul_epu32(y, xHigh);
-    multA       = _mm256_mul_epu32(y, xLow);
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA));
-    // this section
-    // add slots 0, 1 of carryA (digits 2 and 3) to slots 2 and 3 of accA
-    // add slot 2 and 3 of carryA and slots 0 and 1 of carryB to accB
-    // add slot 2 and 3 of carryB to accC
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryB      = _mm256_permute4x64_epi64(carryB, 78); // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 78);
-    // add slots 0, 1 of carryB to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 15));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 15));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-}
-
-__forceinline void MultCols3To10(DIGIT *pY, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB, __m256i *pDest)
-{
-    __m256i y, multA, multB;
-    // y[3] gives digits 3-10 (low bits) and 4-11 (high bits)
-    // carryA contains carry from previous step for digits 3-6; carryB, for 7-10
-    y           = _mm256_set1_epi64x(pY[3]);
-    multB       = _mm256_mul_epu32(y, xHigh);
-    multA       = _mm256_mul_epu32(y, xLow);
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA));
-    // this section
-    // add slots 0 of carryA (digit 3) to slot 3 of accA
-    // add slots 1, 2, and 3 of carryA and slot 0 of carryB to accB
-    // add slots 1, 2, and 3 of carryB to accC
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryB      = _mm256_permute4x64_epi64(carryB, 57); // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 57);
-    // add slots 0, 1, 2 from carryB to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 63));
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 63));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-    // at this point we are done with accA.  Write it to memory.
-    _mm256_store_si256(pDest, accA);
-}
-
-void FourSteps(DIGIT *pY, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB, __m256i *pDest)
-{
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step,
-    // and accC garbage.  carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-7 of the output
-    MultCols0To7(pY, xLow, xHigh, accA, accB, carryA, carryB);
-    // compute digits 1-8 of the output
-    MultCols1To8(pY, xLow, xHigh, accA, accB, accC, carryA, carryB);
-    // compute digits 2-9 of the output
-    MultCols2To9(pY, xLow, xHigh, accA, accB, accC, carryA, carryB);
-    // compute digits 3-10 of the output
-    MultCols3To10(pY, xLow, xHigh, accA, accB, accC, carryA, carryB, pDest);
-}
-
-// one digit of y at a time; whole x row
-// Assume x has exactly 8 digits
-// y7 y6 y5 y4 y3 y2 y1 y0
-// x7 x6 x5 x4 x3 x2 x1 x0
-// -----------------------
-//                                           x0y7  x0y6  x0y5  x0y4  x0y3  x0y2  x0y1  x0y0
-//                                     x1y7  x1y6  x1y5  x1y4  x1y3  x1y2  x1y1  x1y0
-//                               x2y7  x2y6  x2y5  x2y4  x2y3  x2y2  x2y1  x2y0
-//                         x3y7  x3y6  x3y5  x3y4  x3y3  x3y2  x3y1  x3y0
-//                   x4y7  x4y6  x4y5  x4y4  x4y3  x4y2  x4y1  x4y0
-//             x5y7  x5y6  x5y5  x5y4  x5y3  x5y2  x5y1  x5y0
-//       x6y7  x6y6  x6y5  x6y4  x6y3  x6y2  x6y1  x6y0
-// x7y7  x7y6  x7y5  x7y4  x7y3  x7y2  x7y1  x7y0
-void MultAVX_g(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xLow, xHigh;
-    __m256i             y;
-    __m256i             accA, accB, accC, carryA, carryB;
-    DIGIT               *yLim = pY + nYDigits-11;
-    __m256i             *pDest = (__m256i *) pWork;
-
-    // load x
-    xLow   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pX));
-    xHigh  = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX+4)));
-    accA   = _mm256_setzero_si256();
-    accB   = _mm256_setzero_si256();
-    carryA = _mm256_setzero_si256();
-    carryB = _mm256_setzero_si256();
-    // read through y, in 8-digit chunks
-    for(; pY<yLim; pY += 12, pDest += 3)
-    {
-        FourSteps(pY, xLow, xHigh, accA, accB, accC, carryA, carryB, pDest);
-        FourSteps(pY+4, xLow, xHigh, accB, accC, accA, carryA, carryB, pDest+1);
-        FourSteps(pY+8, xLow, xHigh, accC, accA, accB, carryA, carryB, pDest+2);
-    }
-    yLim += 11;
-    if(pY<yLim)
-    {
-        // straggler columns to compute
-        DIGIT yBuff[12];
-        int i = 0;
-        for(; i<yLim-pY; i++)
-        {
-            yBuff[i] = pY[i];
-        }
-        for(; i<12; i++)
-        {
-            yBuff[i] = 0;
-        }
-        FourSteps(yBuff, xLow, xHigh, accA, accB, accC, carryA, carryB, pDest++);
-        FourSteps(yBuff+4, xLow, xHigh, accB, accC, accA, carryA, carryB, pDest++);
-        FourSteps(yBuff+8, xLow, xHigh, accC, accA, accB, carryA, carryB, pDest++);
-    }
-    // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-    accA   = _mm256_add_epi64(accA, carryA);
-    accB   = _mm256_add_epi64(accB, carryB);
-    _mm256_store_si256(pDest++, accA);
-    _mm256_store_si256(pDest++, accB);
-    // finsL carry
-    carry = 0;
-    size_t i = 0;
-    for(;i<nYDigits+nXDigits;i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-__forceinline void MultCols0To7(DIGIT nYVal, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &carryA, __m256i &carryB)
-{
-    __m256i y, multA, multB;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step.
-    // carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-7 of the output
-    y           = _mm256_set1_epi64x(nYVal);
-    accA        = _mm256_add_epi64(accA, carryA);
-    accB        = _mm256_add_epi64(accB, carryB);
-    multA       = _mm256_mul_epu32(y, xLow);
-    multB       = _mm256_mul_epu32(y, xHigh);
-    carryA      = _mm256_and_si256(c_mask, multA);
-    carryB      = _mm256_and_si256(c_mask, multB);
-    accA        = _mm256_add_epi64(accA, carryA);
-    accB        = _mm256_add_epi64(accB, carryB);
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-}
-
-__forceinline void MultCols1To8(DIGIT nYVal, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB)
-{
-    __m256i y, multA, multB;
-    // y[1] gives digits 1-8 (low bits) and 2-9 (high bits)
-    // carryA contains carry from previous step for digits 1-4; carryB, for 5-8
-    y           = _mm256_set1_epi64x(nYVal);
-    multB       = _mm256_mul_epu32(y, xHigh);
-    multA       = _mm256_mul_epu32(y, xLow);
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA));
-    // This section
-    // add slots 0, 1, 2 of carryA (digits 1, 2, and 3) to slots 1, 2, and 3 of accA
-    // add slot 3 of carryA and slots 0, 1, 2 of carryB to accB
-    // set slot 0 of accC to slot 3 of carryB and set the rest of it to 0
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryB      = _mm256_permute4x64_epi64(carryB, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // rotate carryA: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryA      = _mm256_permute4x64_epi64(carryA, 147);
-    // set accC to the high-order digit of carryB
-    accC        = _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 3);
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 3));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 3));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-}
-
-__forceinline void MultCols2To9(DIGIT nYVal, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB)
-{
-    __m256i y, multA, multB;
-    // y[2] gives digits 2-9 (low bits) and 3-10 (high bits)
-    // carryA contains carry from previous step for digits 2-5; carryB, for 6-9
-    y           = _mm256_set1_epi64x(nYVal);
-    multB       = _mm256_mul_epu32(y, xHigh);
-    multA       = _mm256_mul_epu32(y, xLow);
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA));
-    // this section
-    // add slots 0, 1 of carryA (digits 2 and 3) to slots 2 and 3 of accA
-    // add slot 2 and 3 of carryA and slots 0 and 1 of carryB to accB
-    // add slot 2 and 3 of carryB to accC
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryB      = _mm256_permute4x64_epi64(carryB, 78); // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 78);
-    // add slots 0, 1 of carryB to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 15));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 15));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-}
-
-__forceinline void MultCols3To10(DIGIT nYVal, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB, __m256i *pDest)
-{
-    __m256i y, multA, multB;
-    // y[3] gives digits 3-10 (low bits) and 4-11 (high bits)
-    // carryA contains carry from previous step for digits 3-6; carryB, for 7-10
-    y           = _mm256_set1_epi64x(nYVal);
-    multB       = _mm256_mul_epu32(y, xHigh);
-    multA       = _mm256_mul_epu32(y, xLow);
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA));
-    // this section
-    // add slots 0 of carryA (digit 3) to slot 3 of accA
-    // add slots 1, 2, and 3 of carryA and slot 0 of carryB to accB
-    // add slots 1, 2, and 3 of carryB to accC
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryB      = _mm256_permute4x64_epi64(carryB, 57); // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 57);
-    // add slots 0, 1, 2 from carryB to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 63));
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 63));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-    // at this point we are done with accA.  Write it to memory.
-    _mm256_store_si256(pDest, accA);
-}
-
-__forceinline void MultCols0To11(DIGIT nYVal, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB, __m256i &carryC)
-{
-    __m256i y, multA, multB, multC;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 3 steps, accB digits 4, 5, 6, and 7 after two steps, and accC digits 8-11 after one step.
-    // carryA, carryB, and carryC contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3; d 4, 5, 6, and 7; 8, 9, 10, 11
-    // respectively.
-    // compute digits 0-11 of the output
-    y           = _mm256_set1_epi64x(nYVal);        // ??
-    multA       = _mm256_mul_epu32(y, xLow);        // latency 5, throughput 0.5
-    multB       = _mm256_mul_epu32(y, xMid);
-    multC       = _mm256_mul_epu32(y, xHigh);
-    y           = _mm256_set1_epi64x(0xFFFFFFFF);
-    accA        = _mm256_add_epi64(accA, carryA);   // latency 1, throughput 0.33
-    accB        = _mm256_add_epi64(accB, carryB);
-    accC        = _mm256_add_epi64(accC, carryC);
-    carryA      = _mm256_and_si256(y, multA);  // latency 1, throughput 0.33
-    carryB      = _mm256_and_si256(y, multB);
-    carryC      = _mm256_and_si256(y, multC);
-    accA        = _mm256_add_epi64(accA, carryA);   // latency 1, throughput 0.33
-    accB        = _mm256_add_epi64(accB, carryB);
-    accC        = _mm256_add_epi64(accC, carryC);
-    carryA      = _mm256_srli_epi64(multA, 32);     // latency 1, throughput 0.5
-    carryB      = _mm256_srli_epi64(multB, 32);
-    carryC      = _mm256_srli_epi64(multC, 32);
-    // overall: 10 cycles
-}
-
-__forceinline void MultCols1To12(DIGIT nYVal, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC)
-{
-    __m256i y, multA, multB, multC;
-    // y[1] gives digits 1-12 (low bits) and 2-13 (high bits)
-    // carryA contains carry from previous step for digits 1-4; carryB, for 5-8
-    y           = _mm256_set1_epi64x(nYVal);
-    multC       = _mm256_mul_epu32(y, xHigh);
-    multB       = _mm256_mul_epu32(y, xMid);
-    multA       = _mm256_mul_epu32(y, xLow);
-    y           = _mm256_set1_epi64x(0xFFFFFFFF);
-    carryC      = _mm256_add_epi64(carryC, _mm256_and_si256(y, multC));
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(y, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(y, multA));
-    y = _mm256_setzero_si256();
-    // This section
-    // add slots 0, 1, 2 of carryA (digits 1, 2, and 3) to slots 1, 2, and 3 of accA
-    // add slot 3 of carryA and slots 0, 1, 2 of carryB to accB
-    // add slot 3 of carryB and slots 0, 1, 2 of carryC to accC
-    // set slot 0 of accD to slot 3 of carryB and set the rest of it to 0
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (3, 0, 1, 2) :: slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    carryC      = _mm256_permute4x64_epi64(carryC, 147); // latency 3, throughput 1
-    // rotate carryB: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryB      = _mm256_permute4x64_epi64(carryB, 147);
-    // rotate carryA: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryA      = _mm256_permute4x64_epi64(carryA, 147);
-    // set accD to the high-order digit of carryC
-    accD        = _mm256_blend_epi32(y, carryC, 3);
-    // add the appropriate sections of carryB, carryC to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 3));
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 3));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, y, 3));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);     // latency 1, throughput 0.5
-    carryB      = _mm256_srli_epi64(multB, 32);
-    carryC      = _mm256_srli_epi64(multC, 32);
-    // overall: 14 cycles?
-}
-
-__forceinline void MultCols2To13(DIGIT nYVal, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC)
-{
-    __m256i y, multA, multB, multC;
-    // y[2] gives digits 2-13 (low bits) and 3-14 (high bits)
-    // carryA contains carry from previous step for digits 2-5; carryB, for 6-9
-    y           = _mm256_set1_epi64x(nYVal);
-    multC       = _mm256_mul_epu32(y, xHigh);
-    multB       = _mm256_mul_epu32(y, xMid);
-    multA       = _mm256_mul_epu32(y, xLow);
-    y           = _mm256_set1_epi64x(0xFFFFFFFF);
-    carryC      = _mm256_add_epi64(carryC, _mm256_and_si256(y, multC));
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(y, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(y, multA));
-    y           = _mm256_setzero_si256();
-    // this section
-    // add slots 0, 1 of carryA (digits 2 and 3) to slots 2 and 3 of accA
-    // add slot 2 and 3 of carryA and slots 0 and 1 of carryB to accB
-    // add slot 2 and 3 of carryB to accC
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryC      = _mm256_permute4x64_epi64(carryC, 78); // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // rotate carryB: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryB      = _mm256_permute4x64_epi64(carryB, 78);
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 78);
-    // add slots 0, 1 of carryC to accD
-    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(y, carryC, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from carryB; rest are 0
-    // add the appropriate sections of carryB, carryC to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 15));
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 15));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, y, 15));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-    carryC      = _mm256_srli_epi64(multC, 32);
-}
-
-__forceinline void MultCols3To14(DIGIT nYVal, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
-{
-    __m256i y, multA, multB, multC;
-    // y[3] gives digits 3-10 (low bits) and 4-11 (high bits)
-    // carryA contains carry from previous step for digits 3-6; carryB, for 7-10
-    y           = _mm256_set1_epi64x(nYVal);
-    multC       = _mm256_mul_epu32(y, xHigh);
-    multB       = _mm256_mul_epu32(y, xMid);
-    multA       = _mm256_mul_epu32(y, xLow);
-    y           = _mm256_set1_epi64x(0xFFFFFFFF);
-    carryC      = _mm256_add_epi64(carryC, _mm256_and_si256(y, multC));
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(y, multB));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(y, multA));
-    y           = _mm256_setzero_si256();
-    // this section
-    // add slots 0 of carryA (digit 3) to slot 3 of accA
-    // add slots 1, 2, and 3 of carryA and slot 0 of carryB to accB
-    // add slots 1, 2, and 3 of carryB and slot 0 of carryC to accC
-    // add slots 1, 2, and 3 of carryC to accD
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryC      = _mm256_permute4x64_epi64(carryC, 57); // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // rotate carryB: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryB      = _mm256_permute4x64_epi64(carryB, 57);
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 57);
-    // add slots 0, 1, 2 from carryC to accD
-    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(y, carryC, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB; band c to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 63));
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 63));
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, y, 63));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA, 32);
-    carryB      = _mm256_srli_epi64(multB, 32);
-    carryC      = _mm256_srli_epi64(multC, 32);
-    // at this point we are done with accA.  Write it to memory.
-    _mm256_store_si256(pDest, accA);
-}
-
-void FourStepsB(DIGIT *pY, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB, __m256i *pDest)
-{
-    DIGIT y0, y1, y2, y3;
-    __m128i yVec;
-    /*yVec = _mm_lddqu_si128((__m128i*) pY);
-    y0   = _mm_extract_epi32(yVec, 0);
-    y1   = _mm_extract_epi32(yVec, 1);
-    y2   = _mm_extract_epi32(yVec, 2);
-    y3   = _mm_extract_epi32(yVec, 3);*/
-    y0 = *pY++;
-    y1 = *pY++;
-    y2 = *pY++;
-    y3 = *pY;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step,
-    // and accC garbage.  carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-7 of the output
-    MultCols0To7(y0, xLow, xHigh, accA, accB, carryA, carryB);
-    // compute digits 1-8 of the output
-    MultCols1To8(y1, xLow, xHigh, accA, accB, accC, carryA, carryB);
-    // compute digits 2-9 of the output
-    MultCols2To9(y2, xLow, xHigh, accA, accB, accC, carryA, carryB);
-    // compute digits 3-10 of the output
-    MultCols3To10(y3, xLow, xHigh, accA, accB, accC, carryA, carryB, pDest);
-}
-
-void FourStepsC(DIGIT *pY, __m256i &xLow, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &carryA, __m256i &carryB, __m256i *pDest)
-{
-    __m256i y, multA1, multA2, multB1, multB2;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step.
-    // carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-7 of the output
-    y           = _mm256_set1_epi64x(pY[0]);
-    accA        = _mm256_add_epi64(accA, carryA);
-    accB        = _mm256_add_epi64(accB, carryB);
-    multA1      = _mm256_mul_epu32(y, xLow);
-    multB1      = _mm256_mul_epu32(y, xHigh);
-    y           = _mm256_set1_epi64x(pY[1]);
-    multA2      = _mm256_mul_epu32(y, xLow);
-    multB2      = _mm256_mul_epu32(y, xHigh);
-    y           = _mm256_set1_epi64x(pY[2]);
-    accA        = _mm256_add_epi64(accA, _mm256_and_si256(c_mask, multA1));
-    accB        = _mm256_add_epi64(accB,_mm256_and_si256(c_mask, multB1));
-    carryA      = _mm256_srli_epi64(multA1, 32);
-    carryB      = _mm256_srli_epi64(multB1, 32);
-    multA1      = _mm256_mul_epu32(y, xLow);
-    multB1      = _mm256_mul_epu32(y, xHigh);
-    y           = _mm256_set1_epi64x(pY[3]);
-
-    // y[1] gives digits 1-8 (low bits) and 2-9 (high bits)
-    // carryA contains carry from previous step for digits 1-4; carryB, for 5-8
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB2));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA2));
-    // This section
-    // add slots 0, 1, 2 of carryA (digits 1, 2, and 3) to slots 1, 2, and 3 of accA
-    // add slot 3 of carryA and slots 0, 1, 2 of carryB to accB
-    // set slot 0 of accC to slot 3 of carryB and set the rest of it to 0
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryB      = _mm256_permute4x64_epi64(carryB, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // rotate carryA: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryA      = _mm256_permute4x64_epi64(carryA, 147);
-    // set accC to the high-order digit of carryB
-    accC        = _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 3);
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 3));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 3));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA2, 32);
-    carryB      = _mm256_srli_epi64(multB2, 32);
-    multA2      = _mm256_mul_epu32(y, xLow);
-    multB2      = _mm256_mul_epu32(y, xHigh);
-
-    // y[2] gives digits 2-9 (low bits) and 3-10 (high bits)
-    // carryA contains carry from previous step for digits 2-5; carryB, for 6-9
-    y           = _mm256_set1_epi64x(pY[3]);
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB1));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA1));
-    // this section
-    // add slots 0, 1 of carryA (digits 2 and 3) to slots 2 and 3 of accA
-    // add slot 2 and 3 of carryA and slots 0 and 1 of carryB to accB
-    // add slot 2 and 3 of carryB to accC
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryB      = _mm256_permute4x64_epi64(carryB, 78); // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 78);
-    // add slots 0, 1 of carryB to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 15));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 15));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA1, 32);
-    carryB      = _mm256_srli_epi64(multB1, 32);
-
-    // y[3] gives digits 3-10 (low bits) and 4-11 (high bits)
-    // carryA contains carry from previous step for digits 3-6; carryB, for 7-10
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB2));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA2));
-    // this section
-    // add slots 0 of carryA (digit 3) to slot 3 of accA
-    // add slots 1, 2, and 3 of carryA and slot 0 of carryB to accB
-    // add slots 1, 2, and 3 of carryB to accC
-    //
-    // rotate carryB: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryB      = _mm256_permute4x64_epi64(carryB, 57); // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 57);
-    // add slots 0, 1, 2 from carryB to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(_mm256_setzero_si256(), carryB, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 63));
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 63));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA2, 32);
-    carryB      = _mm256_srli_epi64(multB2, 32);
-    // at this point we are done with accA.  Write it to memory.
-    _mm256_store_si256(pDest, accA);
-}
-
-#if 0
-void FourStepsD(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
-{
-    DIGIT y0, y1, y2, y3;
-    __m128i yVec;
-    y0 = *pY++;
-    y1 = *pY++;
-    y2 = *pY++;
-    y3 = *pY;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step,
-    // and accC garbage.  carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-11 of the output
-    MultCols0To11(y0, xLow, xMid, xHigh, accA, accB, accC, carryA, carryB, carryC);
-    // compute digits 1-12 of the output
-    MultCols1To12(y1, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    // compute digits 2-13 of the output
-    MultCols2To13(y2, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    // compute digits 3-14 of the output
-    MultCols3To14(y3, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest);
-}
-#elif 1
-__forceinline void FourStepsD(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
-{
-    DIGIT y0, y1, y2, y3;
-    __m256i yA, yB, multA3, multB3, multC3;
-    __m256i multA2, multB2, multC2;
-    __m256i multA1, multB1, multC1;
-    __m256i multA0, multB0, multC0;
-    y0 = *pY++;
-    y1 = *pY++;
-    y2 = *pY++;
-    y3 = *pY;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step,
-    // and accC garbage.  carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-11 of the output
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 3 steps, accB digits 4, 5, 6, and 7 after two steps, and accC digits 8-11 after one step.
-    // carryA, carryB, and carryC contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3; d 4, 5, 6, and 7; 8, 9, 10, 11
-    // respectively.
-    // compute digits 0-11 of the output
-    yA          = _mm256_set1_epi64x(y0);        // ??
-    yB          = _mm256_set1_epi64x(y1);
-    multA0      = _mm256_mul_epu32(yA, xLow);        // latency 5, throughput 0.5
-    multB0      = _mm256_mul_epu32(yA, xMid);
-    multC0      = _mm256_mul_epu32(yA, xHigh);
-    multC1      = _mm256_mul_epu32(yB, xHigh);
-    multB1      = _mm256_mul_epu32(yB, xMid);
-    multA1      = _mm256_mul_epu32(yB, xLow);
-    yA          = _mm256_set1_epi64x(y2);
-    yB          = _mm256_set1_epi64x(y3);
-    multC2      = _mm256_mul_epu32(yA, xHigh);
-    multB2      = _mm256_mul_epu32(yA, xMid);
-    multA2      = _mm256_mul_epu32(yA, xLow);
-    multC3      = _mm256_mul_epu32(yB, xHigh);
-    multB3      = _mm256_mul_epu32(yB, xMid);
-    multA3      = _mm256_mul_epu32(yB, xLow);
-    yA          = _mm256_set1_epi64x(0xFFFFFFFF);
-    accA        = _mm256_add_epi64(accA, carryA);   // latency 1, throughput 0.33
-    accB        = _mm256_add_epi64(accB, carryB);
-    accC        = _mm256_add_epi64(accC, carryC);
-    carryA      = _mm256_and_si256(yA, multA0);  // latency 1, throughput 0.33
-    carryB      = _mm256_and_si256(yA, multB0);
-    carryC      = _mm256_and_si256(yA, multC0);
-    accA        = _mm256_add_epi64(accA, carryA);   // latency 1, throughput 0.33
-    accB        = _mm256_add_epi64(accB, carryB);
-    accC        = _mm256_add_epi64(accC, carryC);
-    carryA      = _mm256_srli_epi64(multA0, 32);     // latency 1, throughput 0.5
-    carryB      = _mm256_srli_epi64(multB0, 32);
-    carryC      = _mm256_srli_epi64(multC0, 32);
-    multC0      = _mm256_and_si256(yA, multC1);
-    multB0      = _mm256_and_si256(yA, multB1);
-    multA0      = _mm256_and_si256(yA, multA1);
-    carryC      = _mm256_add_epi64(carryC, multC0);
-    carryB      = _mm256_add_epi64(carryB, multB0);
-    carryA      = _mm256_add_epi64(carryA, multA0);
-    yB          = _mm256_setzero_si256();
-    // This section
-    // add slots 0, 1, 2 of carryA (digits 1, 2, and 3) to slots 1, 2, and 3 of accA
-    // add slot 3 of carryA and slots 0, 1, 2 of carryB to accB
-    // add slot 3 of carryB and slots 0, 1, 2 of carryC to accC
-    // set slot 0 of accD to slot 3 of carryB and set the rest of it to 0
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (3, 0, 1, 2) :: slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    carryC      = _mm256_permute4x64_epi64(carryC, 147); // latency 3, throughput 1
-    // rotate carryB: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryB      = _mm256_permute4x64_epi64(carryB, 147);
-    // rotate carryA: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryA      = _mm256_permute4x64_epi64(carryA, 147);
-    // set accD to the high-order digit of carryC
-    accD        = _mm256_blend_epi32(yB, carryC, 3);
-    // add the appropriate sections of carryB, carryC to accC
-    multC0      = _mm256_blend_epi32(carryC, carryB, 3);
-    multB0      = _mm256_blend_epi32(carryB, carryA, 3);
-    multA0      = _mm256_blend_epi32(carryA, yB, 3);
-    accC        = _mm256_add_epi64(accC, multC0);
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, multB0);
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, multA0);
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA1, 32);     // latency 1, throughput 0.5
-    carryB      = _mm256_srli_epi64(multB1, 32);
-    carryC      = _mm256_srli_epi64(multC1, 32);
-    // overall: 14 cycles?
-    // compute digits 2-13 of the output
-    // y[2] gives digits 2-13 (low bits) and 3-14 (high bits)
-    // carryA contains carry from previous step for digits 2-5; carryB, for 6-9
-    multC0      = _mm256_and_si256(yA, multC2);
-    multB0      = _mm256_and_si256(yA, multB2);
-    multA0      = _mm256_and_si256(yA, multA2);
-    carryC      = _mm256_add_epi64(carryC, multC0);
-    carryB      = _mm256_add_epi64(carryB, multB0);
-    carryA      = _mm256_add_epi64(carryA, multA0);
-    // this section
-    // add slots 0, 1 of carryA (digits 2 and 3) to slots 2 and 3 of accA
-    // add slot 2 and 3 of carryA and slots 0 and 1 of carryB to accB
-    // add slot 2 and 3 of carryB to accC
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryC      = _mm256_permute4x64_epi64(carryC, 78); // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // rotate carryB: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryB      = _mm256_permute4x64_epi64(carryB, 78);
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 78);
-    // add slots 0, 1 of carryC to accD
-    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(yB, carryC, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from carryB; rest are 0
-    // add the appropriate sections of carryB, carryC to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 15));
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 15));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, yB, 15));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA2, 32);
-    carryB      = _mm256_srli_epi64(multB2, 32);
-    carryC      = _mm256_srli_epi64(multC2, 32);
-    // compute digits 3-14 of the output
-    // y[3] gives digits 3-10 (low bits) and 4-11 (high bits)
-    // carryA contains carry from previous step for digits 3-6; carryB, for 7-10
-    multC0      = _mm256_and_si256(yA, multC3);
-    multB0      = _mm256_and_si256(yA, multB3);
-    multA0      = _mm256_and_si256(yA, multA3);
-    carryC      = _mm256_add_epi64(carryC, multC0);
-    carryB      = _mm256_add_epi64(carryB, multB0);
-    carryA      = _mm256_add_epi64(carryA, multA0);
-    // this section
-    // add slots 0 of carryA (digit 3) to slot 3 of accA
-    // add slots 1, 2, and 3 of carryA and slot 0 of carryB to accB
-    // add slots 1, 2, and 3 of carryB and slot 0 of carryC to accC
-    // add slots 1, 2, and 3 of carryC to accD
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryC      = _mm256_permute4x64_epi64(carryC, 57); // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // rotate carryB: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryB      = _mm256_permute4x64_epi64(carryB, 57);
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 57);
-    // add slots 0, 1, 2 from carryC to accD
-    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(yB, carryC, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB; band c to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 63));
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 63));
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, yB, 63));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA3, 32);
-    carryB      = _mm256_srli_epi64(multB3, 32);
-    carryC      = _mm256_srli_epi64(multC3, 32);
-    // at this point we are done with accA.  Write it to memory.
-    _mm256_store_si256(pDest, accA);
-}
-#elif 0
-void FourStepsD(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
-{
-    DIGIT y0, y1, y2, y3;
-    __m128i yVec;
-    y0 = *pY++;
-    y1 = *pY++;
-    y2 = *pY++;
-    y3 = *pY;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step,
-    // and accC garbage.  carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-11 of the output
-    MultCols0To11(y0, xLow, xMid, xHigh, accA, accB, accC, carryA, carryB, carryC);
-    MultCols0To11(y1, xLow, xMid, xHigh, accA, accB, accC, carryA, carryB, carryC);
-    MultCols0To11(y2, xLow, xMid, xHigh, accA, accB, accC, carryA, carryB, carryC);
-    MultCols0To11(y3, xLow, xMid, xHigh, accA, accB, accC, carryA, carryB, carryC);
-    _mm256_store_si256(pDest, accA);
-    // compute digits 1-12 of the output
-    /*MultCols1To12(y0, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    MultCols1To12(y1, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    MultCols1To12(y2, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    MultCols1To12(y3, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    _mm256_store_si256(pDest, accA);*/
-    // compute digits 2-13 of the output
-    /*MultCols2To13(y0, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    MultCols2To13(y1, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    MultCols2To13(y2, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    MultCols2To13(y3, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC);
-    _mm256_store_si256(pDest, accA);*/
-    // compute digits 3-14 of the output
-    /*MultCols3To14(y0, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest);
-    MultCols3To14(y1, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest);
-    MultCols3To14(y2, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest);
-    MultCols3To14(y3, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest);*/
-}
-#else
-DIGIT g_nGlobalVal = 1;
-void FourStepsD(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
-{
-    DIGIT y0, y1, y2, y3;
-    __m256i multA1, multA2, multB1, multB2, multC1, multC2, yVec1, yVec2;
-    y0 = g_nGlobalVal++;// *pY++;
-    y1 = g_nGlobalVal++;// *pY++;
-    y2 = g_nGlobalVal++;// *pY++;
-    y3 = g_nGlobalVal++;// *pY;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step,
-    // and accC garbage.  carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-
-    // compute digits 0-11 of the output
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 3 steps, accB digits 4, 5, 6, and 7 after two steps, and accC digits 8-11 after one step.
-    // carryA, carryB, and carryC contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3; d 4, 5, 6, and 7; 8, 9, 10, 11
-    // respectively.
-    // compute digits 0-11 of the output
-    yVec1  = _mm256_set1_epi64x(y0);
-    multA1 = _mm256_mul_epu32(yVec1, xLow);
-    multB1 = _mm256_mul_epu32(yVec1, xMid);
-    multC1 = _mm256_mul_epu32(yVec1, xHigh);
-    yVec2  = _mm256_set1_epi64x(y1);
-    multC2 = _mm256_mul_epu32(yVec2, xHigh);
-    multB2 = _mm256_mul_epu32(yVec2, xMid);
-    multA2 = _mm256_mul_epu32(yVec2, xLow);
-    accA   = _mm256_add_epi64(accA, carryA);
-    accB   = _mm256_add_epi64(accB, carryB);
-    accC   = _mm256_add_epi64(accC, carryC);
-    carryA = _mm256_and_si256(c_mask, multA1);
-    carryB = _mm256_and_si256(c_mask, multB1);
-    carryC = _mm256_and_si256(c_mask, multC1);
-    accA   = _mm256_add_epi64(accA, carryA);
-    accB   = _mm256_add_epi64(accB, carryB);
-    accC   = _mm256_add_epi64(accC, carryC);
-    carryA = _mm256_srli_epi64(multA1, 32);
-    carryB = _mm256_srli_epi64(multB1, 32);
-    carryC = _mm256_srli_epi64(multC1, 32);
-    yVec1  = _mm256_set1_epi64x(y2);
-    multC1 = _mm256_mul_epu32(yVec1, xHigh);
-    multB1 = _mm256_mul_epu32(yVec1, xMid);
-    multA1 = _mm256_mul_epu32(yVec1, xLow);
-
-    // compute digits 1-12 of the output
-    // y[1] gives digits 1-12 (low bits) and 2-13 (high bits)
-    // carryA contains carry from previous step for digits 1-4; carryB, for 5-8
-    carryC = _mm256_add_epi64(carryC, _mm256_and_si256(c_mask, multC2));
-    carryB = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB2));
-    carryA = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA2));
-    // This section
-    // add slots 0, 1, 2 of carryA (digits 1, 2, and 3) to slots 1, 2, and 3 of accA
-    // add slot 3 of carryA and slots 0, 1, 2 of carryB to accB
-    // add slot 3 of carryB and slots 0, 1, 2 of carryC to accC
-    // set slot 0 of accD to slot 3 of carryB and set the rest of it to 0
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryC      = _mm256_permute4x64_epi64(carryC, 147); // slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    // rotate carryB: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryB      = _mm256_permute4x64_epi64(carryB, 147);
-    // rotate carryA: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryA      = _mm256_permute4x64_epi64(carryA, 147);
-    // set accD to the high-order digit of carryC
-    accD        = _mm256_blend_epi32(_mm256_setzero_si256(), carryC, 3);
-    // add the appropriate sections of carryB, carryC to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 3));
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 3));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 3));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA2, 32);
-    carryB      = _mm256_srli_epi64(multB2, 32);
-    carryC      = _mm256_srli_epi64(multC2, 32);
-    yVec2       = _mm256_set1_epi64x(y3);
-    multC2      = _mm256_mul_epu32(yVec2, xHigh);
-    multB2      = _mm256_mul_epu32(yVec2, xMid);
-    multA2      = _mm256_mul_epu32(yVec2, xLow);
-
-    // compute digits 2-13 of the output
-    // y[2] gives digits 2-13 (low bits) and 3-14 (high bits)
-    // carryA contains carry from previous step for digits 2-5; carryB, for 6-9
-    carryC      = _mm256_add_epi64(carryC, _mm256_and_si256(c_mask, multC1));
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB1));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA1));
-    // this section
-    // add slots 0, 1 of carryA (digits 2 and 3) to slots 2 and 3 of accA
-    // add slot 2 and 3 of carryA and slots 0 and 1 of carryB to accB
-    // add slot 2 and 3 of carryB to accC
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryC      = _mm256_permute4x64_epi64(carryC, 78); // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // rotate carryB: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryB      = _mm256_permute4x64_epi64(carryB, 78);
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 78);
-    // add slots 0, 1 of carryC to accD
-    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(_mm256_setzero_si256(), carryC, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from carryB; rest are 0
-    // add the appropriate sections of carryB, carryC to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 15));
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 15));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 15));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA1, 32);
-    carryB      = _mm256_srli_epi64(multB1, 32);
-    carryC      = _mm256_srli_epi64(multC1, 32);
-
-    // compute digits 3-14 of the output
-    // y[3] gives digits 3-10 (low bits) and 4-11 (high bits)
-    // carryA contains carry from previous step for digits 3-6; carryB, for 7-10
-    carryC      = _mm256_add_epi64(carryC, _mm256_and_si256(c_mask, multC2));
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(c_mask, multB2));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(c_mask, multA2));
-    // this section
-    // add slots 0 of carryA (digit 3) to slot 3 of accA
-    // add slots 1, 2, and 3 of carryA and slot 0 of carryB to accB
-    // add slots 1, 2, and 3 of carryB and slot 0 of carryC to accC
-    // add slots 1, 2, and 3 of carryC to accD
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryC      = _mm256_permute4x64_epi64(carryC, 57); // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // rotate carryB: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryB      = _mm256_permute4x64_epi64(carryB, 57);
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 57);
-    // add slots 0, 1, 2 from carryC to accD
-    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(_mm256_setzero_si256(), carryC, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB; band c to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 63));
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 63));
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, _mm256_setzero_si256(), 63));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA2, 32);
-    carryB      = _mm256_srli_epi64(multB2, 32);
-    carryC      = _mm256_srli_epi64(multC2, 32);
-    // at this point we are done with accA.  Write it to memory.
-    _mm256_store_si256(pDest, accA);
-}
-#endif
-
-void MultAVX_h(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xLow, xHigh;
-    __m256i             y;
-    __m256i             accA, accB, accC, carryA, carryB;
-    DIGIT               *yLim = pY + nYDigits-11;
-    __m256i             *pDest = (__m256i *) pWork;
-
-    // load x
-    xLow   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pX));
-    xHigh  = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX+4)));
-    accA   = _mm256_setzero_si256();
-    accB   = _mm256_setzero_si256();
-    carryA = _mm256_setzero_si256();
-    carryB = _mm256_setzero_si256();
-    // read through y, in 8-digit chunks
-    for(; pY<yLim; pY += 12, pDest += 3)
-    {
-        FourStepsC(pY, xLow, xHigh, accA, accB, accC, carryA, carryB, pDest);
-        FourStepsC(pY+4, xLow, xHigh, accB, accC, accA, carryA, carryB, pDest+1);
-        FourStepsC(pY+8, xLow, xHigh, accC, accA, accB, carryA, carryB, pDest+2);
-    }
-    yLim += 11;
-    if(pY<yLim)
-    {
-        // straggler columns to compute
-        DIGIT yBuff[12];
-        int i = 0;
-        for(; i<yLim-pY; i++)
-        {
-            yBuff[i] = pY[i];
-        }
-        if(8<yLim-pY)
-        {
-            for(; i<12; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsC(yBuff, xLow, xHigh, accA, accB, accC, carryA, carryB, pDest++);
-            FourStepsC(yBuff+4, xLow, xHigh, accB, accC, accA, carryA, carryB, pDest++);
-            FourStepsC(yBuff+8, xLow, xHigh, accC, accA, accB, carryA, carryB, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accA = _mm256_add_epi64(accA, carryA);
-            accB = _mm256_add_epi64(accB, carryB);
-            _mm256_store_si256(pDest++, accA);
-            _mm256_store_si256(pDest++, accB);
-        }
-        else if (4<yLim-pY)
-        {
-            for(; i<8; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsC(yBuff, xLow, xHigh, accA, accB, accC, carryA, carryB, pDest++);
-            FourStepsC(yBuff+4, xLow, xHigh, accB, accC, accA, carryA, carryB, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accC = _mm256_add_epi64(accC, carryA);
-            accA = _mm256_add_epi64(accA, carryB);
-            _mm256_store_si256(pDest++, accC);
-            _mm256_store_si256(pDest++, accA);
-        }
-        else
-        {
-            for(; i<4; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsC(yBuff, xLow, xHigh, accA, accB, accC, carryA, carryB, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accB = _mm256_add_epi64(accB, carryA);
-            accC = _mm256_add_epi64(accC, carryB);
-            _mm256_store_si256(pDest++, accB);
-            _mm256_store_si256(pDest++, accC);
-        }
-    }
-    else
-    {
-        // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-        accA = _mm256_add_epi64(accA, carryA);
-        accB = _mm256_add_epi64(accB, carryB);
-        _mm256_store_si256(pDest++, accA);
-        _mm256_store_si256(pDest++, accB);
-    }
-    // finsL carry
-    carry = 0;
-    size_t i = 0;
-    for(;i<nYDigits+nXDigits;i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-#endif
-
-__forceinline void FourStepsE(DIGIT *pY, __m256i &xLow, __m256i &xMid, __m256i &xHigh, __m256i &accA, __m256i &accB, __m256i &accC, __m256i &accD, __m256i &carryA, __m256i &carryB, __m256i &carryC, __m256i *pDest)
-{
-    // xxx
-    DIGIT y0, y1, y2, y3;
-    __m256i yA;// , yB;
-    __m256i multA1, multB1, multC1;
-    __m256i multA0, multB0, multC0;
-    y0 = *pY++;
-    y1 = *pY++;
-    y2 = *pY++;
-    y3 = *pY;
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 2 steps, accB digits 4, 5, 6, and 7 after one step,
-    // and accC garbage.  carryA and carryB contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3 and 4, 5, 6, and 7,
-    // respectively.
-    // compute digits 0-11 of the output
-    // On entry, accA contains the low 4 digits of the output (0, 1, 2, and 3) after 3 steps, accB digits 4, 5, 6, and 7 after two steps, and accC digits 8-11 after one step.
-    // carryA, carryB, and carryC contain the high-order bits of the previous step's multiplies -- digits 0, 1, 2, and 3; d 4, 5, 6, and 7; 8, 9, 10, 11
-    // respectively.
-    // compute digits 0-11 of the output
-    yA          = _mm256_set1_epi64x(y0);        // ??
-    multA0      = _mm256_mul_epu32(yA, xLow);        // latency 5, throughput 0.5
-    multB0      = _mm256_mul_epu32(yA, xMid);
-    multC0      = _mm256_mul_epu32(yA, xHigh);
-    yA          = _mm256_set1_epi64x(y1);
-    multC1      = _mm256_mul_epu32(yA, xHigh);
-    multB1      = _mm256_mul_epu32(yA, xMid);
-    multA1      = _mm256_mul_epu32(yA, xLow);
-//    yA          = _mm256_set1_epi64x(y2);
-//    yB          = _mm256_set1_epi64x(y3);
-//    multC2      = _mm256_mul_epu32(yA, xHigh);
-//    multB2      = _mm256_mul_epu32(yA, xMid);
-//    multA2      = _mm256_mul_epu32(yA, xLow);
-//    multC3      = _mm256_mul_epu32(yB, xHigh);
-//    multB3      = _mm256_mul_epu32(yB, xMid);
-//    multA3      = _mm256_mul_epu32(yB, xLow);
-    yA          = _mm256_set1_epi64x(0xFFFFFFFF);
-    accA        = _mm256_add_epi64(accA, carryA);   // latency 1, throughput 0.33
-    accB        = _mm256_add_epi64(accB, carryB);
-    accC        = _mm256_add_epi64(accC, carryC);
-    carryA      = _mm256_and_si256(yA, multA0);  // latency 1, throughput 0.33
-    carryB      = _mm256_and_si256(yA, multB0);
-    carryC      = _mm256_and_si256(yA, multC0);
-    accA        = _mm256_add_epi64(accA, carryA);   // latency 1, throughput 0.33
-    accB        = _mm256_add_epi64(accB, carryB);
-    accC        = _mm256_add_epi64(accC, carryC);
-    carryA      = _mm256_srli_epi64(multA0, 32);     // latency 1, throughput 0.5
-    carryB      = _mm256_srli_epi64(multB0, 32);
-    carryC      = _mm256_srli_epi64(multC0, 32);
-    yA          = _mm256_set1_epi64x(y2);
-    multC0      = _mm256_mul_epu32(yA, xHigh);
-    multB0      = _mm256_mul_epu32(yA, xMid);
-    multA0      = _mm256_mul_epu32(yA, xLow);
- //   multC0      = _mm256_and_si256(yA, multC1);
- //   multB0      = _mm256_and_si256(yA, multB1);
- //   multA0      = _mm256_and_si256(yA, multA1);
-    yA          = _mm256_set1_epi64x(0xFFFFFFFF);
-    carryC      = _mm256_add_epi64(carryC, _mm256_and_si256(yA, multC1));
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(yA, multB1));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(yA, multA1));
- //   yB          = _mm256_setzero_si256();
-    // This section
-    // add slots 0, 1, 2 of carryA (digits 1, 2, and 3) to slots 1, 2, and 3 of accA
-    // add slot 3 of carryA and slots 0, 1, 2 of carryB to accB
-    // add slot 3 of carryB and slots 0, 1, 2 of carryC to accC
-    // set slot 0 of accD to slot 3 of carryB and set the rest of it to 0
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (3, 0, 1, 2) :: slot 0: 11, slot 1: 00, slot 2: 01, slot 3: 10 -> 10010011 = 147
-    yA          = _mm256_setzero_si256();
-    carryC      = _mm256_permute4x64_epi64(carryC, 147); // latency 3, throughput 1
-    // rotate carryB: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryB      = _mm256_permute4x64_epi64(carryB, 147);
-    // rotate carryA: (0, 1, 2, 3) -> (3, 0, 1, 2)
-    carryA      = _mm256_permute4x64_epi64(carryA, 147);
-    // set accD to the high-order digit of carryC
-    accD        = _mm256_blend_epi32(yA, carryC, 3);
-    // add the appropriate sections of carryB, carryC to accC
- //   multC0      = _mm256_blend_epi32(carryC, carryB, 3);
-   // multB0      = _mm256_blend_epi32(carryB, carryA, 3);
-    //multA0      = _mm256_blend_epi32(carryA, yB, 3);
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 3));
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 3));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, yA, 3));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA1, 32);     // latency 1, throughput 0.5
-    carryB      = _mm256_srli_epi64(multB1, 32);
-    carryC      = _mm256_srli_epi64(multC1, 32);
-    yA          = _mm256_set1_epi64x(y3);
-    multC1      = _mm256_mul_epu32(yA, xHigh);
-    multB1      = _mm256_mul_epu32(yA, xMid);
-    multA1      = _mm256_mul_epu32(yA, xLow);
-    // overall: 14 cycles?
-    // compute digits 2-13 of the output
-    // y[2] gives digits 2-13 (low bits) and 3-14 (high bits)
-    // carryA contains carry from previous step for digits 2-5; carryB, for 6-9
-//    multC0      = _mm256_and_si256(yA, multC2);
-  //  multB0      = _mm256_and_si256(yA, multB2);
-    //multA0      = _mm256_and_si256(yA, multA2);
-    yA          = _mm256_set1_epi64x(0xFFFFFFFF);
-    carryC      = _mm256_add_epi64(carryC, _mm256_and_si256(yA, multC0));
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(yA, multB0));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(yA, multA0));
-    yA          = _mm256_setzero_si256();
-    // this section
-    // add slots 0, 1 of carryA (digits 2 and 3) to slots 2 and 3 of accA
-    // add slot 2 and 3 of carryA and slots 0 and 1 of carryB to accB
-    // add slot 2 and 3 of carryB to accC
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryC      = _mm256_permute4x64_epi64(carryC, 78); // slot 0: 10, slot 1: 11, slot 2: 00, slot 3: 01 -> 1001110 = 78
-    // rotate carryB: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryB      = _mm256_permute4x64_epi64(carryB, 78);
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 78);
-    // add slots 0, 1 of carryC to accD
-    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(yA, carryC, 15)); // a5 = 00001111: slots 0, 1, 2, 3 from carryB; rest are 0
-    // add the appropriate sections of carryB, carryC to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 15));
-    // add the appropriate sections of carryA, carryB to accB
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 15));
-    // add selected digits of carryA to accA
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, yA, 15));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA0, 32);
-    carryB      = _mm256_srli_epi64(multB0, 32);
-    carryC      = _mm256_srli_epi64(multC0, 32);
-    yA          = _mm256_set1_epi64x(0xFFFFFFFF);
-    // compute digits 3-14 of the output
-    // y[3] gives digits 3-10 (low bits) and 4-11 (high bits)
-    // carryA contains carry from previous step for digits 3-6; carryB, for 7-10
- //   multC0      = _mm256_and_si256(yA, multC3);
-   // multB0      = _mm256_and_si256(yA, multB3);
-    //multA0      = _mm256_and_si256(yA, multA3);
-    carryC      = _mm256_add_epi64(carryC, _mm256_and_si256(yA, multC1));
-    carryB      = _mm256_add_epi64(carryB, _mm256_and_si256(yA, multB1));
-    carryA      = _mm256_add_epi64(carryA, _mm256_and_si256(yA, multA1));
-    yA          = _mm256_setzero_si256();
-    // this section
-    // add slots 0 of carryA (digit 3) to slot 3 of accA
-    // add slots 1, 2, and 3 of carryA and slot 0 of carryB to accB
-    // add slots 1, 2, and 3 of carryB and slot 0 of carryC to accC
-    // add slots 1, 2, and 3 of carryC to accD
-    //
-    // rotate carryC: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryC      = _mm256_permute4x64_epi64(carryC, 57); // slot 0: 01, slot 1: 10, slot 2: 11, slot 3: 0 -> 111001 = 57
-    // rotate carryB: (0, 1, 2, 3) -> (1, 2, 3, 0)
-    carryB      = _mm256_permute4x64_epi64(carryB, 57);
-    // rotate carryA: (0, 1, 2, 3) -> (2, 3, 0, 1)
-    carryA      = _mm256_permute4x64_epi64(carryA, 57);
-    // add slots 0, 1, 2 from carryC to accD
-    accD        = _mm256_add_epi64(accD, _mm256_blend_epi32(yA, carryC, 63)); // a5 = 00111111: slots 0, 1, 2, 3, 4, 5 from carryB; rest are 0
-    // add the appropriate sections of carryA, carryB to accB; band c to accC
-    accC        = _mm256_add_epi64(accC, _mm256_blend_epi32(carryC, carryB, 63));
-    accB        = _mm256_add_epi64(accB, _mm256_blend_epi32(carryB, carryA, 63));
-    accA        = _mm256_add_epi64(accA, _mm256_blend_epi32(carryA, yA, 63));
-    // set the high-order bits out of the multiplications for the carry into the next step
-    carryA      = _mm256_srli_epi64(multA1, 32);
-    carryB      = _mm256_srli_epi64(multB1, 32);
-    carryC      = _mm256_srli_epi64(multC1, 32);
-    // at this point we are done with accA.  Write it to memory.
-    _mm256_store_si256(pDest, accA);
-}
-
-// assumes X has exactly 12 DIGITs
-void MultAVX_i(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xLow, xMid, xHigh;
-    __m256i             y;
-    __m256i             accA, accB, accC, accD, carryA, carryB, carryC;
-    DIGIT               *yLim = pY + nYDigits-15;
-    __m256i             *pDest = (__m256i *) pWork;
-
-    // load x
-    xLow   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pX));
-    xMid   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX+4)));
-    xHigh  = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX+8)));
-    accA   = _mm256_setzero_si256();
-    accB   = _mm256_setzero_si256();
-    accC   = _mm256_setzero_si256();
-    carryA = _mm256_setzero_si256();
-    carryB = _mm256_setzero_si256();
-    carryC = _mm256_setzero_si256();
-    // read through y, in 8-digit chunks
-    for(; pY<yLim; pY += 16, pDest += 4)
-    {
-        FourStepsD(pY, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest);
-        FourStepsD(pY+4, xLow, xMid, xHigh, accB, accC, accD, accA, carryA, carryB, carryC, pDest+1);
-        FourStepsD(pY+8, xLow, xMid, xHigh, accC, accD, accA, accB, carryA, carryB, carryC, pDest+2);
-        FourStepsD(pY+12, xLow, xMid, xHigh, accD, accA, accB, accC, carryA, carryB, carryC, pDest+3);
-    }
-    yLim += 15;
-    if(pY<yLim)
-    {
-        // straggler columns to compute
-        DIGIT yBuff[16];
-        int i = 0;
-        for(; i<yLim-pY; i++)
-        {
-            yBuff[i] = pY[i];
-        }
-        if(12<yLim-pY)
-        {
-            for(; i<16; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsD(yBuff, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest++);
-            FourStepsD(yBuff+4, xLow, xMid, xHigh, accB, accC, accD, accA, carryA, carryB, carryC, pDest++);
-            FourStepsD(yBuff+8, xLow, xMid, xHigh, accC, accD, accA, accB, carryA, carryB, carryC, pDest++);
-            FourStepsD(yBuff+12, xLow, xMid, xHigh, accD, accA, accB, accC, carryA, carryB, carryC, pDest++);
-            accA = _mm256_add_epi64(accA, carryA);
-            accB = _mm256_add_epi64(accB, carryB);
-            accC = _mm256_add_epi64(accC, carryC);
-            _mm256_store_si256(pDest++, accA);
-            _mm256_store_si256(pDest++, accB);
-            _mm256_store_si256(pDest, accC);
-        }
-        else if(8<yLim-pY)
-        {
-            for(; i<12; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsD(yBuff, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest++);
-            FourStepsD(yBuff+4, xLow, xMid, xHigh, accB, accC, accD, accA, carryA, carryB, carryC, pDest++);
-            FourStepsD(yBuff+8, xLow, xMid, xHigh, accC, accD, accA, accB, carryA, carryB, carryC, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accD = _mm256_add_epi64(accD, carryA);
-            accA = _mm256_add_epi64(accA, carryB);
-            accB = _mm256_add_epi64(accB, carryC);
-            _mm256_store_si256(pDest++, accD);
-            _mm256_store_si256(pDest++, accA);
-            _mm256_store_si256(pDest, accB);
-        }
-        else if (4<yLim-pY)
-        {
-            for(; i<8; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsD(yBuff, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest++);
-            FourStepsD(yBuff+4, xLow, xMid, xHigh, accB, accC, accD, accA, carryA, carryB, carryC, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accC = _mm256_add_epi64(accC, carryA);
-            accD = _mm256_add_epi64(accD, carryB);
-            accA = _mm256_add_epi64(accA, carryC);
-            _mm256_store_si256(pDest++, accC);
-            _mm256_store_si256(pDest++, accD);
-            _mm256_store_si256(pDest, accA);
-        }
-        else
-        {
-            for(; i<4; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsD(yBuff, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accB = _mm256_add_epi64(accB, carryA);
-            accC = _mm256_add_epi64(accC, carryB);
-            accD = _mm256_add_epi64(accD, carryC);
-            _mm256_store_si256(pDest++, accB);
-            _mm256_store_si256(pDest++, accC);
-            _mm256_store_si256(pDest, accD);
-        }
-    }
-    else
-    {
-        // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-        accA = _mm256_add_epi64(accA, carryA);
-        accB = _mm256_add_epi64(accB, carryB);
-        accC = _mm256_add_epi64(accC, carryC);
-        _mm256_store_si256(pDest++, accA);
-        _mm256_store_si256(pDest++, accB);
-        _mm256_store_si256(pDest, accC);
-    }
-    // finsL carry
-    carry = 0;
-    size_t i = 0;
-    for(;i<nYDigits+nXDigits;i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-void MultAVX_j(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    unsigned long long  sum, carry;
-    __m256i             xLow, xMid, xHigh;
-    __m256i             y;
-    __m256i             accA, accB, accC, accD, carryA, carryB, carryC;
-    DIGIT               *yLim = pY + nYDigits-15;
-    __m256i             *pDest = (__m256i *) pWork;
-
-    // load x
-    xLow   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) pX));
-    xMid   = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX+4)));
-    xHigh  = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX+8)));
-    accA   = _mm256_setzero_si256();
-    accB   = _mm256_setzero_si256();
-    accC   = _mm256_setzero_si256();
-    carryA = _mm256_setzero_si256();
-    carryB = _mm256_setzero_si256();
-    carryC = _mm256_setzero_si256();
-    // read through y, in 8-digit chunks
-    for(; pY<yLim; pY += 16, pDest += 4)
-    {
-        FourStepsE(pY, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest);
-        FourStepsE(pY+4, xLow, xMid, xHigh, accB, accC, accD, accA, carryA, carryB, carryC, pDest+1);
-        FourStepsE(pY+8, xLow, xMid, xHigh, accC, accD, accA, accB, carryA, carryB, carryC, pDest+2);
-        FourStepsE(pY+12, xLow, xMid, xHigh, accD, accA, accB, accC, carryA, carryB, carryC, pDest+3);
-    }
-    yLim += 15;
-    if(pY<yLim)
-    {
-        // straggler columns to compute
-        DIGIT yBuff[16];
-        int i = 0;
-        for(; i<yLim-pY; i++)
-        {
-            yBuff[i] = pY[i];
-        }
-        if(12<yLim-pY)
-        {
-            for(; i<16; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsE(yBuff, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest++);
-            FourStepsE(yBuff+4, xLow, xMid, xHigh, accB, accC, accD, accA, carryA, carryB, carryC, pDest++);
-            FourStepsE(yBuff+8, xLow, xMid, xHigh, accC, accD, accA, accB, carryA, carryB, carryC, pDest++);
-            FourStepsE(yBuff+12, xLow, xMid, xHigh, accD, accA, accB, accC, carryA, carryB, carryC, pDest++);
-            accA = _mm256_add_epi64(accA, carryA);
-            accB = _mm256_add_epi64(accB, carryB);
-            accC = _mm256_add_epi64(accC, carryC);
-            _mm256_store_si256(pDest++, accA);
-            _mm256_store_si256(pDest++, accB);
-            _mm256_store_si256(pDest, accC);
-        }
-        else if(8<yLim-pY)
-        {
-            for(; i<12; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsE(yBuff, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest++);
-            FourStepsE(yBuff+4, xLow, xMid, xHigh, accB, accC, accD, accA, carryA, carryB, carryC, pDest++);
-            FourStepsE(yBuff+8, xLow, xMid, xHigh, accC, accD, accA, accB, carryA, carryB, carryC, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accD = _mm256_add_epi64(accD, carryA);
-            accA = _mm256_add_epi64(accA, carryB);
-            accB = _mm256_add_epi64(accB, carryC);
-            _mm256_store_si256(pDest++, accD);
-            _mm256_store_si256(pDest++, accA);
-            _mm256_store_si256(pDest, accB);
-        }
-        else if (4<yLim-pY)
-        {
-            for(; i<8; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsE(yBuff, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest++);
-            FourStepsE(yBuff+4, xLow, xMid, xHigh, accB, accC, accD, accA, carryA, carryB, carryC, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accC = _mm256_add_epi64(accC, carryA);
-            accD = _mm256_add_epi64(accD, carryB);
-            accA = _mm256_add_epi64(accA, carryC);
-            _mm256_store_si256(pDest++, accC);
-            _mm256_store_si256(pDest++, accD);
-            _mm256_store_si256(pDest, accA);
-        }
-        else
-        {
-            for(; i<4; i++)
-            {
-                yBuff[i] = 0;
-            }
-            FourStepsE(yBuff, xLow, xMid, xHigh, accA, accB, accC, accD, carryA, carryB, carryC, pDest++);
-            // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-            accB = _mm256_add_epi64(accB, carryA);
-            accC = _mm256_add_epi64(accC, carryB);
-            accD = _mm256_add_epi64(accD, carryC);
-            _mm256_store_si256(pDest++, accB);
-            _mm256_store_si256(pDest++, accC);
-            _mm256_store_si256(pDest, accD);
-        }
-    }
-    else
-    {
-        // push the data out left in accA, accB, carryA, carryB (note we always end with just accA left)
-        accA = _mm256_add_epi64(accA, carryA);
-        accB = _mm256_add_epi64(accB, carryB);
-        accC = _mm256_add_epi64(accC, carryC);
-        _mm256_store_si256(pDest++, accA);
-        _mm256_store_si256(pDest++, accB);
-        _mm256_store_si256(pDest, accC);
-    }
-    // finsL carry
-    carry = 0;
-    size_t i = 0;
-    for(;i<nYDigits+nXDigits;i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>32);
-    }
-}
-
-#if 0 // come back to this later?
-
-// horizontal sum, first 3 columns
-#define _HorizontalSumBase(accLow, accHigh, zVec, zCarry, zIndex, h1, h2)\
-    h1      = _mm256_shuffle_epi32(accLow, 78);\
-    h2      = _mm256_shuffle_epi32(accHigh, 78);\
-    accLow  = _mm256_add_epi64(accLow, h1);\
-    accHigh = _mm256_add_epi64(accHigh, h2);\
-    h1      = _mm256_permute4x64_epi64(accLow, 10);\
-    h2      = _mm256_permute4x64_epi64(accHigh, 10);\
-    accLow  = _mm256_add_epi64(h1, accLow);\
-    accHigh = _mm256_add_epi64(h2, accHigh);\
-    h1      =  _mm256_blend_epi32(zeroVec, accLow, 3<<(zIndex*2));\
-    h2      =  _mm256_blend_epi32(zeroVec, accHigh, 3<<(zIndex*2+2));\
-    zVec    =  _mm256_add_epi64(zVec, h1);\
-    zCarry  =  _mm256_add_epi64(zCarry, h2);
-
-// Horizontal sum, 4th column -- time to write
-#define _HorizontalSumFinal(accLow, accHigh, zVec, zCarry, zDest, h1, h2)\
-    h1      = _mm256_shuffle_epi32(accLow, 78);\
-    h2      = _mm256_shuffle_epi32(accHigh, 78);\
-    accLow  = _mm256_add_epi64(accLow, h1);\
-    accHigh = _mm256_add_epi64(accHigh, h2);\
-    h1      = _mm256_permute4x64_epi64(accLow, 10);\
-    h2      = _mm256_permute4x64_epi64(accHigh, 10);\
-    accLow  = _mm256_add_epi64(h1, accLow);\
-    accHigh = _mm256_add_epi64(h2, accHigh);\
-    h1      =  _mm256_blend_epi32(zeroVec, accLow, 3<<6);\
-    h2      =  _mm256_add_epi64(h1, zCarry);\
-    zVec    =  _mm256_add_epi64(zVec, h2);\
-    _mm256_store_si256((__m256i *) zDest, zVec);\
-    zVec    =  _mm256_setzero_si256();\
-    zCarry  =  _mm256_blend_epi32(zVec, accHigh, 3);
-
-// assumes x has exactly 8 DIGITs.  Do in pairs of 4-DIGIT chunks
-void MultAVX_f(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DOUBLEDIGIT *zPtr, sum, carry, nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY0, nY1, nY2, nY3, nY4, nY5, nY6, nY7, nProd;
-    __m128i     raw;
-    int         index;
-    __m128i     yRaw;
-    __m256i     xLower, xUpper, multA, y, multB;
-    __m256i     zVec0, zCarry0, zVec3, zCarry3;       // z value and carry for column 0, column 3
-    __m256i     accLow0, accHigh0, accLow3, accHigh3; // accumulkators for column 0, column 3
-    const       __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT       *pYLim = pY + nYDigits-8;
-    zPtr = pWork;
-    // load x in reverse order -- instead of 0, 1, 2, 3, and 4, ..., 7 we load it as 7, ..., 4 and 3, ..., 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    y       = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) pY));
-    yRaw    = _mm_lddqu_si128((__m128i*) (pY+4));
-    xLower  = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i *) pX));
-    xUpper  = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i*) (pX+4)));
-    nY7     = y.m256i_u32[0];
-    nY0     = y.m256i_u32[1];
-    nY1     = y.m256i_u32[2];
-    nY2     = y.m256i_u32[3];
-    y       = _mm256_cvtepu32_epi64(yRaw);
-    nX0     = xLower.m256i_u32[0];
-    nX1     = xLower.m256i_u32[1];
-    nX2     = xLower.m256i_u32[2];
-    nX3     = xLower.m256i_u32[3];
-    nX4     = xUpper.m256i_u32[0];
-    nX5     = xUpper.m256i_u32[1];
-    nX6     = xUpper.m256i_u32[2];
-    nX7     = xUpper.m256i_u32[3];
-    xLower  = _mm256_permute4x64_epi64(xLower,27); // slot 0: 3, slot 1: 2, slot 2: 1, slot 3: 0 -> 00,01,10,11 == 27
-    xUpper  = _mm256_permute4x64_epi64(xUpper,27); // slot 0: 3, slot 1: 2, slot 2: 1, slot 3: 0 -> 00,01,10,11 == 27
-    nY3     = y.m256i_u32[4];
-    nY4     = y.m256i_u32[5];
-    nY5     = y.m256i_u32[6];
-    nY6     = y.m256i_u32[7];
-//    pY++; // load for next column
-  //  yLower  = _mm256_loadu_si256((__m256i const*) pY);
-    //yUpper  = _mm256_srli_epi64(yLower, 32);
-    // first 7 columns -- short
-    nProd   = nX0*nY7;
-    sum     = (nProd&0xFFFFFFFF);
-    carry   = ((sum>>32) + (nProd>>32));
-    *zPtr++ = (DIGIT) sum;
-    DotMult2(nX0, nX1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult3(nX0, nX1, nX2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult4(nX0, nX1, nX2, nX3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult5(nX0, nX1, nX2, nX3, nX4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult6(nX0, nX1, nX2, nX3, nX4, nX5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult7(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    DotMult8(nX0, nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY6, nY5, nY4, nY3, nY2, nY1, nY0, nY7, carry, sum, nProd, zPtr);
-    zCarry0  = _mm256_set_epi64x(0, 0, 0, carry);
-    zVec0    = _mm256_setzero_si256();
-    index    = 0;
-    multA    = _mm256_mul_epu32(xLower, y);
-    accLow0  = _mm256_and_si256(mask, multA);
-    accHigh0 = _mm256_srli_epi64(multA, 32);
-    // offset 0 and 4, 1 and 5, 2 and 6, 3 and 7 -- write; jump forward 8; repeat
-    // in general end with some of 1-3 to do when run out of 4-7; do thse alone
-    // then short columns
-    for (DIGIT *yPtr=pY; yPtr < pYLim; yPtr += 4)
-    {
-        // perform the multiplications
-        multA = _mm256_mul_epu32(xLower, yUpper);
-        multB = _mm256_mul_epu32(xUpper, yLower);
-        // load for next column
-        yLower = _mm256_loadu_si256((__m256i const*) (pY + 1));
-        yUpper = _mm256_srli_epi64(yLower, 32);
-        // separate the high- and low-order bits for summation
-        accLow = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-        accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-        // add up the computed  values to get the two relevant digits (ignoring carry)
-        HorizontalSum3(accLow, accHigh, zVec, zCarry, index++, zPtr);
-    }
-    // last full-sized column
-    multA   = _mm256_mul_epu32(xLower, yUpper);
-    multB   = _mm256_mul_epu32(xUpper, yLower);
-    accLow  = _mm256_add_epi64(_mm256_and_si256(mask, multA), _mm256_and_si256(mask, multB));
-    accHigh = _mm256_add_epi64(_mm256_srli_epi64(multA, 32), _mm256_srli_epi64(multB, 32));
-    HorizontalSum3(accLow, accHigh, zVec, zCarry, index, zPtr);
-    // last, unwritten bits of zVec, zCarry
-    _mm256_store_si256((__m256i*) zPtr, _mm256_add_epi64(zVec, zCarry));
-    // Short columns don't use AVX
-    zPtr  = pWork + nXDigits + nYDigits - 8;
-    carry = *zPtr;
-    nY0   = yLower.m256i_u32[0];
-    nY1   = yLower.m256i_u32[1];
-    nY2   = yLower.m256i_u32[2];
-    nY3   = yLower.m256i_u32[3];
-    nY4   = yLower.m256i_u32[4];
-    nY5   = yLower.m256i_u32[5];
-    nY6   = yLower.m256i_u32[6];
-    nY7   = yLower.m256i_u32[7];
-    DotMult7(nX1, nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, nY1, carry, sum, nProd, zPtr);
-    DotMult6(nX2, nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, nY2, carry, sum, nProd, zPtr);
-    DotMult5(nX3, nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, nY3, carry, sum, nProd, zPtr);
-    DotMult4(nX4, nX5, nX6, nX7, nY7, nY6, nY5, nY4, carry, sum, nProd, zPtr);
-    DotMult3(nX5, nX6, nX7, nY7, nY6, nY5, carry, sum, nProd, zPtr);
-    DotMult2(nX6, nX7, nY7, nY6, carry, sum, nProd, zPtr);
-    nProd   = nX7*nY7;
-    sum     = (nProd&c_nClearHigh) + carry;
-    *zPtr++ = (DIGIT) sum;
-    *zPtr   = ((sum>>32) + (nProd>>32));
-    // final carry
-    carry   = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-#endif
-
-#if 0
-// unquestionably slower than MultAVX, MultAVX_b, MultAVX_c.  Not sure it's correct.
-void MultAVX_d(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DIGIT       horizontalSumDigits[8];
-    DOUBLEDIGIT *zPtr, sum, carry;
-    __m128i raw;
-    __m256i x, y, mult, zLower, zUpper, multL;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    // odd digits go to left (upper) half; even, to right (lower): 0, 4, 1, 5, 2, 6, 3, 7:
-    //                                                             111 011 110 010 101 001 100 000 (note least significant on right)
-    //                                                             1110 1111 0010 1010 0110 0000
-    //                                                             EF2A60
-    const __m256i shuffle = _mm256_set1_epi64x(0xEF2A60);
-    DIGIT *pXLim = pX + nXDigits;
-    DIGIT *pYLim = pY + nYDigits - 3;
-    int i = 0;
-    memset(pWork,0,sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    zPtr    = pWork;
-    // load x in reverse order -- instead of 0, 1, 2, 3 we load it as 3, 2, 1, 0
-    // then multiplying by y, in the standard order, gives the values for a single column
-    raw     = _mm_lddqu_si128((__m128i const*) pX);
-    y       = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) pY++));
-    // first few columns -- short
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 1)); // digits 0, 0, 0, 1: 00,00,00,01
-    // first column: 1 value
-    sum     = _mm256_extract_epi64(y,0)*_mm256_extract_epi64(x,1);
-    carry   = sum>>32;
-    *zPtr++ += (sum&0xFFFFFFFF);
-    // second column: 2 values
-    mult    = _mm256_mul_epu32(x, y); // first 2 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-    // third column: 3 values
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 6)); // digits 0, 0, 1, 2: 00,00,01,10
-    mult    = _mm256_mul_epu32(x, y); // first 3 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2);
-    // fourth column: 4 values
-    x       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-    mult    = _mm256_mul_epu32(x, y);
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + _mm256_extract_epi64(multL, 3) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2) + _mm256_extract_epi64(mult, 3);
-    // succeeding columns (while y lasts)
-    for(; pY<pYLim; pY++)
-    {
-        raw     =  _mm_lddqu_si128((__m128i const*) pY);
-        y       =  _mm256_cvtepu32_epi64(raw);
-        mult    =  _mm256_mul_epu32(x, y);
-        multL   =  _mm256_permutevar8x32_epi32(mult, shuffle);
-        _mm256_storeu_si256((__m256i*) horizontalSumDigits, multL);
-        // sum the digits of mult (low order bits)
-        *zPtr++ += horizontalSumDigits[0] + horizontalSumDigits[1] + horizontalSumDigits[2] + horizontalSumDigits[3] + carry;
-        // sum the digits of mult (high order bits)
-        carry   =  horizontalSumDigits[4] + horizontalSumDigits[5] + horizontalSumDigits[6] + horizontalSumDigits[7];
-    }
-    // 3 values in column: last 3 digits of y; first 3 of x
-    y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw, 57)); // digits 1, 2, 3, 0: 00,11,10,01
-    mult    = _mm256_mul_epu32(x, y); // first 3 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1) + _mm256_extract_epi64(mult, 2);
-    // 2 values in column: last 2 digits of y; first 2 of x
-    y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(raw,14)); // digits 2, 3, 0, 0: 10,11,00,00 : 00,00,11,10
-    mult    = _mm256_mul_epu32(x, y); // first 2 entries of mult have desired values; rest is garbage
-    multL   = _mm256_and_si256(mask, mult); // lower half of product values
-    mult    = _mm256_srli_epi64(mult, 32);  // upper half of computed values
-    *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-    carry   = _mm256_extract_epi64(mult, 0) + _mm256_extract_epi64(mult, 1);
-    // 1 value in column: last digit of y; first digit of x
-    sum     = _mm256_extract_epi64(x, 0)*_mm256_extract_epi64(y, 1);
-    *zPtr++ += (sum&c_nClearHigh) + carry;
-    *zPtr   += (sum>>_DIGIT_SIZE_IN_BITS);
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-void MultAVX2(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DIGIT       *yPtr;
-    DOUBLEDIGIT *zPtr, sum, carry;
-    __m256i raw;
-    __m128i rawHigh;
-    __m256i x1, x2, y, mult1, mult2, multL;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pXLim = pX + nXDigits;
-    DIGIT *pYLim = pY + nYDigits - 7;
-    int nOffset = nXDigits-8;
-    int nMultCalls = 0;
-    int i = 0;
-    memset(pWork,0,sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    // assumes X has 4n digits, some 0<n
-    for (pX = pX + nOffset; 0 <= nOffset; pX -= 8, nOffset -= 8)
-    {
-        zPtr    = pWork+nOffset;
-        yPtr    = pY;
-        // load x in reverse order -- instead of 0, 1, 2, 3 we load it as 3, 2, 1, 0
-        // then multiplying by y, in the standard order, gives the values for a single column
-        raw     = _mm256_loadu_si256((__m256i const*) pX);
-        rawHigh = _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-        y       = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) yPtr++));
-        // first few columns -- short
-        x1      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 1)); // digits 0, 0, 0, 1: 00,00,00,01
-        // first column: 1 value
-        sum     = _mm256_extract_epi64(y,0)*_mm256_extract_epi64(x1,1);
-        carry   = sum>>_DIGIT_SIZE_IN_BITS;
-        *zPtr++ += sum;
-        // second column: 2 values
-        mult1   = _mm256_mul_epu32(x1, y); // first 2 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1);
-        // third column: 3 values
-        x1      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 6)); // digits 0, 0, 1, 2: 00,00,01,10
-        mult1   = _mm256_mul_epu32(x1, y); // first 3 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1) + _mm256_extract_epi64(mult1, 2);
-        // fourth column: 4 values
-        x1      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-        mult1   = _mm256_mul_epu32(x1, y);
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + _mm256_extract_epi64(multL, 3) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1) + _mm256_extract_epi64(mult1, 2) + _mm256_extract_epi64(mult1, 3);
-        x2      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm256_castsi256_si128 (raw), 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-        // succeeding columns (while y lasts)
-        for(; yPtr<pYLim; yPtr++)
-        {
-            raw     =  _mm256_loadu_si256((__m256i const*) yPtr);
-            rawHigh =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-            y       =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-            nMultCalls++; // debug remove todo
-            mult1   =  _mm256_mul_epu32(x1, y);
-            nMultCalls++; // debug remove todo
-            mult2   =  _mm256_mul_epu32(x2,_mm256_cvtepu32_epi64(rawHigh));
-            multL   =  _mm256_and_si256(mask, mult1); // lower half of product values
-            mult1   =  _mm256_srli_epi64(mult1, _DIGIT_SIZE_IN_BITS);  // upper half of computed values
-            multL   =  _mm256_add_epi64(multL, _mm256_and_si256(mask, mult2));
-            mult1   =  _mm256_add_epi64(mult1, _mm256_srli_epi64(mult2, 32));
-            // sum the digits of multL (low order bits)
-            y       =  _mm256_permute4x64_epi64(multL, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-            y       =  _mm256_add_epi64(y, multL);
-            *zPtr++ += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry;
-            // sum the digits of mult (high order bits)
-            y       =  _mm256_add_epi64(mult1, _mm256_permute4x64_epi64(mult1, 0X4E));
-            carry   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-        }
-        // 3 values in column: last 3 digits of y; first 3 of x
-        y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 57)); // digits 1, 2, 3, 0: 00,11,10,01
-        mult1   = _mm256_mul_epu32(x1, y); // first 3 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1) + _mm256_extract_epi64(mult1, 2);
-        // 2 values in column: last 2 digits of y; first 2 of x
-        y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh,14)); // digits 2, 3, 0, 0: 10,11,00,00 : 00,00,11,10
-        mult1   = _mm256_mul_epu32(x1, y); // first 2 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1);
-        // 1 value in column: last digit of y; first digit of x
-        sum     = _mm256_extract_epi64(x1, 0)*_mm256_extract_epi64(y, 1);
-        *zPtr++ += (sum&c_nClearHigh) + carry;
-        *zPtr   += (sum>>_DIGIT_SIZE_IN_BITS);
-    }
-  //  printf("Mult calls: %u\n", nMultCalls); // debug remove todo
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-void MultAVX3(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DIGIT       *yPtr;
-    DOUBLEDIGIT *zPtr, sum, carry;
-    __m256i raw;
-    __m128i rawHigh;
-    __m256i x1, x2, x3, x4, y, mult1, mult2, multL;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pXLim = pX + nXDigits;
-    DIGIT *pYLim = pY + nYDigits - 15;
-    int nOffset = nXDigits-16;
-    int i = 0;
-    int nMultCalls = 0;
-    memset(pWork,0,sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    // assumes X has 4n digits, some 0<n
-    for (pX = pX + nOffset; 0 <= nOffset; pX -= 16, nOffset -= 16)
-    {
-        zPtr    = pWork+nOffset;
-        yPtr    = pY;
-        // load x in reverse order -- instead of 0, 1, 2, 3 we load it as 3, 2, 1, 0
-        // then multiplying by y, in the standard order, gives the values for a single column
-        raw     = _mm256_loadu_si256((__m256i const*) (pX+8));
-        rawHigh = _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-        y       = _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) yPtr++));
-        // first few columns -- short
-        x1      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 1)); // digits 0, 0, 0, 1: 00,00,00,01
-        // first column: 1 value
-        sum     = _mm256_extract_epi64(y,0)*_mm256_extract_epi64(x1,1);
-        carry   = sum>>_DIGIT_SIZE_IN_BITS;
-        *zPtr++ += sum;
-        // second column: 2 values
-        mult1   = _mm256_mul_epu32(x1, y); // first 2 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1);
-        // third column: 3 values
-        x1      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 6)); // digits 0, 0, 1, 2: 00,00,01,10
-        mult1   = _mm256_mul_epu32(x1, y); // first 3 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1) + _mm256_extract_epi64(mult1, 2);
-        // fourth column: 4 values
-        x1      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-        mult1   = _mm256_mul_epu32(x1, y);
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + _mm256_extract_epi64(multL, 3) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1) + _mm256_extract_epi64(mult1, 2) + _mm256_extract_epi64(mult1, 3);
-        x2      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm256_castsi256_si128 (raw), 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-        raw     = _mm256_loadu_si256((__m256i const*) pX);
-        rawHigh = _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));        // succeeding columns (while y lasts)
-        x3      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 27));
-        x4      = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm256_castsi256_si128 (raw), 27));
-        for(; yPtr<pYLim; yPtr++)
-        {
-            raw     =  _mm256_loadu_si256((__m256i const*) yPtr);
-            rawHigh =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-            y       =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-            nMultCalls++; // debug remove todo
-            nMultCalls++; // debug remove todo
-            mult1   =  _mm256_mul_epu32(x1, y);
-            mult2   =  _mm256_mul_epu32(x2,_mm256_cvtepu32_epi64(rawHigh));
-            multL   =  _mm256_and_si256(mask, mult1); // lower half of product values
-            mult1   =  _mm256_srli_epi64(mult1, _DIGIT_SIZE_IN_BITS);  // upper half of computed values
-            multL   =  _mm256_add_epi64(multL, _mm256_and_si256(mask, mult2));
-            mult1   =  _mm256_add_epi64(mult1, _mm256_srli_epi64(mult2, 32));
-            raw     =  _mm256_loadu_si256((__m256i const*) (yPtr+8));
-            rawHigh =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-            y       =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-            nMultCalls++; // debug remove todo
-            mult2   =  _mm256_mul_epu32(x3, y);
-            multL   =  _mm256_add_epi64(multL, _mm256_and_si256(mask, mult2));
-            mult1   =  _mm256_add_epi64(mult1, _mm256_srli_epi64(mult2, 32));
-            y       =  _mm256_cvtepu32_epi64(rawHigh);
-            nMultCalls++; // debug remove todo
-            mult2   =  _mm256_mul_epu32(x3, y);
-            multL   =  _mm256_add_epi64(multL, _mm256_and_si256(mask, mult2));
-            mult1   =  _mm256_add_epi64(mult1, _mm256_srli_epi64(mult2, 32));
-            // sum the digits of multL (low order bits)
-            y       =  _mm256_permute4x64_epi64(multL, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-            y       =  _mm256_add_epi64(y, multL);
-            *zPtr++ += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry;
-            // sum the digits of mult (high order bits)
-            y       =  _mm256_add_epi64(mult1, _mm256_permute4x64_epi64(mult1, 0X4E));
-            carry   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-        }
-        // 3 values in column: last 3 digits of y; first 3 of x
-        y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 57)); // digits 1, 2, 3, 0: 00,11,10,01
-        mult1   = _mm256_mul_epu32(x1, y); // first 3 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + _mm256_extract_epi64(multL, 2) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1) + _mm256_extract_epi64(mult1, 2);
-        // 2 values in column: last 2 digits of y; first 2 of x
-        y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh,14)); // digits 2, 3, 0, 0: 10,11,00,00 : 00,00,11,10
-        mult1   = _mm256_mul_epu32(x1, y); // first 2 entries of mult have desired values; rest is garbage
-        multL   = _mm256_and_si256(mask, mult1); // lower half of product values
-        mult1   = _mm256_srli_epi64(mult1, 32);  // upper half of computed values
-        *zPtr++ += _mm256_extract_epi64(multL, 0) + _mm256_extract_epi64(multL, 1) + carry;
-        carry   = _mm256_extract_epi64(mult1, 0) + _mm256_extract_epi64(mult1, 1);
-        // 1 value in column: last digit of y; first digit of x
-        sum     = _mm256_extract_epi64(x1, 0)*_mm256_extract_epi64(y, 1);
-        *zPtr++ += (sum&c_nClearHigh) + carry;
-        *zPtr   += (sum>>_DIGIT_SIZE_IN_BITS);
-    }
-  //  printf("Mult calls: %u\n", nMultCalls); // debug remove todo
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-void MultAVX4(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DIGIT       *yPtr;
-    DOUBLEDIGIT *zPtr, sum, carry1, carry2;
-    __m256i raw;
-    __m128i rawHigh;
-    __m256i xLow, xHigh, acc1Low, acc1High, acc2Low, acc2High, y, mult;
-    const __m256i mask = _mm256_set1_epi64x(0xFFFFFFFF); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pXLim = pX + nXDigits;
-    DIGIT *pYLim = pY + nYDigits - 7;
-    int nOffset = nXDigits-8;
-    int i = 0;
-    int nMultCalls = 0;
-    memset(pWork,0,sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    // assumes X has 4n digits, some 0<n
-    for (pX = pX + nOffset; 0 <= nOffset; pX -= 8, nOffset -= 8)
-    {
-        zPtr    = pWork+nOffset;
-        // load x in reverse order -- instead of 0, 1, 2, 3 we load it as 3, 2, 1, 0
-        // then multiplying by y, in the standard order, gives the values for a single column
-        // _mm256_loadu_si256: latency 7; throughput 1/3 or 1/5
-        raw     = _mm256_loadu_si256((__m256i const*) pX);
-        // _mm256_permute2x128_si256: latency 3; throughput 1
-        // _mm256_castsi256_si128: compiler directive -- free
-        rawHigh = _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-        // _mm_shuffle_epi32: latency 1; throughput .5 (usually) or 1
-        xHigh   = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11 (4, 5, 6, 7 of x)
-        xLow    = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm256_castsi256_si128 (raw), 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-        // note we're missing the bits that are short of the full 4 digits!
-        for(int nYOffset=0; nYOffset<4; nYOffset++)
-        {
-            yPtr     =  pY +nYOffset;
-            raw      =  _mm256_loadu_si256((__m256i const*) yPtr);
-            rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-            y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-            mult     =  _mm256_mul_epu32(xLow, y);
-            acc1Low  =  _mm256_and_si256(mask, mult); // lower half of product values
-            acc1High =  _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);  // upper half of computed values
-            y        =  _mm256_permute4x64_epi64(acc1Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-            y        =  _mm256_add_epi64(y, acc1Low);
-            *zPtr++  += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-            // sum the digits of mult (high order bits)
-            y        =  _mm256_add_epi64(acc1High, _mm256_permute4x64_epi64(acc1High, 0X4E));
-            carry1   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-            y        =  _mm256_cvtepu32_epi64(rawHigh);
-            mult     =  _mm256_mul_epu32(xHigh, y);
-            acc2Low  =  _mm256_and_si256(mask, mult);
-            acc2High =  _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);
-            carry2   =  0;
-            for(yPtr += 8; yPtr<pYLim; yPtr += 8)
-            {
-                raw      =  _mm256_loadu_si256((__m256i const*) yPtr);
-                rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-
-                y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(xLow, y);
-                acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, mult));
-                acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(xHigh, y);
-                // sum the digits of acc2Low (low order bits)
-                y        =  _mm256_permute4x64_epi64(acc2Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-                y        =  _mm256_add_epi64(y, acc2Low);
-                // zPtr location is off!!! xxx debug resolve todo
-                *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry2;
-                // sum the digits of mult (high order bits)
-                y        =  _mm256_add_epi64(acc2High, _mm256_permute4x64_epi64(acc2High, 0X4E));
-                carry2   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-                acc1Low  =  _mm256_and_si256(mask, mult); // lower half of product values
-                acc1High =  _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);  // upper half of computed values
-
-                y        =  _mm256_cvtepu32_epi64(rawHigh);
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(xLow, y);
-                acc1Low  =  _mm256_add_epi64(acc1Low, _mm256_and_si256(mask, mult));
-                acc1High =  _mm256_add_epi64(acc1High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(xHigh, y);
-                // sum the digits of acc12Low (low order bits)
-                y        =  _mm256_permute4x64_epi64(acc1Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-                y        =  _mm256_add_epi64(y, acc1Low);
-                // zPtr location is off!!! xxx debug resolve todo
-                *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry1;
-                // sum the digits of mult (high order bits)
-                y        =  _mm256_add_epi64(acc1High, _mm256_permute4x64_epi64(acc1High, 0X4E));
-                carry1   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-                acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, mult));
-                acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-            }
-            mult     =  _mm256_mul_epu32(xHigh, y);
-            acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, mult));
-            acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-            // sum the digits of acc2Low (low order bits)
-            y        =  _mm256_permute4x64_epi64(acc2Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-            y        =  _mm256_add_epi64(y, acc2Low);
-            // zPtr location is off!!! xxx debug resolve todo
-            *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry2;
-            // sum the digits of mult (high order bits)
-            y        =  _mm256_add_epi64(acc2High, _mm256_permute4x64_epi64(acc2High, 0X4E));
-            // zPtr location is off!!! xxx debug resolve todo
-            *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-        }
-    }
-//    printf("Mult calls: %u\n", nMultCalls); // debug remove todo
-    // final carry
-    carry1 = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry1 += pWork[i];
-        pZ[i]  =  carry1;
-        carry1 =  (carry1>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-
-// sums the digits of low and high, and slots them in place: zPtr[offset] = low(0) + low(1) + low(2) + low(3) + carry
-//                                                           carry        = high(0) + high(1) + high(2) + high(3) + zPtr[offset+1]
-// _mm256_permute4x64_epi64(acc2Low, 0X4E) : y = digits 2,3,0,1  of accumulator: 01, 00, 11, 10
-#define Accumulate(low, high, offset, carry)\
-multA        =  _mm256_permute4x64_epi64(low, 0X4E);\
-multA        =  _mm256_add_epi64(multA, low);\
-zPtr[offset] =  _mm256_extract_epi64(multA, 0) + _mm256_extract_epi64(multA, 1) + carry;\
-multA        =  _mm256_add_epi64(acc2High, _mm256_permute4x64_epi64(acc2High, 0X4E));\
-carry2       =  zPtr[offset+1] + _mm256_extract_epi64(multA, 0) + _mm256_extract_epi64(multA, 1);
-
-// right number of multiplies & calculations in inner loop.  Storing the data?  Probably not.  Need to validate doing the
-// RIGHT multiplications, too.  And the before & after?  WRONG!
-// AVX instructions used:
-// _mm256_cvtepu32_epi64 : latency 3, throughput 1      -- Zero extend packed unsigned 32-bit integers in a to packed 64-bit integers,
-//                                                         and store the results in dst
-// _mm256_mul_epu64 : latency 5, throughput .5          -- Multiply the low unsigned 32-bit integers from each packed 64-bit element in
-//                                                         a and b, and store the unsigned 64-bit results in dst
-// _mm256_and_si256 : Latency 1, throughput 1/3         -- Compute the bitwise AND of 256 bits (representing integer data) in a and b, and
-//                                                         store the result in dst.
-// _mm256_permute2x128_si256 : latency 3; throughput 1  -- Shuffle 128-bits (composed of integer data) selected by imm8 from a and b, and
-//                                                         store the results in dst
-// _mm256_loadu_si256 : latency 7 : throughput 1/3 or 1/5 -- Load 256-bits of integer data from memory into dst. mem_addr does not need
-//                                                           to be aligned on any particular boundary.
-// _mm256_castsi256_si128 : free                        -- Cast vector of type __m256i to type __m128i. This intrinsic is only used for
-//                                                         compilation and does not generate any instructions, thus it has zero latency
-// _mm256_srli_epi64 : latency 1, throughput 0.5        -- Shift packed 64-bit integers in a right by imm8 while shifting in zeros, and
-//                                                         store the results in dst
-#define _lowMaskSingleDigit 0xFFFFFFFF
-void MultAVX5(DIGIT *pX, DIGIT *pY, size_t nXDigits, size_t nYDigits, DIGIT *pZ, DOUBLEDIGIT *pWork)
-{
-    DIGIT       *yPtr;
-    DOUBLEDIGIT *zPtr, sum, carry, carry1, carry2, carry3, carry4, prod, yval, low1, low2, low3, low4;
-    __m256i raw;
-  //  __m128i rawHigh;
-    __m256i x1, x2, x3, x4, acc1Low, acc1High, acc2Low, acc2High, acc3Low, acc3High, acc4Low, acc4High, y, multA, multB;
-    const __m256i mask = _mm256_set1_epi64x(_lowMaskSingleDigit); // upper 32 bits 0, lower 32 bits 1
-    DIGIT *pXLim = pX + nXDigits;
-    DIGIT *pYLim = pY + nYDigits - 15;
-    int nOffset = nXDigits-16;
-    int i = 0;
-    int nMultCalls = 0;
-    memset(pWork,0,sizeof(DOUBLEDIGIT)*(nXDigits + nYDigits));
-    // assumes X has 16n digits, some 0<n
-    for (pX = pX + nOffset; 0 <= nOffset; pX -= 16, nOffset -= 16)
-    {
-        zPtr    = pWork+nOffset;
-        // load x in reverse order -- instead of 0, 1, 2, 3 we load it as 3, 2, 1, 0
-        // then multiplying by y, in the standard order, gives the values for a single column
-        raw      = _mm256_loadu_si256((__m256i const*) pX);
-   //     rawHigh  = _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-  //      x2       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11 (4, 5, 6, 7 of x)
-        x2       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1)), 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11 (4, 5, 6, 7 of x)
-        x1       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm256_castsi256_si128 (raw), 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-        raw      = _mm256_loadu_si256((__m256i const*) (pX+8));
-     //   rawHigh  = _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-        raw      = _mm256_loadu_si256((__m256i const*) (pY+1));
-     //   x4       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(rawHigh, 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11 (4, 5, 6, 7 of x)
-        x4       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1)), 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11 (4, 5, 6, 7 of x)
-        x3       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm256_castsi256_si128 (raw), 27)); // digits 0, 1, 2, 3: 00, 01, 10, 11
-
-        // Now: x1 has columns 3, 2, 1, 0 of x (in that order -- reverse!)
-        //      x2 has columns 7, 6, 5, 4
-        //      x3 has columns 11, 10, 9, 8
-        //      x4 has columns 15, 14, 13, 12
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-   //     rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-        // column 0: x0*y0
-        // column 4: (y1, y2, y3, y4)<x1> + y0*x4 -- y4*x0 + y3*x1 + y2*x2 + y1*x3 + y0*x4
-        // column 8: (y5, y6, y7, y8)*<x1> + (y1, y2, y3, y4)*<x2> + y0*x8 -- y8*x0 + y7*x1 + y6+x2 + y5*x3 + y4*x4 + y3*x5 + y2*x6 + y1*x7 + y0*x8 -- 
-        // column 12 (y9, y10, y11, y12)*<x1> + (y5, y6, y7, y8)*<x2> + (y1, y2, y3, y4)*<x3> + y0*x12
-        // (y1, y2, y3, y4)
-        multA    =  _mm256_mul_epu32(x1, y);
-        multB    =  _mm256_mul_epu32(x2, y);
-        acc2Low  =  _mm256_and_si256(mask, multA);
-        acc2High =  _mm256_srli_epi64(multA, 32);
-        multA    =  _mm256_mul_epu32(x3, y);
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1)));
-        acc3Low  =  _mm256_and_si256(mask, multB);
-        acc3High =  _mm256_srli_epi64(multB, 32);
-        acc4Low  =  _mm256_and_si256(mask, multA);
-        acc4High =  _mm256_srli_epi64(multA, 32);
-        // (y5, y6, y7, y8)
-        multB    =  _mm256_mul_epu32(x1, y);
-        multA    =  _mm256_mul_epu32(x2, y);
-        y        =  _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) (pY+9)));
-        acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, multB));
-        acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(multB, 32));
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multA));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multA, 32));
-        // (y9, y10, y11, y12)
-        multB    =  _mm256_mul_epu32(x1, y);
-        // initialize carries here -- multiply is a long instruction
-        carry1   =  zPtr[0];
-        carry2   =  zPtr[4];
-        carry3   =  zPtr[8];
-        carry4   =  zPtr[12];
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multB));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multB, 32));
-
-        // Accumulators: sum the values of the multiplication
-        // column 0
-        yval     =  pY[0];
-        prod     =  yval*_mm256_extract_epi64(x1,3);
-        yval     =  pY[4];
-        zPtr[0]  =  (prod&_lowMaskSingleDigit) + carry1;
-        carry1   =  zPtr[1] + (prod>>32);
-        // column 4
-        prod     =  yval*_mm256_extract_epi64(x2,3);
-        yval     =  pY[8];
-        carry2   += (prod&_lowMaskSingleDigit);
-        Accumulate(acc2Low, acc2High, 4, carry2);
-        carry2   += (prod>>32);
-        // column 8
-        prod     =  yval*_mm256_extract_epi64(x3,3);
-        yval     =  pY[12];
-        carry3   += (prod&_lowMaskSingleDigit);
-        // start next load now -- mults take a while anyway.  And we don't need the old raw values anymore
-        raw      =  _mm256_loadu_si256((__m256i const*) (pY+2));
-        Accumulate(acc3Low, acc3High, 8, carry3);
-        carry3   += (prod >> 32);
-        // column 12
-        prod     =  yval*_mm256_extract_epi64(x4,3);
-        carry4   += (prod&_lowMaskSingleDigit);
- //       rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-        Accumulate(acc4Low, acc34High, 12, carry4);
-        carry4   += (prod>>32);
-
-        // column 1:   y1*x0 + y0*x1
-        // column 5:   (y2, y3, y4, y5)<x1> + y1*x4 + y0*x5
-        // column 9:   (y6, y7, y8, y9><x1> + (y2, y3, y4, y5)<x2> + y1*x8 + y0*x9
-        // column 13:  (y10, y11, y12, y13)<x1> + (y6, y7, y8, y9)<x2> + (y2, y3, y4, y5)<x3> + y1*x12 + y0*x13
-        // y2, y3, y4, y5
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-        multA    =  _mm256_mul_epu32(x1, y);
-        multB    =  _mm256_mul_epu32(x2, y);
-        acc2Low  =  _mm256_and_si256(mask, multA);
-        acc2High =  _mm256_srli_epi64(multA, 32);
-        multA    =  _mm256_mul_epu32(x3, y);
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1)));
-        acc3Low  =  _mm256_and_si256(mask, multB);
-        acc3High =  _mm256_srli_epi64(multB, 32);
-        acc4Low  =  _mm256_and_si256(mask, multA);
-        acc4High =  _mm256_srli_epi64(multA, 32);
-        // y6, y7, y8, y9
-        multB    =  _mm256_mul_epu32(x1, y);
-        multA    =  _mm256_mul_epu32(x2, y);
-        // start next load now -- mults take a while anyway.  And we don't need the old raw values anymore
-        y        =  _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) (pY+10)));
-        acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, multB));
-        acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(multB, 32));
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multA));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multA, 32));
-        // y10, y11, y12, y13
-        multB    =  _mm256_mul_epu32(x1, y);
-        // for end bit -- y0, y1 -- want y0 and y1 in slots 2 and 3 rather than 0 and 1 to align with posrtion of x we multiply them with
-        // Load it now: operation takes a while, so we want to start it early to make sure it's available when needed.  And this slot is
-        // convenient, since multiply takes a while -- something to fill the cycles while we wait for IT to complete
-        y        =  _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm_blend_epi32(_mm_lddqu_si128((__m128i const*) pY), _mm_set_epi32(0,0,0,0),12), 75));
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multB));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multB, 32));
-        // y0, y1
-        multA    =  _mm256_mul_epu32(x1, y);
-        multB    =  _mm256_mul_epu32(x2, y);
-        acc1Low  =  _mm256_and_si256(mask, multA);
-        acc1High =  _mm256_srli_epi64(multA, 32);
-        multA    =  _mm256_mul_epu32(x3, y);
-        acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, multB));
-        acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(multB, 32));
-        multB    =  _mm256_mul_epu32(x4, y);
-        acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, multB));
-        acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(multB, 32));
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multB));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multB, 32));
-
-        // Accumulators: sum the values of the multiplication
-        // column 1
-        Accumulate(acc1Low, acc1High, 1, carry1);
-        // column 5
-        Accumulate(acc2Low, acc2High, 5, carry2);
-        // column 9
-        // start loads now, to mke sure data is ready when needed
-        y        =  _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm_blend_epi32(_mm_lddqu_si128((__m128i const*) pY), _mm_set_epi32(0,0,0,0),8), 147)); // Y2, Y1, Y0, 0: 10,01,00,11
-        for (int i = 0; i < 4; i++)
-        {
-            printf("%I64u ", y.m256i_i64[i]);
-        }
-        printf("\n");
-        raw      =  _mm256_loadu_si256((__m256i const*) (pY+3));
-        Accumulate(acc3Low, acc3High, 9, carry3);
-     //   rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-        // column 13
-        Accumulate(acc4Low, acc4High, 13, carry4);
-        /*
-        yval     =  pY[0];
-        prod     =  yval*_mm256_extract_epi64(x1,3);
-        yval     =  pY[4];
-        zPtr[1]  =  _mm256_extract_epi64(acc1Low,2) + _mm256_extract_epi64(acc1Low,3) + carry1;
-        carry1   =  zPtr[2] + _mm256_extract_epi64(acc1High, 2) + _mm256_extract_epi64(acc1High, 3);
-        // column 5
-        // low-order bits
-        y        =  _mm256_permute4x64_epi64(acc2Low, 0X4E); // y <- digits 2,3,0,1  of accumulator: 01, 00, 11, 10
-        y        =  _mm256_add_epi64(y, acc2Low);
-        zPtr[5]  =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + (prod&_lowMaskSingleDigit) + carry2;
-        // high order bits
-        y        =  _mm256_add_epi64(acc2High, _mm256_permute4x64_epi64(acc2High, 0X4E));
-        carry2   =  zPtr[6] + _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-        // column 9
-        // low-order bits
-        y        =  _mm256_permute4x64_epi64(acc3Low, 0X4E); // y <- digits 2,3,0,1  of accumulator: 01, 00, 11, 10
-        y        =  _mm256_add_epi64(y, acc3Low);
-        zPtr[9]  =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + (prod&_lowMaskSingleDigit) + carry3;
-        // high order bits
-        y        =  _mm256_add_epi64(acc3High, _mm256_permute4x64_epi64(acc3High, 0X4E));
-        carry3   =  zPtr[10] + _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1));
-        // column 13
-        // low-order bits
-        y        =  _mm256_permute4x64_epi64(acc4Low, 0X4E); // y <- digits 2,3,0,1  of accumulator: 01, 00, 11, 10
-        y        =  _mm256_add_epi64(y, acc4Low);
-        zPtr[13] =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + (prod&_lowMaskSingleDigit) + carry4;
-        // high order bits
-        y        =  _mm256_add_epi64(acc4High, _mm256_permute4x64_epi64(acc4High, 0X4E));
-        carry4   =  zPtr[14] + _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-        */
-
-        // column 2:  y2*x0 + y1*x1 + y0*x2
-        // column 6:  (y3, y4, y5, y6)*<x1> + y2*x4 + y1*x5 + y0*x6
-        // column 10: (y7, y8, y9, y10)*<x1> + (y3, y4, y5, y6)*<x2> + y2*x8 + y1*x9 + y0*x10
-        // column 14: (y11, y12, y13, y14)*<x1> + (y7, y8, y9, y10)*<x2> + (y3, y4, y5, y6)*<x3> + y2*x12 + y1*x13 + y0*x14
-        // y0, y1, y2
-        multA    =  _mm256_mul_epu32(x1, y);
-        multB    =  _mm256_mul_epu32(x2, y);
-        acc1Low  =  _mm256_and_si256(mask, multA);
-        acc1High =  _mm256_srli_epi64(multA, 32);
-        multA    =  _mm256_mul_epu32(x3, y);
-        acc2Low  =  _mm256_and_si256(mask, multB);
-        acc2High =  _mm256_srli_epi64(multB, 32);
-        multB    =  _mm256_mul_epu32(x4, y);
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-        acc3Low  =  _mm256_and_si256(mask, multB);
-        acc3High =  _mm256_srli_epi64(multB, 32);
-        acc4Low  =  _mm256_and_si256(mask, multB);
-        acc4High =  _mm256_srli_epi64(multB, 32);
-        // y3, y4, y5, y6
-        multA    =  _mm256_mul_epu32(x1, y);
-        multB    =  _mm256_mul_epu32(x2, y);
-        acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, multA));
-        acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(multA, 32));
-        multA    =  _mm256_mul_epu32(x3, y);
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1)));
-        acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, multB));
-        acc3High =  _mm256_add_epi64(acc3High,_mm256_srli_epi64(multB, 32));
-        acc4Low  =  _mm256_add_epi64(acc4Low,_mm256_and_si256(mask, multA));
-        acc4High =  _mm256_add_epi64(acc4High,_mm256_srli_epi64(multA, 32));
-        // y7, y8, y9, y10
-        multB    =  _mm256_mul_epu32(x1, y);
-        multA    =  _mm256_mul_epu32(x2, y);
-        // start next load now -- mults take a while anyway.  And we don't need the old raw values anymore
-        y        =  _mm256_cvtepu32_epi64(_mm_lddqu_si128((__m128i const*) (pY+11)));
-        acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, multB));
-        acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(multB, 32));
-        multB    =  _mm256_mul_epu32(x1, y);
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multA));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multA, 32));
-        // y11, y12, y13, y14
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multB));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multB, 32));
-        
-        // Accumulators
-        // column 2
-        Accumulate(acc1Low, acc1High, 2, carry1);
-        // start next load now -- mults take a while anyway.  And we don't need the old raw values anymore
-        raw      = _mm256_loadu_si256((__m256i const*) pY);
-        // column 6
-        Accumulate(acc2Low, acc2High, 6, carry2);
-     //   rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-        // column 10
-        Accumulate(acc3Low, acc3High, 10, carry3);
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-        // column 14
-        Accumulate(acc4Low, acc4High, 14, carry4);
-
-        // final low-order short columns: 3, 7, 11, 15
-        // Note that all 4 chunks are full-sized
-        // column 3:  (y0, y1, y2, y3)*<x1>
-        // column 7:  (y4, y5, y6, y7)*<x1> + (y0, y1, y2, y3)*<x2>
-        // column 11: (y8, y9, y10, y11)*<x1> + (y4, y5, y6, y7)*<x2> + (y0, y1, y2, y3)*<x3>
-        // column 15: (y12, y13, y14, y15)*<x1> + (y8, y9, y10, y11)*<x2> + (y4, y5, y6, y7)*<x3> + (y0, y1, y2, y3)*<x4>
-        // y0, y1, y2, y3
-        multA    =  _mm256_mul_epu32(x1, y);
-        multB    =  _mm256_mul_epu32(x2, y);
-        acc1Low  =  _mm256_and_si256(mask, multA);
-        acc1High =  _mm256_srli_epi64(multA, 32);
-        multA    =  _mm256_mul_epu32(x3, y);
-        acc2Low  =  _mm256_and_si256(mask, multB);
-        acc2High =  _mm256_srli_epi64(multB, 32);
-        multB    =  _mm256_mul_epu32(x4, y);
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1)));
-        raw      =  _mm256_loadu_si256((__m256i const*) (pY+8));
-        acc3Low  =  _mm256_and_si256(mask, multA);
-        acc3High =  _mm256_srli_epi64(multA, 32);
-        acc4Low  =  _mm256_and_si256(mask, multB);
-        acc4High =  _mm256_srli_epi64(multB, 32);
-
-        // y4, y5, y6, y7
-        multA    =  _mm256_mul_epu32(x1, y);
-        multB    =  _mm256_mul_epu32(x2, y);
-        acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, multA));
-        acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(multA, 32));
-        multA    =  _mm256_mul_epu32(x3, y);
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-        acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, multB));
-        acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(multB, 32));
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multA));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multA, 32));
-
-        // y8, y9, y10, y11
-        multA    =  _mm256_mul_epu32(x1, y);
-        multB    =  _mm256_mul_epu32(x2, y);
-        y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1)));
-        acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, multB));
-        acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(multB, 32));
-        acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, multA));
-        acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(multA, 32));
-
-        // y12, y13, y14, y15
-
-        // note that columns 0 to 14 are short -- they only have (column + 1) components, rather than the full 16.  Likewise the
-        // last 15 columns are short.  Deal with them explicitly
-        // Columns 0, 4, 8, 12: 1, 5, 9, 13 components   
-        // column 0:  y0*x0                                                                 -- y0*x0
-        // column 12: y12*x0 + ... + y0*x12                                                 -- (y9, y10, y11, y12)*<x1> + (y5, y6, y7, y8)*<x2> + (y1, y2, y3, y4)*<x3> + y0*x12
-        y       = _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm_blend_epi32(_mm256_castsi256_si128(raw), _mm_set_epi32(0,0,0,0),12), 75)); // Y1, Y0, 0, 0
-        for (int i = 0; i < 4; i++)
-        {
-            printf("%I64u ", x1.m256i_i64[i]);
-        }
-        printf("\n");
-        for (int i = 0; i < 4; i++)
-        {
-            printf("%I64u ", x2.m256i_i64[i]);
-        }
-        printf("\n");
-        for (int i = 0; i < 4; i++)
-        {
-            printf("%I64u ", x3.m256i_i64[i]);
-        }
-        printf("\n");
-        for (int i = 0; i < 4; i++)
-        {
-            printf("%I64u ", x4.m256i_i64[i]);
-        }
-        printf("\n\n");
-        for (int i = 0; i < 4; i++)
-        {
-            printf("%I64u ", y.m256i_i64[i]);
-        }
-        printf("\n");
-        // to compute:
-        // column 0:  y0*x0
-        // column 1:  y1*x0 + y0*x1
-        // column 2:  y2*x0 + y1*x1 + y0*x2
-        // column 3:  y3*x0 + y2*x1 + y1*x2 + y0*x3
-        // column 4:  y4*x0 + ... + y0*x4
-        // column 5:  y5*x0 + ... + y0*x5
-        // column 6:  y6*x0 + ... + y0*x6
-        // column 7:  y7*x0 + ... + y0*x7
-        // column 9:  y9*x0 + ... + y0*x9
-        // column 10: y10*x0 + ... + y0*x10
-        // column 11: y11*x0 + ... + y0*x11
-        // column 12: y12*x0 + ... + y0*x12
-        // column 13: y13*x0 + ... + y0*x13
-        // column 14: y14*x0 + ... + y0*x14
-        // column 15: y15*x0 + ... + y0*x15
-
-        // y0 - y3 components
-        // column 0: y0*x0
-        yval     =  _mm256_extract_epi64(y, 2);
-        prod     =  yval*_mm256_extract_epi64(x1,3);
-        carry    =  prod>>32;
-        low0     =  (prod&_lowMaskSingleDigit);
-        // y0 only
-        // column 4: y0*x3
-        prod     =  yval*_mm256_extract_epi64(x2,3);
-        low4     =  (prod&_lowMaskSingleDigit);
-        high4    =  (prod>>32);
-        // column 8: y0*x7
-        prod     =  yval*_mm256_extract_epi64(x3,3);
-        low8     =  (prod&_lowMaskSingleDigit);
-        high8    =  (prod>>32);
-        // column 12: y0*x11
-        prod     =  yval*_mm256_extract_epi64(x4,3);
-        low12    =  (prod&_lowMaskSingleDigit);
-        high12   =  (prod>>32);
-        /*
-        // y0 and y1
-        // column 1: y1*x0 + y0*x1
-        multA    =  _mm256_mul_epu32(x1, y); // just care about elements 2, 3
-        // extract value -- computation done
-        v1       =  _mm256_extract_epi64(multA, 2);
-        v2       =  _mm256_extract_epi64(multA, 3);
-        low1     =  (v1&_lowMaskSingleDigit) + (v2&_lowMaskSingleDigit) + carry;
-        carry    =  (v1>>32) + (v2>>32);
-        // column 5: y1*x4 + y0*x5 component
-        multB    =  _mm256_mul_epu32(x2, y); // just care about elements 2, 3
-        // xxx
-        acc2Low  =  _mm256_add_epi64(acc2Low,_mm256_and_si256(mask, multB)); // lower half of product values.
-        acc2High =  _mm256_add_epi64(acc2High,_mm256_srli_epi64(multB, _DIGIT_SIZE_IN_BITS));  // upper half of computed values.
-        // column 9: y1*x8 + y0*x9 component
-        multA    =  _mm256_mul_epu32(x3, y); // just care about elements 2, 3
-        acc3Low  =  _mm256_add_epi64(acc3Low,_mm256_and_si256(mask, multA)); // lower half of product values.
-        acc3High =  _mm256_add_epi64(acc3High,_mm256_srli_epi64(multA, _DIGIT_SIZE_IN_BITS));  // upper half of computed values.
-        // column 13: y1*x12 + y0*x13 component
-        multB    =  _mm256_mul_epu32(x3, y); // just care about elements 2, 3
-        acc4Low  =  _mm256_add_epi64(acc4Low,_mm256_and_si256(mask, multB)); // lower half of product values.
-        acc4High =  _mm256_add_epi64(acc4High,_mm256_srli_epi64(multB, _DIGIT_SIZE_IN_BITS));  // upper half of computed values.
-        */
-        // y0, y1, y2
-        y        =  _mm256_cvtepu32_epi64(_mm_shuffle_epi32(_mm_blend_epi32(_mm256_castsi256_si128(raw), _mm_set_epi32(0,0,0,0),8), 147)); // Y2, Y1, Y0, 0: 10,01,00,11
-        for (int i = 0; i < 4; i++)
-        {
-            printf("%I64u ", y.m256i_i64[i]);
-        }
-        printf("\n");
-        // column 2: y2*x0 + y1*x1 + y0*x2
-        multA    =  _mm256_mul_epu32(x1, y); // just care about elements 1, 2, 3
-        // extract value -- computation done
-        v1       =  _mm256_extract_epi64(multA, 1);
-        v2       =  _mm256_extract_epi64(multA, 2);
-        v3       =  _mm256_extract_epi64(multA, 3);
-        zPtr[2]  += (v1&0xFFFFFFFF) + (v2&0xFFFFFFFF) + (v3&0xFFFFFFFF) + carry;
-        carry    =  (v1>>32) + (v2>>32) + (v3>>32);
-        // y3*x0 + y2*x1 + y1*x2 + y0*x3
-        // note we're missing the bits that are short of the full 4 digits!
-        /*
-        for(int nYOffset=0; nYOffset<4; nYOffset++)
-        {
-            yPtr     =  pY +nYOffset;
-            raw      =  _mm256_loadu_si256((__m256i const*) yPtr);
-            rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-            y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-            mult     =  _mm256_mul_epu32(x1, y); // latency 5, throughput .5
-            acc1Low  =  _mm256_and_si256(mask, mult); // lower half of product values.  Latency 1, throughput 1/3
-            acc1High =  _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);  // upper half of computed values.  Latency 1, throughput 0.5
-            y        =  _mm256_permute4x64_epi64(acc1Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-            y        =  _mm256_add_epi64(y, acc1Low); // Latency 1, throughput 1/3
-            *zPtr++  += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-            // sum the digits of mult (high order bits)
-            y        =  _mm256_add_epi64(acc1High, _mm256_permute4x64_epi64(acc1High, 0X4E));
-            carry1   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-            y        =  _mm256_cvtepu32_epi64(rawHigh);
-            mult     =  _mm256_mul_epu32(x2, y);
-            acc2Low  =  _mm256_and_si256(mask, mult);
-            acc2High =  _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);
-            carry2   =  0;
-            raw      =  _mm256_loadu_si256((__m256i const*) yPtr);
-            rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-            for(yPtr += 16; yPtr<pYLim; yPtr += 16)
-            {
-                carry1   = 0;
-                carry2   = 0;
-                carry3   = 0;
-                carry4   = 0;
-                y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x1, y);
-                acc1Low  =  acc1Low, _mm256_and_si256(mask, mult);
-                acc1High =  acc1High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x2, y);
-                acc2Low  =  acc1Low, _mm256_and_si256(mask, mult);
-                acc2High =  acc1High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x3, y);
-                acc3Low  =  acc1Low, _mm256_and_si256(mask, mult);
-                acc3High =  acc1High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x3, y);
-                acc4Low  =  acc1Low, _mm256_and_si256(mask, mult);
-                acc4High =  acc1High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);
-
-                y        =  _mm256_cvtepu32_epi64(rawHigh);
-                raw      =  _mm256_loadu_si256((__m256i const*) (yPtr+8));
-                rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x1, y);
-                acc1Low  =  _mm256_add_epi64(acc1Low, _mm256_and_si256(mask, mult));
-                acc1High =  _mm256_add_epi64(acc1High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x2, y);
-                acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, mult));
-                acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x3, y);
-                acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, mult));
-                acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x4, y);
-                acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, mult));
-                acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-
-                y        =  _mm256_cvtepu32_epi64(_mm256_castsi256_si128(raw));
-
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x1, y);
-                acc1Low  =  _mm256_add_epi64(acc1Low, _mm256_and_si256(mask, mult));
-                acc1High =  _mm256_add_epi64(acc1High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x2, y);
-                acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, mult));
-                acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x3, y);
-                acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, mult));
-                acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x4, y);
-                acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, mult));
-                acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-
-                y        =  _mm256_cvtepu32_epi64(rawHigh);
-                raw      =  _mm256_loadu_si256((__m256i const*) (yPtr+8));
-                rawHigh  =  _mm256_castsi256_si128(_mm256_permute2x128_si256(raw, raw, 1));
-
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x1, y);
-                acc1Low  =  _mm256_add_epi64(acc1Low, _mm256_and_si256(mask, mult));
-                acc1High =  _mm256_add_epi64(acc1High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x2, y);
-                acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, mult));
-                acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x3, y);
-                acc3Low  =  _mm256_add_epi64(acc3Low, _mm256_and_si256(mask, mult));
-                acc3High =  _mm256_add_epi64(acc3High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-                nMultCalls++; // debug remove todo
-                mult     =  _mm256_mul_epu32(x4, y);
-                acc4Low  =  _mm256_add_epi64(acc4Low, _mm256_and_si256(mask, mult));
-                acc4High =  _mm256_add_epi64(acc4High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-
-                // sum the digits of acc1Low (low order bits)
-                y        =  _mm256_permute4x64_epi64(acc1Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-                y        =  _mm256_add_epi64(y, acc1Low);
-                // zPtr location is off!!! xxx debug resolve todo
-                *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry1;
-                // sum the digits of acc1High (high order bits)
-                y        =  _mm256_add_epi64(acc1High, _mm256_permute4x64_epi64(acc1High, 0X4E));
-                carry1   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-                acc1Low  =  _mm256_and_si256(mask, mult); // lower half of product values
-                acc1High =  _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS);  // upper half of computed values
-                // repeat for other accumulators: acc2
-                y        =  _mm256_permute4x64_epi64(acc2Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-                y        =  _mm256_add_epi64(y, acc2Low);
-                // zPtr location is off!!! xxx debug resolve todo
-                *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry2;
-                // sum the digits of acc1High (high order bits)
-                y        =  _mm256_add_epi64(acc2High, _mm256_permute4x64_epi64(acc2High, 0X4E));
-                carry2   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-                // acc3
-                y        =  _mm256_permute4x64_epi64(acc3Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-                y        =  _mm256_add_epi64(y, acc3Low);
-                // zPtr location is off!!! xxx debug resolve todo
-                *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry3;
-                // sum the digits of acc1High (high order bits)
-                y        =  _mm256_add_epi64(acc3High, _mm256_permute4x64_epi64(acc3High, 0X4E));
-                carry3   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-                // acc4
-                y        =  _mm256_permute4x64_epi64(acc4Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-                y        =  _mm256_add_epi64(y, acc4Low);
-                // zPtr location is off!!! xxx debug resolve todo
-                *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry4;
-                // sum the digits of acc1High (high order bits)
-                y        =  _mm256_add_epi64(acc3High, _mm256_permute4x64_epi64(acc4High, 0X4E));
-                carry4   =  _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-            }
-            mult     =  _mm256_mul_epu32(x2, y);
-            acc2Low  =  _mm256_add_epi64(acc2Low, _mm256_and_si256(mask, mult));
-            acc2High =  _mm256_add_epi64(acc2High, _mm256_srli_epi64(mult, _DIGIT_SIZE_IN_BITS));
-            // sum the digits of acc2Low (low order bits)
-            y        =  _mm256_permute4x64_epi64(acc2Low, 0X4E); // y <- digits 2,3,0,1  of mult: 01, 00, 11, 10
-            y        =  _mm256_add_epi64(y, acc2Low);
-            // zPtr location is off!!! xxx debug resolve todo
-            *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1) + carry2;
-            // sum the digits of mult (high order bits)
-            y        =  _mm256_add_epi64(acc2High, _mm256_permute4x64_epi64(acc2High, 0X4E));
-            // zPtr location is off!!! xxx debug resolve todo
-            *zPtr    += _mm256_extract_epi64(y, 0) + _mm256_extract_epi64(y, 1);
-        }
-            */
-    }
-  //  printf("Mult calls: %u\n", nMultCalls); // debug remove todo
-    // final carry
-    carry = 0;
-    for(size_t i=0; i<nXDigits+nYDigits; i++)
-    {
-        carry += pWork[i];
-        pZ[i] =  carry;
-        carry =  (carry>>_DIGIT_SIZE_IN_BITS);
-    }
-}
-#endif
-/*
-tests with processor pinned:
-Computing 4 DIGIT x 2049 DIGIT 1000000 times using GMP took 2047 milliseconds
-Computing 8 DIGIT x 2049 DIGIT 1000000 times using GMP took 6000 milliseconds
-Computing 12 DIGIT x 2049 DIGIT 1000000 times using GMP took 11750 milliseconds
-Computing 4-DIGIT x 2049-DIGIT 1000000 times took 5437 milliseconds
-Computing 8-DIGIT x 2049-DIGIT 1000000 times took 9954 milliseconds
-Computing 12-DIGIT x 2049-DIGIT 1000000 times took 14859 milliseconds
-*/
-bool CArithmeticCorrectnessTester::TestAVXInstructions()
-{
-    CArithmeticBox cBox;
-    CBigIntegerForTest x, y, z1, z2, yCopy;
-    unsigned int nTime;
-    bool         bTestWorked = true;
-    unsigned int data[8]     = { 1000000,2000000,3000000,4000000,5000000,6000000,7000000,8000000 };
-    const unsigned int c_nIterations = 1000000; //10000000;// 1000000;
-    const unsigned int c_nBigSize = 2049;
-
-    __m256i x1 = _mm256_set_epi64x(1, 1, 1, 1);
-    __m256i x2 = _mm256_set_epi64x(1, 1, 1, 1);
-
-    printf("\nchecking AVX multiply\n\n");
-    DOUBLEDIGIT pWork[16000];
-    c_pnMultiplicationThresholds[0] = 256; // force basic multiply
-    // 4x1025 multiply
-    x.SetRandom(4*_DIGIT_SIZE_IN_BITS);
-    y.SetRandom(c_nBigSize*_DIGIT_SIZE_IN_BITS);
-    yCopy.Reserve(y.GetSize() + 16); // space for extra zeros -- padding.  At most 3 actually needed at this point
- //   y.SetRandom(8*_DIGIT_SIZE_IN_BITS);
-    z1.Reserve(x.GetSize() + y.GetSize());
-    z2.Reserve(x.GetSize() + y.GetSize());
-    /*for (int i = 0; i < x.GetSize(); i++)
-    {
-        x.GetValue()[i] = ((i + 1) << 16);
-        y.GetValue()[i] = ((i + 1) << 16);
-    }
-    for (int i = x.GetSize(); i < y.GetSize(); i++)
-    {
-        y.GetValue()[i] = ((i + 1) << 16);
-    }*/
-    z1.Reserve(x.GetSize() + y.GetSize());
-    z2.Reserve(x.GetSize() + y.GetSize());
-    DIGIT *pX = x.GetValue(), *pY = y.GetValue(), *pZ = z2.GetValue();
-    unsigned int nXDigits = x.GetSize(), nYDigits = y.GetSize();
-    printf("4 x %u\n\n",c_nBigSize);
-    nTime = ::GetTickCount();
-    for(int i=0;i<c_nIterations;i++)
-    {
-        cBox.Multiply(x, y, z1);
-    }
-    printf("Base time:         %u milliseconds\n", ::GetTickCount() - nTime);
-    /*nTime = ::GetTickCount();
-    for(int i=0;i<c_nIterations;i++)
-    {
-        MultAVX(pX, pY, nXDigits, nYDigits, pZ, pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    if (z1 != z2)
-    {
-        printf("avx\n");
-        printf("correct:  ");  z1.PrintHexToFile();
-        printf("Computed: ");  z2.PrintHexToFile();
-    }
-    printf("AVX time:          %u milliseconds\n", nTime);
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        MultAVX_b(pX, pY, nXDigits, nYDigits, pZ, pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    if (z1 != z2)
-    {
-        printf("avx_b\n");
-        printf("correct:  ");  z1.PrintHexToFile();
-        printf("Computed: ");  z2.PrintHexToFile();
-    }
-    printf("AVX_b time:        %u milliseconds\n", nTime);*/
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        Mult4DigitX(pX, pY, nYDigits, pZ, pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    if (z1 != z2)
-    {
-        printf("Mult4DigitX is WRONG!\n");
-        printf("correct:  ");  z1.PrintHexToFile();
-        printf("Computed: ");  z2.PrintHexToFile();
-        return 0;
-    }
-    printf("Mult4DigitX time:  %u milliseconds\n", nTime);
-    for (size_t nSize=5; nSize<48; nSize++)
-    {
+bool CArithmeticCorrectnessTester::TestAVXMultiply()
+{
+#if _USEAVX
+    CBigIntegerForTest x, y, zAdd, zFinal, z1, z2;
+    bool         bMultAdd;
+    bool         bTestWorked = false;
+    int          nVariation  = 1;
+    DIGIT        gibberish   = 0xACDC;
+
+    // 4-DIGIT x:
+    x.Reserve(4);
+    x.SetSize(4);
+    for (size_t nSize = 4; nSize <= 48; nSize++)
+    {
+        y.Reserve(nSize);
         y.SetSize(nSize);
-  //      for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);//<<16; // debug remove todo
-    //    for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);//<<16; // debug remove todo
-        cBox.Multiply(x, y, z1);
+        z1.Reserve(x.GetSize() + y.GetSize());
+        z1.SetSize(x.GetSize() + y.GetSize());
         z2.Reserve(x.GetSize() + y.GetSize());
         z2.SetSize(x.GetSize() + y.GetSize());
-        Mult4DigitY(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), pWork);
-        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-        if (z1 != z2)
-        {
-            // wrong for size 4 -- fix! debug resolve todo
-            printf("Mult4DigitY is WRONG for size %i\n",nSize);
-            printf("correct:  ");  z1.PrintHexToFile();
-            printf("Computed: ");  z2.PrintHexToFile();
-            break;
-        }
-    }
-    y.SetSize(c_nBigSize);
-    z2.Reserve(x.GetSize() + y.GetSize());
-    pX = x.GetValue();
-    pY = y.GetValue();
-    pZ = z2.GetValue();
-    nXDigits = x.GetSize();
-    nYDigits = y.GetSize();
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        Mult4DigitY(pX, pY, nYDigits, pZ, pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    printf("Mult4DigitY time:  %u milliseconds\n", nTime);
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    cBox.Multiply(x, y, z1);
-    if (z1 != z2)
-    {
-        printf("size %i x %i Mult4DigitY is WRONG!\n", 4, nYDigits);
-        printf("correct:  ");  z1.PrintHexToFile();
-        printf("Computed: ");  z2.PrintHexToFile();
-     //   return 0;
-    }
-    for (size_t nSize=4; nSize<48; nSize++)
-    {
-        y.SetSize(nSize);
-        for (int i = 0; i < 4; i++) yCopy.GetValue()[nSize + i] = 0;
-    //    for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);//<<16; // debug remove todo
-      //  for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);//<<16; // debug remove todo
-        yCopy = y;
-        cBox.Multiply(x, y, z1);
-        z2.Reserve(x.GetSize() + y.GetSize());
+        // basic multiply
+        bMultAdd = false;
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);
+        z1.SetSize(x.GetSize() + y.GetSize());
         z2.SetSize(x.GetSize() + y.GetSize());
-        Mult4DigitZ(x.GetValue(), yCopy.GetValue(), y.GetSize(), z2.GetValue(), pWork);
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
         if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
         if (z1 != z2)
         {
-            // wrong for size 9+ -- fix! debug resolve todo
-            printf("Mult4DigitZ is WRONG for size %i\n",nSize);
-            printf("correct:  ");  z1.PrintHexToFile();
-            printf("Computed: ");  z2.PrintHexToFile();
-            return false;
+            goto exit;
         }
-    }
-    y.SetSize(c_nBigSize);
-    yCopy = y;
-    for (int i = 0; i < 4; i++) yCopy.GetValue()[y.GetSize() + i] = 0;
-    z2.Reserve(x.GetSize() + y.GetSize());
-    pX = x.GetValue();
-    pY = yCopy.GetValue();
-    pZ = z2.GetValue();
-    nXDigits = x.GetSize();
-    nYDigits = y.GetSize();
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        Mult4DigitZ(pX, pY, nYDigits, pZ, pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    cBox.Multiply(x, y, z1);
-    if (z1 != z2)
-    {
-        printf("size %i x %i Mult4DigitZ is WRONG!\n", 4, nYDigits);
- //       printf("correct:  ");  z1.PrintHexToFile();
-  //      printf("Computed: ");  z2.PrintHexToFile();
-     //   return 0;
-    }
-    printf("Mult4DigitZ time:  %u milliseconds\n", nTime);
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        Mult4DigitW(pX, pY, nYDigits, pZ, pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    printf("Mult4DigitW time:  %u milliseconds\n", nTime);
-#if 0
-    printf("\n8 x %i\n\n", y.GetSize());
-    // boost the size to 8x1024
-    x.SetRandom(8*_DIGIT_SIZE_IN_BITS);
-    y.SetSize(c_nBigSize);
-    nXDigits = x.GetSize();
-    nYDigits = y.GetSize();
-    z1.Reserve(x.GetSize() + y.GetSize());
-    z2.Reserve(x.GetSize() + y.GetSize());
-    pZ = z2.GetValue();
-    pX = x.GetValue();
-    pY = y.GetValue();
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        cBox.Multiply(x, y, z1);
-    }
-    printf("Base time:         %u milliseconds\n", ::GetTickCount() - nTime);
-    for (size_t nSize=8; nSize<24; nSize++)
-    {
-        y.SetSize(nSize);
-        /*for (int i = 0; i < x.GetSize(); i++)
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i<<16);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i<<16);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
         {
-            x.GetValue()[i] = ((i + 1) << 16);
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
         }
-        for (int i = 0; i < y.GetSize(); i++)
-        {
-            y.GetValue()[i] = ((i + 1) << 16);
-        }*/
-        cBox.Multiply(x, y, z1);
-        z2.Reserve(8 + y.GetSize());
-        z2.SetSize(8 + y.GetSize());
-        Mult8DigitY(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), pWork);
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
         if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
         if (z1 != z2)
         {
-            printf("Mult8DigitY is WRONG for size %i\n", nSize);
-            printf("correct:  ");  z1.PrintHexToFile();
-            printf("Computed: ");  z2.PrintHexToFile();
-            break;
+            goto exit;
         }
-    }
-    y.SetSize(c_nBigSize);
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        Mult8DigitY(pX, pY, nYDigits,pZ,pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    printf("Mult8DigitY time:  %u milliseconds\n", nTime);
-    cBox.Multiply(x, y, z1);
-    if (z1 != z2)
-    {
-        printf("size %i x %i Mult8DigitY is WRONG!\n", 4, nYDigits);
-        //       printf("correct:  ");  z1.PrintHexToFile();
-         //      printf("Computed: ");  z2.PrintHexToFile();
-            //   return 0;
-    }
-    for (size_t nSize=8; nSize<24; nSize++)
-    {
-        y.SetSize(nSize);
-        /*for (int i = 0; i < x.GetSize(); i++)
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = 0xFFFFFFFF;
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0xFFFFFFFF;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
         {
-            x.GetValue()[i] = ((i + 1) << 16);
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
         }
-        for (int i = 0; i < y.GetSize(); i++)
-        {
-            y.GetValue()[i] = ((i + 1) << 16);
-        }*/
-        cBox.Multiply(x, y, z1);
-        z2.Reserve(8 + y.GetSize());
-        z2.SetSize(8 + y.GetSize());
-        Mult8DigitZ(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), pWork);
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
         if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
         if (z1 != z2)
         {
-            printf("Mult8DigitZ is WRONG for size %i\n", nSize);
-            printf("correct:  ");  z1.PrintHexToFile();
-            printf("Computed: ");  z2.PrintHexToFile();
-            break;
+            goto exit;
         }
-    }
-    y.SetSize(c_nBigSize);
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        Mult8DigitZ(pX, pY, nYDigits,pZ,pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    printf("Mult8DigitZ time:  %u milliseconds\n", nTime);
-    cBox.Multiply(x, y, z1);
-    if (z1 != z2)
-    {
-        printf("size %i x %i Mult8DigitZ is WRONG!\n", 4, nYDigits);
-        //       printf("correct:  ");  z1.PrintHexToFile();
-         //      printf("Computed: ");  z2.PrintHexToFile();
-            //   return 0;
+        // with an internal multiply, y COULD have leading 0s
+        x.SetRandom(4*_DIGIT_SIZE_IN_BITS);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        x.SetRandom(4*_DIGIT_SIZE_IN_BITS);
+        y.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+
+        // multiply/add
+        bMultAdd = true;
+        // first, where z is the same size as x*y
+        zFinal =  z2;
+        zFinal *= 2;
+        zAdd   =  z2;
+        z2.Reserve(x.GetSize() + y.GetSize() + 1, true);
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(x.GetSize() + y.GetSize() + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // next, z smaller than x*y
+        zAdd.SetFromHexString("FFFFFFFF");
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // finally, z larger than x*y
+        zAdd.Reserve(x.GetSize() + y.GetSize() + 5);
+        zAdd.SetSize(x.GetSize() + y.GetSize() + 5);
+        zFinal.Reserve(x.GetSize() + y.GetSize() + 6);
+        for(int i=0;i<zAdd.GetSize();i++) zAdd.GetValue()[i] = 0xFFFFFFFF;
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2.Reserve(max(x.GetSize()+y.GetSize(), zAdd.GetSize())+1);
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
     }
 
-    printf("\n12 x %i\n\n", y.GetSize());
-    // boost the size to 8x1024
-    x.SetRandom(12*_DIGIT_SIZE_IN_BITS);
-    y.SetSize(c_nBigSize);
-    nXDigits = x.GetSize();
-    nYDigits = y.GetSize();
-    z1.Reserve(x.GetSize() + y.GetSize());
-    z2.Reserve(x.GetSize() + y.GetSize());
-    pZ = z2.GetValue();
-    pX = x.GetValue();
-    pY = y.GetValue();
-    nTime = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
+    // 8-DIGIT x:
+    nVariation = 2;
+    x.Reserve(8);
+    x.SetSize(8);
+    for (size_t nSize=8; nSize<=96; nSize++)
     {
-        cBox.Multiply(x, y, z1);
-    }
-    printf("Base time:         %u milliseconds\n", ::GetTickCount() - nTime);
-    for (size_t nSize=32; nSize<48; nSize++)
-    {
+        y.Reserve(nSize);
         y.SetSize(nSize);
-        cBox.Multiply(x, y, z1);
+        z1.Reserve(x.GetSize() + y.GetSize());
+        z1.SetSize(x.GetSize() + y.GetSize());
         z2.Reserve(x.GetSize() + y.GetSize());
         z2.SetSize(x.GetSize() + y.GetSize());
-        MultAVX_i(x.GetValue(), y.GetValue(), x.GetSize(), y.GetSize(), z2.GetValue(), pWork);
+        // basic multiply
+        bMultAdd = false;
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
         if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
         if (z1 != z2)
         {
-            printf("AVX_i is WRONG for size %i\n",nSize);
-            printf("correct:  ");  z1.PrintHexToFile();
-            printf("Computed: ");  z2.PrintHexToFile();
-            return false;
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i<<16);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i<<16);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = 0xFFFFFFFF;
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0xFFFFFFFF;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        // with an internal multiply, y COULD have leading 0s
+        x.SetRandom(8*_DIGIT_SIZE_IN_BITS);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        x.SetRandom(8*_DIGIT_SIZE_IN_BITS);
+        y.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+
+        // multiply/add
+        bMultAdd = true;
+        // first, where z is the same size as x*y
+        zFinal =  z2;
+        zFinal *= 2;
+        zAdd   =  z2;
+        z2.Reserve(x.GetSize() + y.GetSize() + 1, true);
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(x.GetSize() + y.GetSize() + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // next, z smaller than x*y
+        zAdd.SetFromHexString("FFFFFFFF");
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // finally, z larger than x*y
+        zAdd.Reserve(x.GetSize() + y.GetSize() + 5);
+        zAdd.SetSize(x.GetSize() + y.GetSize() + 5);
+        zFinal.Reserve(x.GetSize() + y.GetSize() + 6);
+        for (int i = 0; i < zAdd.GetSize(); i++) zAdd.GetValue()[i] = 0xFFFFFFFF;
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2.Reserve(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
         }
     }
-    y.SetSize(c_nBigSize);
-    z2.Reserve(x.GetSize() + y.GetSize());
-    pX       = x.GetValue();
-    pY       = y.GetValue();
-    pZ       = z2.GetValue();
-    nXDigits = x.GetSize();
-    nYDigits = y.GetSize();
-    nTime    = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
+
+    // 12-DIGIT x:
+    x.Reserve(12);
+    x.SetSize(12);
+    nVariation = 3;
+    for (size_t nSize = 12; nSize <= 144; nSize++)
     {
-        MultAVX_i(pX, pY, nXDigits, nYDigits, pZ, pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    printf("AVX_i time:        %u milliseconds\n", nTime);
-    // final check
-    cBox.Multiply(x, y, z1);
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    if (z1 != z2)
-    {
-        printf("AVX_i is WRONG for size %i -- oh PHOOEY!\n", c_nBigSize);
-    }
-    nTime    = ::GetTickCount();
-    for (int i = 0; i < c_nIterations; i++)
-    {
-        MultAVX_j(pX, pY, nXDigits, nYDigits, pZ, pWork);
-    }
-    nTime = ::GetTickCount() - nTime;
-    z2.SetSize(x.GetSize() + y.GetSize());
-    printf("AVX_j time:        %u milliseconds\n", nTime);
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    if (z1 != z2)
-    {
-        printf("AVX_j is WRONG for size %i -- oh PHOOEY!\n", c_nBigSize);
-    }
-    for (size_t nSize=12; nSize<36; nSize++)
-    {
+        y.Reserve(nSize);
         y.SetSize(nSize);
-        /*for (int i = 0; i < x.GetSize(); i++)
+        z1.Reserve(x.GetSize() + y.GetSize());
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.Reserve(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        // basic multiply
+        bMultAdd = false;
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
         {
-            x.GetValue()[i] = ((i + 1) << 16);
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
         }
-        for (int i = 0; i < y.GetSize(); i++)
-        {
-            y.GetValue()[i] = ((i + 1) << 16);
-        }*/
-        cBox.Multiply(x, y, z1);
-        z2.Reserve(8 + y.GetSize());
-        z2.SetSize(8 + y.GetSize());
-        Mult12DigitY(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), pWork);
-        z2.SetSize(y.GetSize() + x.GetSize());
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
         if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
         if (z1 != z2)
         {
-            printf("Mult12DigitY is WRONG for size %i\n", nSize);
-            printf("correct:  ");  z1.PrintHexToFile();
-            printf("Computed: ");  z2.PrintHexToFile();
-            return false;
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i<<16);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i<<16);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = 0xFFFFFFFF;
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0xFFFFFFFF;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        // with an internal multiply, y COULD have leading 0s
+        x.SetRandom(12*_DIGIT_SIZE_IN_BITS);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        x.SetRandom(12*_DIGIT_SIZE_IN_BITS);
+        y.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+
+        // multiply/add
+        bMultAdd = true;
+        // first, where z is the same size as x*y
+        zFinal   =  z2;
+        zFinal   *= 2;
+        zAdd     =  z2;
+        z2.Reserve(x.GetSize() + y.GetSize() + 1, true);
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(x.GetSize() + y.GetSize() + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // next, z smaller than x*y
+        zAdd.SetFromHexString("FFFFFFFF");
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // finally, z larger than x*y
+        zAdd.Reserve(x.GetSize() + y.GetSize() + 5);
+        zAdd.SetSize(x.GetSize() + y.GetSize() + 5);
+        zFinal.Reserve(x.GetSize() + y.GetSize() + 6);
+        for (int i = 0; i < zAdd.GetSize(); i++) zAdd.GetValue()[i] = 0xFFFFFFFF;
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2.Reserve(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
         }
     }
-    y.SetSize(c_nBigSize);
-    nTime    = ::GetTickCount();
-    for (int i=0; i<c_nIterations; i++)
+    bTestWorked = true;
+exit:
+    if(!bTestWorked)
     {
-        Mult12DigitY(pX, pY, nYDigits, pZ, pWork);
+        switch (nVariation) {
+        case 1:
+            printf("Mult4DigitX is WRONG for Y size %i\n", y.GetSize());
+            break;
+        case 2:
+            printf("Mult8DigitX is WRONG for Y size %i\n", y.GetSize());
+            break;
+        case 3:
+            printf("Mult12DigitX is WRONG for Y size %i\n", y.GetSize());
+            break;
+        default:
+            printf("unknown variation failed!\n");
+            break;
+        }
+        if (bMultAdd)
+        {
+            printf("Computing x*y + z, where\n");
+            printf("x: "); x.PrintHexToFile();
+            printf("y: "); y.PrintHexToFile();
+            printf("z: "); zAdd.PrintHexToFile();
+            printf("Computed: "); z2.PrintHexToFile();
+            printf("Correct:  "); zFinal.PrintHexToFile();
+        }
+        else
+        {
+            printf("X: "); x.PrintHexToFile();
+            printf("Y: "); y.PrintHexToFile();
+            printf("correct:  ");  z1.PrintHexToFile();
+            printf("Computed: ");  z2.PrintHexToFile();
+        }
     }
-    nTime = ::GetTickCount() - nTime;
-    z2.SetSize(x.GetSize() + y.GetSize());
-    if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
-    printf("Mult12DigitY time: %u milliseconds\n", nTime);
-    cBox.Multiply(x, y, z1);
-    if (z1 != z2)
-    {
-        printf("Mult12DigitY is WRONG for size %i -- oh PHOOEY!\n", c_nBigSize);
-    }
-#endif
     return bTestWorked;
+#else
+    printf("AVX not supported.  AVX instructions must be available, AND DIGITs must be 32 bits each.  See constants.h\n");
+    return false;
+#endif
 }

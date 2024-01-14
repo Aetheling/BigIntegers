@@ -356,7 +356,7 @@ EArithmeticOperationResult CArithmeticBox::Divide(const CBigInteger &nX,
     bool                       bResultNegative;
     size_t                     nXSize     = nX.GetSize();
     size_t                     nYSize     = nY.GetSize();
-    size_t                     nDivSpace  = (nXSize>=nYSize) ? nXSize-nYSize+1 : 0;
+    size_t                     nDivSpace  = (nXSize>=nYSize) ? nXSize-nYSize+1 : 1; // because we want to put a 0 in place in the backend
     size_t                     nWorkspace = CUnsignedArithmeticHelper::DivisionMemoryNeeds(nXSize, nYSize);
 
     if(&nX == &nXDivY || &nX == &nRemainder || &nY == &nXDivY || &nY == &nRemainder)
@@ -654,7 +654,6 @@ EArithmeticOperationResult CArithmeticBox::NthRoot(const CBigInteger &nXOriginal
     CBigInteger nX;
     size_t nRootSize, nMaxN2Size, nMaxN3Size, nMaxPowerOverflow;
     DIGIT  n3Pow;
-    DIGIT  nCopy = n; // debug remove todo
     int    nPowersOf2 = 0, nPowersOf3 = 0, nSteps;
     if (nXOriginal.IsNegative()) return eBadOperand;
     if (1 == n || nXOriginal.IsZero())
@@ -767,20 +766,6 @@ EArithmeticOperationResult CArithmeticBox::NthRoot(const CBigInteger &nXOriginal
                 CUnsignedArithmeticHelper::NthRoot(nRootSize, n, nRootSize, pRootA, pRootB, pWork);
             }
         }
-    }
-    {
-
-        DIGIT* pPow = new DIGIT[10000000]; // debug remove todo
-         // debug remove todo
-        size_t nPowSize;
-        n = nCopy;
-        CUnsignedArithmeticHelper::Power(nRootSize, nPowSize, n, nNthRootOfX.GetValue(), pPow, m_Workspace.GetSpace());
-  //      printf("%u %u %u %u a %u %u\n",n,nRootSize, nPowSize, nXOriginal.GetSize(), pPow[nPowSize - 1], nXOriginal.m_pnValue[nXOriginal.GetSize() - 1]);
-        if (1 == CBigInteger::CompareUnsigned(nPowSize, nXOriginal.GetSize(), pPow, nXOriginal.GetValue()))
-        {
-            printf("Zounds!\n");
-        }
-        delete pPow;
     }
     nNthRootOfX.SetSize(nRootSize);
     nNthRootOfX.SetNegative(false);

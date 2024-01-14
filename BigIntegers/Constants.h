@@ -1,5 +1,5 @@
 #pragma once
-//#define _CollectDetailedTimingData 1
+#define _CollectDetailedTimingData 1
 /* with detailed timing data turned on, you will get perf results (when requested) that loo like this:
 1 calls to multiply
   1032156 calls to Basic multiply:
@@ -33,9 +33,13 @@ Note that the high performance timer call is an expensive operation; using it no
 #define _BUFFERGUARD_SLOTS 1024
 #endif
 #define _DIGIT_SIZE_IN_BITS 32 // 16 or 32
+#define _AVXInstructionsAvailable 1 // note that further flags for avx512 should be employed.  I don't have 'em on my computer, so can't verify any such code
 // it is assumed that there are hardware operations that are used
 // for add, multiply, etc on the chosen size
+#define _USEAVX 0
 #if(32==_DIGIT_SIZE_IN_BITS)
+#undef _USEAVX
+#define _USEAVX _AVXInstructionsAvailable
 typedef unsigned _int64   DOUBLEDIGIT;
 typedef unsigned _int32   DIGIT;
 const DIGIT               BUFFERGUARD      = 0xABCDDCBA;

@@ -24,6 +24,7 @@
     <ClCompile Include="..\RSA\CRSADecrypt.cpp" />
     <ClCompile Include="..\RSA\CRSAEncrypt.cpp" />
     <ClCompile Include="ArithmeticBox.cpp" />
+    <ClCompile Include="AVXMultiply.cpp" />
     <ClCompile Include="BaseUnsignedHelperWrapper.cpp" />
     <ClCompile Include="BasicMultiply.cpp" />
     <ClCompile Include="BigIntegers.cpp" />

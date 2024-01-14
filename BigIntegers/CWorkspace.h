@@ -24,7 +24,7 @@ public:
                 if(BUFFERGUARD != m_pSpace[m_nSize+j])
                 {
                     printf("Overran allocated memory space for workspace\n");
-                    m_pSpace[m_nSize + j] = BUFFERGUARD; // debug remove todo
+                    m_pSpace[m_nSize + j] = BUFFERGUARD;
                 }
             }
         }

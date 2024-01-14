@@ -137,7 +137,6 @@ public:    // functions
 protected: // functions
 private:   // functions
     // returns -1 if X < Y, 0 if X == Y, and 1 if X > Y.
-    public:// debug remove todo -- public declaration, that is
     static int CompareUnsigned(size_t nXSize, size_t nYSize, const DIGIT *pX, const DIGIT *pY);
 public:    // data
     size_t m_nAllocatedSize;

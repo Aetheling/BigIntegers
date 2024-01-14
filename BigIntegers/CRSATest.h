@@ -5,6 +5,7 @@ class CRSATest
 {
 public:  // functions
 	CRSATest();
+	~CRSATest();
 	bool TestProbablyPrime();
 	bool TestRSA(bool bProtectAgainstTimingAttacks);
 
@@ -16,7 +17,7 @@ private: // functions
 	bool BruteForcePrimeCheck(CBigInteger &nNumber, bool bShowFactors=false);
 public:  // data
 private: // data
-	char *m_cPrimeSieve;
+	char         *m_cPrimeSieve;
 	unsigned int *m_pnKnownOddPrimes;
 	unsigned int m_nNumKnownOddPrimes;
 };

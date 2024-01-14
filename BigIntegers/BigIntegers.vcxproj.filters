@@ -99,6 +99,9 @@
     <ClCompile Include="..\BigIntegersBase\CBigIntegerHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AVXMultiply.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CArithmeticTestHelper.h">
