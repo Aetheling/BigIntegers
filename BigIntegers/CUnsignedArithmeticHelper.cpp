@@ -3,6 +3,8 @@
 #include "Macros.h"
 #include "math.h"
 #include "SSystemData.h"
+#include "AVXMultiply.h"
+
 #pragma warning(disable:4018)    // signed/unsigned mismatch
 #pragma warning(disable:4146)    // unary operator applied to signed type
 CHighPerfTimer CUnsignedArithmeticHelper::s_Timer;
@@ -14,6 +16,17 @@ SSystemDataNode *g_pInversionStructures = NULL;
 // class variable definitions/initializations
 #ifndef _UsingVariableThresholdsForTest
 #if(32==_DIGIT_SIZE_IN_BITS)
+#if _USEAVX
+const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 8192;
+const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 32768; // ignored
+const unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1] = { 130, 149, 154, 250, 54494, 0 };
+const unsigned int CUnsignedArithmeticHelper::c_pnSquareThresholds[eNumMultiplyAlgorithms-1]         = { 53, 211, 217, 337, 14963, 0 };
+const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]          = { 12093, 12093, 16387, 16387, 230200, 7270576, 7270576 }; // Not really important to get right -- in practice, 2nbyn is never used
+const unsigned int CUnsignedArithmeticHelper::c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints]    = { 16156, 89155, 582464, 582464, 957196, 957196, 8727776 }; // Not really important to get right -- in practice, 2nbyn is never used
+const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                                = 11;       // at least 4 to insure correctness
+const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 = 4;        // at least 4 to insure correctness
+const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 = 3;        // 3 is the minimum for correctness -- and also seems to be the best
+#else
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 16384;         // or whatever is found to be best in testing thresholds -- this is good
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 65536;         // or whatever is found to be best in testing thresholds -- this is good
 // note that the ABSOLUTE MINIMUM for c_pnMultiplicationThresholds[e2NByN] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
@@ -22,9 +35,10 @@ const unsigned int CUnsignedArithmeticHelper::c_pnSquareThresholds[eNumMultiplyA
 // note that the ABSOLUTE MINIMUM for c_pn2NByNBreakpoints[nPieces-5] is 2*(2*nPieces-3)*sizeof(size_t)/sizeof(DIGIT) -- that much space is assumed to be present in Z to hold arguments!
 const unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]          = { 160, 644, 3499, 3500, 13545, 13546, 19471 }; // Not really important to get right -- in practice, 2nbyn is never used
 const unsigned int CUnsignedArithmeticHelper::c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints]    = { 356, 2333, 17964, 23264, 28659, 28660, 28661 }; // Not really important to get right -- in practice, 2nbyn is never used
-const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                                = 16;       // at least 4 to insure correctness; 22 is heuristically good
-const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 =  4;       // at least 4 to insure correctness; 22 is heuristically good
+const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                                = 16;       // at least 4 to insure correctness
+const unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 =  4;       // at least 4 to insure correctness
 const unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 =  3;       // 3 is the minimum for correctness -- and also seems to be the best
+#endif
 #elif(16==_DIGIT_SIZE_IN_BITS)
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 8192;         // or whatever is found to be best in testing thresholds -- this is good
 const unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 32768;         // or whatever is found to be best in testing thresholds -- this is good
@@ -52,6 +66,17 @@ unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                 
 unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 = 4;        // at least 4 to insure correctness; 4 is heuristically good
 unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 = 3;        // 3 is the minimum for correctness -- and also seems to be the best
 #elif(32==_DIGIT_SIZE_IN_BITS)
+#if _USEAVX
+unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 8192;
+unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 32768; // ignored
+unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1] = { 130, 149, 154, 250, 54494, 0 };
+unsigned int CUnsignedArithmeticHelper::c_pnSquareThresholds[eNumMultiplyAlgorithms-1]         = { 53, 211, 217, 337, 14963, 0 };
+unsigned int CUnsignedArithmeticHelper::c_pn2NByNBreakpoints[c_n2NBynSizeBreakpoints]          = { 967257, 1338767, 1338767, 1338767, 1404417, 1404417, 1577792 }; // Not really important to get right -- in practice, 2nbyn is never used
+unsigned int CUnsignedArithmeticHelper::c_pn2NByNSquareBreakpoints[c_n2NBynSizeBreakpoints]    = { 16156, 89155, 582464, 582464, 957196, 957196, 8727776 }; // Not really important to get right -- in practice, 2nbyn is never used
+unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdSmall                                = 11;       // at least 4 to insure correctness; 6 is heuristically good
+unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                                 = 4;        // at least 4 to insure correctness; 4 is heuristically good
+unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 = 3;        // 3 is the minimum for correctness -- and also seems to be the best
+#else
 unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePre                                   = 8192;
 unsigned int CUnsignedArithmeticHelper::c_nBuildBlockSizePost                                  = 32768; // ignored
 unsigned int CUnsignedArithmeticHelper::c_pnMultiplicationThresholds[eNumMultiplyAlgorithms-1] = { 54, 100, 100, 160, 40789, 0 };
@@ -63,7 +88,7 @@ unsigned int CUnsignedArithmeticHelper::c_nDivideThresholdDiff                  
 unsigned int CUnsignedArithmeticHelper::c_nSquareRootThreshold                                 = 3;        // 3 is the minimum for correctness -- and also seems to be the best
 #endif
 #endif
-
+#endif
 // note that these values are not used unless the compile flag _CollectDetailedTimingData is set
 unsigned long long g_nDivideTime[eNumDivideComponents]             = {0, 0, 0, 0, 0};
 unsigned long long g_nSquareRootTime[eNumSquareRootComponents]     = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -6099,6 +6124,38 @@ void CUnsignedArithmeticHelper::MultUStriped(size_t       nXSize,
                                              bool         bAddInitialZValueToProduct)
 {
     size_t i, nXPieceSize;
+#if _USEAVX
+    nXPieceSize = nXSize%12;
+    if(0==nXPieceSize) nXPieceSize = 12;
+    switch (nXPieceSize)
+    {
+    case 4:
+        CAVXMultiply::Mult4DigitX(pX, pY, nYSize, pZ, bAddInitialZValueToProduct);
+        break;
+    case 8:
+        CAVXMultiply::Mult8DigitX(pX, pY, nYSize, pZ, bAddInitialZValueToProduct);
+        break;
+    case 12:
+        CAVXMultiply::Mult12DigitX(pX, pY, nYSize, pZ, bAddInitialZValueToProduct);
+        break;
+    default:
+        (bAddInitialZValueToProduct) ? MultAddUShortLong(nXPieceSize, nYSize, pX, pY, pZ) :
+                                       MultUShortLong(nXPieceSize, nYSize, pX, pY, pZ);
+    }
+    if(!bAddInitialZValueToProduct)
+    {
+        for(i=nXPieceSize+nYSize; i<nXSize+nYSize; i++) pZ[i] = 0; // zero out the rest of Z
+    }
+    nXSize -= nXPieceSize;
+    pX     += nXPieceSize;
+    pZ     += nXPieceSize;
+    for(i=0; i<nXSize; i += 12)
+    {
+        CAVXMultiply::Mult12DigitX(pX, pY, nYSize, pZ, true);
+        pX += 12;
+        pZ += 12;
+    }
+#else
     // if adding initial value, all calls are to multaddushortlong.  If not, the first
     // call is to multushortlong and the rest to multaddushortlong.  Perf testing shows that
     // multushortlong is faster than multaddushortlong (no surprise there) and that the fewer
@@ -6123,6 +6180,7 @@ void CUnsignedArithmeticHelper::MultUStriped(size_t       nXSize,
         pX += 12;
         pZ += 12;
     }
+#endif
 }
 
 // Synopsis:	Sets the value of the third operand to
@@ -9215,7 +9273,7 @@ void CUnsignedArithmeticHelper::DivideBackend(size_t  nXSize,
         // X is smaller than Y
         nXDivYSize     = 0;
         nRemainderSize = nXSize;
-        *pXDivYValue   = 0;
+        *pXDivYValue = 0;
     }
     else
     {
@@ -9340,10 +9398,6 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
             // add divide into place
             nProd                         = pXDivYValue[nXSize-nYSize-ii] + nMult;
             nCarry                        = nProd>>_DIGIT_SIZE_IN_BITS;
-            if (pXDivYValue + nXSize - nYSize - ii == pYValue+ nYSize - 1) // debug remove todo
-            {
-                printf("ZOUNDS!!!\n");
-            }
             pXDivYValue[nXSize-nYSize-ii] = nProd;
             if(nCarry)
             {
@@ -9368,15 +9422,7 @@ void CUnsignedArithmeticHelper::DivideBasic(size_t      nXSize,
                 {
                     nCarry++;
                 }
-                if (pXValue + nXSize - nYSize + i - ii == pYValue + nYSize - 1) // debug remove todo
-                {
-                    printf("ZOUNDS!!!\n");
-                }
                 pXValue[nXSize-nYSize+i-ii] -= (DIGIT) nBorrow;
-            }
-            if (pXValue + nXSize - ii == pYValue + nYSize - 1) // debug remove todo
-            {
-                printf("ZOUNDS!!!\n");
             }
             pXValue[nXSize-ii] -= (DIGIT) nCarry;
             while(0<nXSize && 0==pXValue[nXSize-1])
@@ -9588,7 +9634,6 @@ void CUnsignedArithmeticHelper::DivideRecursive(size_t  nXSize,
     nLowestAdded =  nXSize - nYSize - nSmallY; // index in pXDivY of lowest entry added
     // add Div back into x
     nXSize       = nXSize - (nSmallY<<1) + AddDivBackIn(nSmallY<<1, nSmallY, pXSmall, pDivSmall);
-    // (y mod (1<<bitshift))*div
 #if(_CollectDetailedTimingData)
     dwMultTime                          =  s_Timer.GetMicroseconds();
     g_nDivideTime[eDivideProcessTime]   += dwMultTime - dwTimestamp;
@@ -10155,7 +10200,7 @@ void CUnsignedArithmeticHelper::GCDCoef(size_t  nXSize,
 #else
                 MultUBackend(nSSize, nQuotientSize, pS, pQuotient, pProduct, pWorkspace);
 #endif
-                pProduct[nSSize + nQuotientSize] = 0; // overflow guard -- debug validate todo
+                pProduct[nSSize + nQuotientSize] = 0;
                 nProductSize = nSSize + nQuotientSize;
                 if(0 == pProduct[nProductSize-1]) nProductSize--;
                 AddSigned(nSSize_old, nProductSize, nProductSize, pS_old, pProduct, pS_old, bSNeg_old, !bSNeg, bSumNeg);
@@ -15318,13 +15363,9 @@ void CUnsignedArithmeticHelper::NthRootRecursiveWithHint(DIGIT n, size_t &nASize
     DIGIT       *pBottom     = pTop + nYSize + nMaxOverflow;  // space for a^(n-1), n(a+e)^(n-1).  Again nYSize+nMaxOverflow is enough, including overflow space
     pWorkspace = pBottom + nYSize + nMaxOverflow;
     pA[nASize] = 0; // overflow guard
-    int nIteration = 0; // debug remove todo
-    pBottom[nYSize + nMaxOverflow - 1] = BUFFERGUARD; // debug remove todo
-    pTop[nYSize + nMaxOverflow - 1]    = BUFFERGUARD; // debug remove todo
     do
     {
         // a^(n-1), a^n
-        nIteration++;
         Power(nASize, nPowerSizeSmall, n - 1, pA, pBottom, pWorkspace);
 #if _CollectDetailedTimingData
         DWORD64 dwTimestamp = s_Timer.GetMicroseconds();
@@ -15468,7 +15509,7 @@ void CUnsignedArithmeticHelper::NthRootRecursiveWithHint(DIGIT n, size_t &nASize
         pBottom[i]      =  nBottom;
         nPowerSizeSmall += (0<nBottom);
         // (y - a^n)/(n*(a+e)^n-1)
-        // No need to use extreme precision -- a 44 bit number divided by a 40 bit number can likely be pruned down to a 10 bit divided by an 6
+        // No need to use extreme precision -- a 44 bit number divided by a 40 bit number can likely be pruned down to a 10 bit divided by a 6
         // bit without affecting the final result, since division truncates anyway.  DEBUG RESOLVE TODO!
 #if _CollectDetailedTimingData
         dwTimestamp = s_Timer.GetMicroseconds();
@@ -15575,10 +15616,10 @@ void CUnsignedArithmeticHelper::NthRootRecursiveWithHint(DIGIT n, size_t &nASize
             pA[i++] = nTop;
             nTop    = nTop>>_DIGIT_SIZE_IN_BITS;
         }
-        if (0 < pA[nASize]) // shouldn't ever happen
-        {
-            printf("oops\n");
-        }
+        //if (0 < pA[nASize]) // shouldn't ever happen
+        //{
+        //    printf("oops\n");
+        //}
         nASize += (0<pA[nASize]);
     }
     while(true);
@@ -15625,18 +15666,21 @@ void CUnsignedArithmeticHelper::PrintPiecesBase10(DIGIT **ppnPowersOfBase, size_
     size_t nRemainderSize;
     if(-1==nDepth)
     {
-        // base case
-        if (1 == nNumberDigits)
+        if (0 < nNumberDigits)
         {
-            PrintBase10ToString((*pNum)%c_nBaseNumber, s);
-            PrintBase10ToString((*pNum)/c_nBaseNumber, s);
-        }
-        else
-        {
-            // 2 DIGITs, and the number is less than c_nBaseNumber*c_nBaseNumber
-            DOUBLEDIGIT x = *((DOUBLEDIGIT *) pNum);
-            PrintBase10ToString(x%c_nBaseNumber, s);
-            PrintBase10ToString(x/c_nBaseNumber, s);
+            // base case
+            if (1 == nNumberDigits)
+            {
+                PrintBase10ToString((*pNum)%c_nBaseNumber, s);
+                PrintBase10ToString((*pNum)/c_nBaseNumber, s);
+            }
+            else
+            {
+                // 2 DIGITs, and the number is less than c_nBaseNumber*c_nBaseNumber
+                DOUBLEDIGIT x = *((DOUBLEDIGIT*)pNum);
+                PrintBase10ToString(x%c_nBaseNumber, s);
+                PrintBase10ToString(x/c_nBaseNumber, s);
+            }
         }
     }
     else if(nNumberDigits < pnPowerSizes[nDepth])
@@ -15700,7 +15744,7 @@ void CUnsignedArithmeticHelper::PrintNumberToBase10(const CBigInteger &nX, DIGIT
         return;
     }
     // set up the string to print.  Note we know that there WILL be at least one nonzero digit!
-    s     = ((char *) pWork) + (nX.GetSize()+1)*c_nBaseNumberSize + 2; // s points to the END of the string to print.  Give enough space for all the digits, plus sign and trailing null character
+    s     = ((char *) pWork) + (nX.GetSize()+2)*c_nBaseNumberSize + 2; // s points to the END of the string to print.  Give enough space for all the digits (including lead overflow 0s), plus sign and trailing null character
     pWork = (DIGIT *) (s+1);
     // convert to a base-10 representation; put in a string
     PrintNumberToBase10(nX, s, pWork);
@@ -15708,10 +15752,15 @@ void CUnsignedArithmeticHelper::PrintNumberToBase10(const CBigInteger &nX, DIGIT
     fprintf_s(f, "%s\n", s);
 }
 
+size_t CUnsignedArithmeticHelper::PrintToBase10StringLength(size_t nDigits)
+{
+    return (nDigits + 2)*c_nBaseNumberSize + 2; // +2: - sign, if any, plus closing '\0' character
+}
+
 size_t CUnsignedArithmeticHelper::PrintToBase10MemoryNeeds(size_t nDigits)
 {
     size_t nMemory;
-    nMemory =  ((nDigits + 1) * c_nBaseNumberSize + 1 + sizeof(DIGIT)) / sizeof(DIGIT); // memory needed for the intermediate string
+    nMemory =  PrintToBase10StringLength(nDigits + sizeof(DIGIT) -1)/sizeof(DIGIT); // memory needed for the intermediate string
     nMemory += 4*nDigits; // for the powers of 10 -- overestimate!
     nMemory += nDigits + DivisionMemoryNeeds(2*nDigits, nDigits);
     return nMemory;

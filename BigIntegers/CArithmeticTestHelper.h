@@ -2,6 +2,7 @@
 #include "CUnsignedArithmeticHelper.h"
 #include "Timer.h"
 #include "CBigIntegerForTest.h"
+#include "AVXMultiply.h"
 
 class CArithmeticTestHelper : public CUnsignedArithmeticHelper
 {
@@ -63,6 +64,7 @@ public:  // functions
     bool TestBigInteger(bool bVerbose = false);
     bool TestAddSubtract(bool bVerbose = false);
     bool TestShortLongMultiply(bool bVerbose = false);
+    bool TestStripedMultiply(bool bVerbose = false);
     bool TestBasicMultiply(bool bVerbose = false);
     bool TestRecursiveMultiply(bool bVerbose = false);
     bool TestMultiplyAdd(bool bVerbose = false);
@@ -88,6 +90,8 @@ public:  // functions
     bool TestPower();
     bool TestNthRootHelper();
     bool TestNthRoot();
+    bool TestAVXInstructions();
+    bool TestAVXMultiply();
 };
 
 // class to determine where the various threshholds and parameters should be
@@ -164,6 +168,7 @@ public:  // functions
     void CompareNthRootProblemBreakdownTimes();
     void MatrixMultiplyTimes();
     void FFTTimes();
+    void AVXMultTimes();
 private: // functions
     void SaveMultiplicationThresholds();
     void RestoreMultiplicationThresholds();

@@ -7,10 +7,21 @@
 #include "CBigIntegerMatrix.h"
 #include "SSystemData.h"
 #include "math.h"
+
 #pragma warning(disable:4267)    // conversion from 'size_t' to 'unsigned int' -- possible loss of data
 
 bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
 {
+    CBigIntegerForTest nX;
+    CBigIntegerForTest nX2;
+    CBigIntegerForTest nY;
+    CBigIntegerForTest nZ;
+    CBigIntegerForTest nNeg;
+    CBigIntegerForTest nBad;
+    CBigIntegerForTest nBaseTenTest;
+    CWorkspace         cWork;
+    DIGIT              *pWork;
+    size_t             nMemNeeds;
     const char *szBase                  = "FFFFFFFFFFFFFFFF";
     const char *szBase10TestHexA        = "123456789ABCDEF0";
     const char *szBase10TestDecimalA    = "1311768467463790320";
@@ -29,19 +40,14 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     DIGIT      *pnYData                 = NULL;
     size_t     nSize                    = 0;
     bool       bTestWorked              = false;
-    DIGIT      *pWork                   = (DIGIT *) malloc(sizeof(DIGIT)*1000000); // ample space for our simple usage
+
+    cWork.Reserve(1000000); // ample space for our simple usage
+    pWork = cWork.GetSpace();
     ResetThresholdsForTest();
     if(bVerbose)
     {
         printf("DIGIT size (in BYTES): %i\n",sizeof(DIGIT));
     }
-    CBigIntegerForTest nX;
-    CBigIntegerForTest nX2;
-    CBigIntegerForTest nY;
-    CBigIntegerForTest nZ;
-    CBigIntegerForTest nNeg;
-    CBigIntegerForTest nBad;
-    CBigIntegerForTest nBaseTenTest;
     // test set from string
     if(!nX.SetFromHexString(szBase))
     {
@@ -68,7 +74,10 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         goto exit;
     }
     printf("And with optimized print:     ");
-    PrintNumberToBase10(nBaseTenTest, pWork);
+    nMemNeeds          = PrintToBase10MemoryNeeds(nBaseTenTest.GetSize());
+    pWork[0]           = TEST_BUFFERGUARD;
+    pWork[nMemNeeds+1] = TEST_BUFFERGUARD;
+    PrintNumberToBase10(nBaseTenTest, pWork+1);
     nBaseTenTest.SetFromHexString(szBase10TestHexB);
     printf("Printing z, base 10.  Expect: %s\nGot:                          ",szBase10TestDecimalB);
     if(!nBaseTenTest.PrintDecimalToFile())
@@ -78,8 +87,16 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     }
     printf("And with optimized print:     ");
     PrintNumberToBase10(nBaseTenTest, pWork);
+    if (TEST_BUFFERGUARD != pWork[0] || TEST_BUFFERGUARD != pWork[nMemNeeds + 1])
+    {
+        printf("Print to base 10 wrote past (or before) workspace\n");
+        goto exit;
+    }
     nBaseTenTest.SetFromHexString(szSmall);
     printf("Printing z, base 10.  Base:      ");
+    nMemNeeds = PrintToBase10MemoryNeeds(nBaseTenTest.GetSize());
+    pWork[0] = TEST_BUFFERGUARD;
+    pWork[nMemNeeds + 1] = TEST_BUFFERGUARD;
     if (!nBaseTenTest.PrintDecimalToFile())
     {
         printf("<print to base 10 failed>\n");
@@ -87,6 +104,11 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     }
     printf("Printing z, base 10.  Optimized: ");
     PrintNumberToBase10(nBaseTenTest, pWork);
+    if (TEST_BUFFERGUARD != pWork[0] || TEST_BUFFERGUARD != pWork[nMemNeeds + 1])
+    {
+        printf("Print to base 10 wrote past (or before) workspace\n");
+        goto exit;
+    }
     nY.SetFromHexString(szBasePlusOne);
     nZ.SetFromHexString(szBasePlusOneMinusSeven);
     nX2.SetFromHexString(szShouldEqualBase);
@@ -155,8 +177,8 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         printf("assignment failed\n");
         goto exit;
     }
-    nX.SetFromHexString("1234567890ABCDE1234567890ABCDE");
-    nZ.SetFromHexString("1234567890ABCDE1234567890ABCDE");
+    nX.SetFromHexString("1234567890ABCDE1234567890ABCDE1234567890ABCDE");
+    nZ.SetFromHexString("1234567890ABCDE1234567890ABCDE1234567890ABCDE");
     nY = nX;
     if (nY.GetValue() == pnYData)
     {
@@ -487,17 +509,28 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
     // test printing a few BIG numbers
     for(int i=0;i<100;i++)
     {
+        const unsigned int c_nStringBufferSize = 25000;
         int nTimeBase, nTimeFast;
         FILE *f;
         int c,j;
-        char s1[20001], s2[20001], *s;
+        char s1[c_nStringBufferSize], s2[c_nStringBufferSize], *s;
         nX.SetRandom(2000*_DIGIT_SIZE_IN_BITS);
         errno_t err = fopen_s(&f,"foo","w+");
+        if (0 != err)
+        {
+            printf("error opening file needed for test: 'foo'.  Aborting\n");
+            goto exit;
+        }
         nTimeBase = ::GetTickCount();
         nX.PrintDecimalToFile(f);
         nTimeBase = ::GetTickCount() - nTimeBase;
         fclose(f);
         err = fopen_s(&f, "foo", "r+");
+        if (0 != err)
+        {
+            printf("error re-opening file needed for test: 'foo'.  Aborting\n");
+            goto exit;
+        }
         j = 0;
         do
         {
@@ -506,10 +539,21 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
         }
         while(c != EOF);
         fclose(f);
-        s = s2 + 20001;
+        if (c_nStringBufferSize < PrintToBase10StringLength(nX.GetSize()) + 1)
+        {
+            printf("Not enough memory for output string\n");
+            goto exit;
+        }
+        s     = s2 + PrintToBase10StringLength(nX.GetSize()) + 1; // note that print base 10 starts at the END of the memory buffer and works forward!
+        s2[0] = 'x';
         nTimeFast = ::GetTickCount();
         PrintNumberToBase10(nX, s, pWork);
         nTimeFast = ::GetTickCount() - nTimeFast;
+        if ('x' != s2[0])
+        {
+            printf("PrintNumberToBase10 wrote before buffer passed\n");
+            goto exit;
+        }
         // compare the values
         j = 0;
         do
@@ -517,7 +561,7 @@ bool CArithmeticCorrectnessTester::TestBigInteger(bool bVerbose)
             if((s1[j]=='\0' || s1[j]=='\n') && (s[j]=='\0' || s[j]=='\n')) break;
             if (s1[j] != s[j])
             {
-                printf("two methods of printing to base 10 disagree\n");
+                printf("two methods of printing to base 10 disagree on iteration %i\n",i);
                 printf("%s\n----------------------\n%s\n", s1, s);
                 goto exit;
             }
@@ -937,6 +981,219 @@ bool CArithmeticCorrectnessTester::TestShortLongMultiply(bool bVerbose)
                         if(nTestProduct != nValidatedProduct)
                         {
                             printf("Multiply test failed: basic short/long add\n");
+                            goto exit;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    bTestWorked = true;
+exit:
+    return bTestWorked;
+}
+
+bool CArithmeticCorrectnessTester::TestStripedMultiply(bool bVerbose)
+{
+    CBigIntegerForTest nX, nY, nValidatedProduct, nTestProduct, nAdd;
+    CArithmeticBox cBox;
+    size_t         nProductSize;
+    bool           bTestWorked = false;
+    ResetThresholdsForTest();
+    for(size_t i=1;i<13;i++)
+    {
+        nX.Reserve(i);
+        for(size_t j=1;j<=200;j+=i)
+        {
+            nY.Reserve(j);
+            nAdd.Reserve(i+j+1);
+            nValidatedProduct.Reserve(i+j+1);
+            nTestProduct.Reserve(i+j+1);
+            for(size_t k=0;k<3;k++)
+            {
+                if(0==k)
+                {
+                    // Test multiplication of FFFF... -- maximum size operands, to make
+                    // sure assumptions about overflow are met
+                    for(size_t m=0;m<i;m++)
+                    {
+                        nX.GetValue()[m] = (DIGIT) -1;
+                    }
+                    for(size_t m=0;m<j;m++)
+                    {
+                        nY.GetValue()[m] = (DIGIT) -1;
+                    }
+                    nX.SetSize(i);
+                    nY.SetSize(j);
+                }
+                else if(1==k)
+                {
+                    // Test with the larger operand having lots of internal 0s
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    for(size_t m=0;m<j-1;m++)
+                    {
+                        nY.GetValue()[m] = 0;
+                    }
+                    nY.GetValue()[j-1] = 1;
+                    nY.SetSize(j);
+                }
+                else
+                {
+                    // test more general multiplication
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                }
+                size_t nXSize = nX.GetSize();
+                size_t nYSize = nY.GetSize();
+                if(0<nX.GetSize() && 0<nY.GetSize())
+                {
+                    nValidatedProduct.SetSize(CUnsignedArithmeticHelper::MultOracle(nXSize,
+                                                                                     nYSize,
+                                                                                     nX.GetValue(),
+                                                                                     nY.GetValue(),
+                                                                                     nValidatedProduct.GetValue()));
+                    if(nX.GetSize() <= nY.GetSize())
+                    {
+                        CUnsignedArithmeticHelper::MultUStriped(nXSize,
+                                                                nYSize,
+                                                                nX.GetValue(),
+                                                                nY.GetValue(),
+                                                                nTestProduct.GetValue(),
+                                                                false);
+                    }
+                    else
+                    {
+                        CUnsignedArithmeticHelper::MultUStriped(nYSize,
+                                                                nXSize,
+                                                                nY.GetValue(),
+                                                                nX.GetValue(),
+                                                                nTestProduct.GetValue(),
+                                                                false);
+                    }
+                    nProductSize = nXSize+nYSize;
+                    if(0==nTestProduct.GetValue()[nProductSize-1])
+                    {
+                        nProductSize--;
+                    }
+                    nTestProduct.SetSize(nProductSize);
+                    if(nTestProduct != nValidatedProduct || bVerbose)
+                    {
+                        printf("Multiply operands:\n");
+                        nX.PrintHexToFile();
+                        printf("\n");
+                        nY.PrintHexToFile();
+                        printf("\n");
+                        printf("Expected product:\n");
+                        nValidatedProduct.PrintHexToFile();
+                        printf("\nComputed product:\n");
+                        nTestProduct.PrintHexToFile();
+                        printf("\n");
+                        if(nTestProduct != nValidatedProduct)
+                        {
+                            printf("Multiply test failed: striped\n");
+                            goto exit;
+                        }
+                    }
+                }
+                // Then, MultAddUShortLong
+                if(k==0)
+                {
+                    // Test multiplication of FFFF... -- maximum size operands, to make
+                    // sure assumptions about overflow are met
+                    for(size_t m=0;m<i;m++)
+                    {
+                        nX.GetValue()[m] = (DIGIT) -1;
+                    }
+                    for(size_t m=0;m<j;m++)
+                    {
+                        nY.GetValue()[m] = (DIGIT) -1;
+                    }
+                    for(size_t m=0;m<i+j;m++)
+                    {
+                        nAdd.GetValue()[m] = (DIGIT) -1;
+                    }
+                    nX.SetSize(i);
+                    nY.SetSize(j);
+                    nAdd.SetSize(i+j);
+                }
+                else
+                {
+                    // test more general multiplication
+                    nX.SetRandom(i*_DIGIT_SIZE_IN_BITS);
+                    nY.SetRandom(j*_DIGIT_SIZE_IN_BITS);
+                    nAdd.SetRandom((i+j)*_DIGIT_SIZE_IN_BITS);
+                }
+                nXSize = nX.GetSize();
+                nYSize = nY.GetSize();
+                if(0==j%3)
+                {
+                    // prune back the size of Z for some variation
+                    nAdd.SetSize(1+(rand()%(i+j)));
+                }
+                if(0<nX.GetSize() && 0<nY.GetSize())
+                {
+                    // initialize Z to format expected by MultUBasic
+                    nTestProduct.Reserve(nXSize+nYSize+nTestProduct.GetSize(),true);
+                    nTestProduct = nAdd;
+                    // make sure pTestProduct has leading 0s
+                    for(size_t m=nTestProduct.GetSize();m<i+j+1;m++)
+                    {
+                        nTestProduct.GetValue()[m] = 0;
+                    }
+                    // perform x*y+z -- where "z" is the previous iteration's result
+                    nValidatedProduct.SetSize(CUnsignedArithmeticHelper::MultOracle(nXSize,
+                                                                                    nYSize,
+                                                                                    nX.GetValue(),
+                                                                                    nY.GetValue(),
+                                                                                    nValidatedProduct.GetValue()));
+                    cBox.Add(nValidatedProduct,nAdd,nValidatedProduct);
+                    nProductSize = nXSize+nYSize;
+                    if(nProductSize <= nTestProduct.GetSize())
+                    {
+                        nProductSize = nTestProduct.GetSize();
+                    }
+                    nProductSize++;
+                    if(nX.GetSize() <= nY.GetSize())
+                    {
+                        CUnsignedArithmeticHelper::MultUStriped(nXSize,
+                                                                nYSize,
+                                                                nX.GetValue(),
+                                                                nY.GetValue(),
+                                                                nTestProduct.GetValue(),
+                                                                true);
+                    }
+                    else
+                    {
+                        CUnsignedArithmeticHelper::MultUStriped(nYSize,
+                                                                nXSize,
+                                                                nY.GetValue(),
+                                                                nX.GetValue(),
+                                                                nTestProduct.GetValue(),
+                                                                true);
+                    }
+                    if(0==nTestProduct.GetValue()[nProductSize-1])
+                    {
+                        nProductSize--;
+                        if(0==nTestProduct.GetValue()[nProductSize-1])
+                        {
+                            nProductSize--;
+                        }
+                    }
+                    nTestProduct.SetSize(nProductSize);
+                    if(nTestProduct != nValidatedProduct || bVerbose)
+                    {
+                        printf("z = x*y+z:  x, y, z:\n");
+                        printf("x: ");  nX.PrintHexToFile();
+                        printf("y: ");  nY.PrintHexToFile();
+                        printf("z: ");  nAdd.PrintHexToFile();
+                        printf("Expected result:\n");
+                        nValidatedProduct.PrintHexToFile();
+                        printf("\nComputed result:\n");
+                        nTestProduct.PrintHexToFile();
+                        printf("\n");
+                        if(nTestProduct != nValidatedProduct)
+                        {
+                            printf("Multiply test failed: striped add\n");
                             goto exit;
                         }
                     }
@@ -1459,10 +1716,10 @@ bool CArithmeticCorrectnessTester::TestDivide(bool bVerbose)
     nDiv.Reserve(2*c_nMaxSize+1);
     nRemainder.Reserve(2*c_nMaxSize+1);
     nProduct.Reserve(2*c_nMaxSize+1);
-    for(size_t i=1;i<c_nMaxSize;i++)
+    for(size_t i=2;i<c_nMaxSize;i++)
     {
-        printf("%i digit divisor (up to %i) in to number of size %i to %i, inclusive\n", i, c_nMaxSize, i, c_nMaxSize);
-        for(size_t j=i;j<2*c_nMaxSize;j++)
+        printf("%i digit divisor (up to %i) in to number of size %i to %i, inclusive\n", i, c_nMaxSize, i-1, c_nMaxSize);
+        for(size_t j=i-1;j<2*c_nMaxSize;j++)
         {
             for(int k=0;k<5;k++)
             {
@@ -2472,7 +2729,7 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
             nBig.SetFromHexString("0");
             nMat1[i][j] = nBig;
             nBig.SetRandom(_DIGIT_SIZE_IN_BITS*c_nMatrixSize);
-			nBig.SetNegative(rand()%2);
+            nBig.SetNegative(rand()%2);
             nMat2[i][j] = nBig;
         }
         nBig.SetFromHexString("1");
@@ -2483,7 +2740,7 @@ bool CArithmeticCorrectnessTester::TestBigMatrix(bool bVerbose)
             nBig.SetFromHexString("0");
             nMat2[i][j] = nBig;
             nBig.SetRandom(_DIGIT_SIZE_IN_BITS*c_nMatrixSize);
-			nBig.SetNegative(rand()%2);
+            nBig.SetNegative(rand()%2);
             nMat1[i][j] = nBig;
         }
     }
@@ -3015,7 +3272,7 @@ bool CArithmeticCorrectnessTester::TestModBy2NPlus1(bool bVerbose)
     bool  bTestWorked = false;
     for(size_t n=1;n<1000;n++)
     {
-        printf("base size: %i\n",n);
+        printf("Base size: %i\n",n);
         pTwoTo2N       =  NewBigIntegerOnePlus2ToN(2*n);
         pOnePlusTwoToN =  NewBigIntegerOnePlus2ToN(n);
         *pTwoTo2N      -= 1;
@@ -4244,8 +4501,8 @@ bool CArithmeticCorrectnessTester::TestMontgomeryMultiply()
     CBigIntegerForTest nX, nY, nN, nNPrime, nRPrime, nMontgomeryX, nMontgomeryY, nProduct, nConvertedBack, nDiv, nRemainder;
     size_t             nNPrimeSize, nRPrimeSize, nMontSize, nConvertBackSize;
     DIGIT              *pWorkspace = (DIGIT *) malloc(sizeof(DIGIT)*1000000); // plenty for this test
-    // Note that 98096A1FC1FB69 is prime
-  //  nN.SetFromHexString("98096A1FC1FB69");
+    // Note that 70B7D90310FDB40C3F2BA643C039157EDA370D60E87F29B0E23AC3F52A185955994A40AECBC38EF4A9AE43CB3730B9679E614DA37C874D5F6994231DCBE1C1DDDE2A4E36FDCB11B8343B9C800AC83C1B8A949F9F91CEC5065E332BCC55C635CB15CEDB55BD0F9591794B8A1951FAF7D23447DC0E414DECDF5791B4BCDFC20C58D8AEBEC12286A7
+    // is prime
     nN.SetFromHexString("70B7D90310FDB40C3F2BA643C039157EDA370D60E87F29B0E23AC3F52A185955994A40AECBC38EF4A9AE43CB3730B9679E614DA37C874D5F6994231DCBE1C1DDDE2A4E36FDCB11B8343B9C800AC83C1B8A949F9F91CEC5065E332BCC55C635CB15CEDB55BD0F9591794B8A1951FAF7D23447DC0E414DECDF5791B4BCDFC20C58D8AEBEC12286A7");// 98096A1FC1FB69");
     nNumBits = (nN.GetSize() - 1)*_DIGIT_SIZE_IN_BITS;
     nMontgomeryX.Reserve(nN.GetSize()*2);
@@ -4578,7 +4835,7 @@ bool CArithmeticCorrectnessTester::TestMontgomeryPowerModulus()
                 }
                 if (nNPrime != nNPrimeCopy)
                 {
-                    printf("N' (modulus') value got changed\n");
+                    printf("N' (modulus) value got changed\n");
                     goto exit;
                 }
                 if (nRPrime != nRPrimeCopy)
@@ -5363,7 +5620,7 @@ bool CArithmeticCorrectnessTester::TestNthRootHelper()
     for(nRoot=2; nRoot<33; nRoot++)
     {
         printf("Testing %u root\n", nRoot);
-        for(size_t nRootSize=4; nRootSize<11; nRootSize++) // debug restore todo -- start at 1
+        for(size_t nRootSize=4; nRootSize<11; nRootSize++)
         {
             for(unsigned int nIteration=0; nIteration<c_nIterations; nIteration++)
             {
@@ -5388,7 +5645,6 @@ bool CArithmeticCorrectnessTester::TestNthRootHelper()
                     nRootSizeHint = nRootTruncated.GetSize();
                     nMemoryNeeds  = NthRootMemoryNeeds(nY.GetSize(), nRoot);
                     cBox.m_Workspace.Reserve(nMemoryNeeds + 1);
-                    cBox.m_Workspace.Reserve(nMemoryNeeds*10 + 1); // debug remove todo
                     cBox.m_Workspace.GetSpace()[nMemoryNeeds] = TEST_BUFFERGUARD;
                     NthRootRecursiveWithHint(nRoot, nRootSizeHint, nY.GetSize(), (nTrueRoot.GetSize()/2 - 1)*_DIGIT_SIZE_IN_BITS, nRootTruncated.GetValue(), nY.GetValue(), cBox.m_Workspace.GetSpace());
                     if(TEST_BUFFERGUARD != cBox.m_Workspace.GetSpace()[nMemoryNeeds])
@@ -5424,7 +5680,7 @@ bool CArithmeticCorrectnessTester::TestNthRootHelper()
                     {
                         printf("Nth root test overran purputed workspace needs\n");
                         goto exit;
-                    } // debug restore todo
+                    }
                     // nRootTruncated should be replaced with the true root
                     nRootTruncated.SetSize(nRootSizeHint);
                     if(nRootTruncated != nTrueRoot)
@@ -5450,7 +5706,7 @@ bool CArithmeticCorrectnessTester::TestNthRootHelper()
                     {
                         printf("Nth root test overran purputed workspace needs\n");
                         goto exit;
-                    } // debug restore todo
+                    }
                     // nRootTruncated should be replaced with the true root
                     nRootTruncated.SetSize(nRootSizeHint);
                     if(nRootTruncated != nTrueRoot)
@@ -5717,7 +5973,7 @@ bool CArithmeticCorrectnessTester::TestNthRoot()
                     if (pWorkspace[nMemoryNeedsRoot] != TEST_BUFFERGUARD)
                     {
                         printf("Workspace overflow computing root %u of %u DIGIT number\n", n, nSize);
-             //           goto exit; // debug restore todo
+                        goto exit;
                     }
                     // the computed root, taken to the nth power, should be at most nX
                     nMemoryNeedsPower             = PowerMemoryNeeds(nRoot.GetValue(), nRootSize, n);
@@ -5794,4 +6050,497 @@ bool CArithmeticCorrectnessTester::TestNthRoot()
     bTestWorked = true;
 exit:
     return bTestWorked;
+}
+
+bool CArithmeticCorrectnessTester::TestAVXMultiply()
+{
+#if _USEAVX
+    CBigIntegerForTest x, y, zAdd, zFinal, z1, z2;
+    bool         bMultAdd;
+    bool         bTestWorked = false;
+    int          nVariation  = 1;
+    DIGIT        gibberish   = 0xACDC;
+
+    // 4-DIGIT x:
+    x.Reserve(4);
+    x.SetSize(4);
+    for (size_t nSize = 4; nSize <= 48; nSize++)
+    {
+        y.Reserve(nSize);
+        y.SetSize(nSize);
+        z1.Reserve(x.GetSize() + y.GetSize());
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.Reserve(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        // basic multiply
+        bMultAdd = false;
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i<<16);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i<<16);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = 0xFFFFFFFF;
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0xFFFFFFFF;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        // with an internal multiply, y COULD have leading 0s
+        x.SetRandom(4*_DIGIT_SIZE_IN_BITS);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        x.SetRandom(4*_DIGIT_SIZE_IN_BITS);
+        y.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+
+        // multiply/add
+        bMultAdd = true;
+        // first, where z is the same size as x*y
+        zFinal =  z2;
+        zFinal *= 2;
+        zAdd   =  z2;
+        z2.Reserve(x.GetSize() + y.GetSize() + 1, true);
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(x.GetSize() + y.GetSize() + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // next, z smaller than x*y
+        zAdd.SetFromHexString("FFFFFFFF");
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // finally, z larger than x*y
+        zAdd.Reserve(x.GetSize() + y.GetSize() + 5);
+        zAdd.SetSize(x.GetSize() + y.GetSize() + 5);
+        zFinal.Reserve(x.GetSize() + y.GetSize() + 6);
+        for(int i=0;i<zAdd.GetSize();i++) zAdd.GetValue()[i] = 0xFFFFFFFF;
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2.Reserve(max(x.GetSize()+y.GetSize(), zAdd.GetSize())+1);
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult4DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+    }
+
+    // 8-DIGIT x:
+    nVariation = 2;
+    x.Reserve(8);
+    x.SetSize(8);
+    for (size_t nSize=8; nSize<=96; nSize++)
+    {
+        y.Reserve(nSize);
+        y.SetSize(nSize);
+        z1.Reserve(x.GetSize() + y.GetSize());
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.Reserve(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        // basic multiply
+        bMultAdd = false;
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i<<16);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i<<16);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = 0xFFFFFFFF;
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0xFFFFFFFF;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        // with an internal multiply, y COULD have leading 0s
+        x.SetRandom(8*_DIGIT_SIZE_IN_BITS);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        x.SetRandom(8*_DIGIT_SIZE_IN_BITS);
+        y.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+
+        // multiply/add
+        bMultAdd = true;
+        // first, where z is the same size as x*y
+        zFinal =  z2;
+        zFinal *= 2;
+        zAdd   =  z2;
+        z2.Reserve(x.GetSize() + y.GetSize() + 1, true);
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(x.GetSize() + y.GetSize() + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // next, z smaller than x*y
+        zAdd.SetFromHexString("FFFFFFFF");
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // finally, z larger than x*y
+        zAdd.Reserve(x.GetSize() + y.GetSize() + 5);
+        zAdd.SetSize(x.GetSize() + y.GetSize() + 5);
+        zFinal.Reserve(x.GetSize() + y.GetSize() + 6);
+        for (int i = 0; i < zAdd.GetSize(); i++) zAdd.GetValue()[i] = 0xFFFFFFFF;
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2.Reserve(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult8DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+    }
+
+    // 12-DIGIT x:
+    x.Reserve(12);
+    x.SetSize(12);
+    nVariation = 3;
+    for (size_t nSize = 12; nSize <= 144; nSize++)
+    {
+        y.Reserve(nSize);
+        y.SetSize(nSize);
+        z1.Reserve(x.GetSize() + y.GetSize());
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.Reserve(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        // basic multiply
+        bMultAdd = false;
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i + 1);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i + 1);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = (i<<16);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = (i<<16);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        for (int i = 0; i < x.GetSize(); i++) x.GetValue()[i] = 0xFFFFFFFF;
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0xFFFFFFFF;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        // with an internal multiply, y COULD have leading 0s
+        x.SetRandom(12*_DIGIT_SIZE_IN_BITS);
+        for (int i = 0; i < y.GetSize(); i++) y.GetValue()[i] = 0;
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+        x.SetRandom(12*_DIGIT_SIZE_IN_BITS);
+        y.SetRandom(nSize*_DIGIT_SIZE_IN_BITS);
+        z1.SetSize(x.GetSize() + y.GetSize());
+        z2.SetSize(x.GetSize() + y.GetSize());
+        for (int i = 0; i < z2.GetSize(); i++)
+        {
+            z1.GetValue()[i] = gibberish;
+            z2.GetValue()[i] = gibberish;
+        }
+        CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z1.GetValue());
+        if (0 == z1.GetValue()[z1.GetSize() - 1]) z1.SetSize(z1.GetSize() - 1);
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        if (0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z1 != z2)
+        {
+            goto exit;
+        }
+
+        // multiply/add
+        bMultAdd = true;
+        // first, where z is the same size as x*y
+        zFinal   =  z2;
+        zFinal   *= 2;
+        zAdd     =  z2;
+        z2.Reserve(x.GetSize() + y.GetSize() + 1, true);
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(x.GetSize() + y.GetSize() + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // next, z smaller than x*y
+        zAdd.SetFromHexString("FFFFFFFF");
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < x.GetSize() + y.GetSize() + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+        // finally, z larger than x*y
+        zAdd.Reserve(x.GetSize() + y.GetSize() + 5);
+        zAdd.SetSize(x.GetSize() + y.GetSize() + 5);
+        zFinal.Reserve(x.GetSize() + y.GetSize() + 6);
+        for (int i = 0; i < zAdd.GetSize(); i++) zAdd.GetValue()[i] = 0xFFFFFFFF;
+        z2.SetSize(CUnsignedArithmeticHelper::MultOracle(x.GetSize(), y.GetSize(), x.GetValue(), y.GetValue(), z2.GetValue()));
+        zFinal.SetSize(CUnsignedArithmeticHelper::Add(z2.GetSize(), zAdd.GetSize(), z2.GetValue(), zAdd.GetValue(), zFinal.GetValue()));
+        z2.Reserve(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        z2 = zAdd;
+        for (int i = z2.GetSize(); i < max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1; i++) z2.GetValue()[i] = 0;
+        CAVXMultiply::Mult12DigitX(x.GetValue(), y.GetValue(), y.GetSize(), z2.GetValue(), bMultAdd);
+        z2.SetSize(max(x.GetSize() + y.GetSize(), zAdd.GetSize()) + 1);
+        while (0 < z2.GetSize() && 0 == z2.GetValue()[z2.GetSize() - 1]) z2.SetSize(z2.GetSize() - 1);
+        if (z2 != zFinal)
+        {
+            goto exit;
+        }
+    }
+    bTestWorked = true;
+exit:
+    if(!bTestWorked)
+    {
+        switch (nVariation) {
+        case 1:
+            printf("Mult4DigitX is WRONG for Y size %i\n", y.GetSize());
+            break;
+        case 2:
+            printf("Mult8DigitX is WRONG for Y size %i\n", y.GetSize());
+            break;
+        case 3:
+            printf("Mult12DigitX is WRONG for Y size %i\n", y.GetSize());
+            break;
+        default:
+            printf("unknown variation failed!\n");
+            break;
+        }
+        if (bMultAdd)
+        {
+            printf("Computing x*y + z, where\n");
+            printf("x: "); x.PrintHexToFile();
+            printf("y: "); y.PrintHexToFile();
+            printf("z: "); zAdd.PrintHexToFile();
+            printf("Computed: "); z2.PrintHexToFile();
+            printf("Correct:  "); zFinal.PrintHexToFile();
+        }
+        else
+        {
+            printf("X: "); x.PrintHexToFile();
+            printf("Y: "); y.PrintHexToFile();
+            printf("correct:  ");  z1.PrintHexToFile();
+            printf("Computed: ");  z2.PrintHexToFile();
+        }
+    }
+    return bTestWorked;
+#else
+    printf("AVX not supported.  AVX instructions must be available, AND DIGITs must be 32 bits each.  See constants.h\n");
+    return false;
+#endif
 }

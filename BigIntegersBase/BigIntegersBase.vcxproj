@@ -147,6 +147,7 @@
     <ClInclude Include="..\BigIntegers\CRandomGenerator.h" />
     <ClInclude Include="..\BigIntegers\CUnsignedArithmeticHelper.h" />
     <ClInclude Include="..\BigIntegers\CWorkspace.h" />
+    <ClInclude Include="..\BigIntegers\AVXMultiply.h" />
     <ClInclude Include="..\BigIntegers\Macros.h" />
     <ClInclude Include="..\BigIntegers\SSystemData.h" />
     <ClInclude Include="..\BigIntegers\Timer.h" />
@@ -155,6 +156,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BigIntegers\ArithmeticBox.cpp" />
+    <ClCompile Include="..\BigIntegers\AVXMultiply.cpp" />
     <ClCompile Include="..\BigIntegers\BasicMultiply.cpp" />
     <ClCompile Include="..\BigIntegers\BigIntegers.cpp" />
     <ClCompile Include="..\BigIntegers\CBigIntegerMatrix.cpp" />

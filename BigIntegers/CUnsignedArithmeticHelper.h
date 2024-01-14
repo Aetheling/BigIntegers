@@ -104,6 +104,7 @@ public:  // functions
     // and we might want to take a large power of a small value -- say, 3.
     static size_t PowerMemoryNeeds(DIGIT *pX, size_t nXSize, size_t nPower);
     static size_t NthRootMemoryNeeds(size_t nXSize, DIGIT nRoot);
+    static size_t PrintToBase10StringLength(size_t nDigits);
     static size_t PrintToBase10MemoryNeeds(size_t nDigits);
     // gives the size in BITs of the number passed.  Assumed not to be 0 (unchecked)
     static size_t BitSize(size_t nXSize, const DIGIT *pnX);

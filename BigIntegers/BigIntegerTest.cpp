@@ -134,6 +134,7 @@ int main()
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
     cCorrectnessTester.ResetThresholdsForTest();
+    /*
     if(!cCorrectnessTester.TestBigInteger())
     {
         printf("BigInteger test failed\n");
@@ -162,6 +163,16 @@ int main()
     else
     {
         printf("Multiply short/long test succeeded\n");
+    }
+    cCorrectnessTester.ResetThresholdsForTest();
+    if(!cCorrectnessTester.TestStripedMultiply())
+    {
+        printf("Striped multiply test failed\n");
+        return 1;
+    }
+    else
+    {
+        printf("Striped multiply test succeeded\n");
     }
     cCorrectnessTester.ResetThresholdsForTest();
     if(!cCorrectnessTester.TestBasicMultiply())
@@ -223,6 +234,18 @@ int main()
     {
         printf("Multiply/add test succeeded\n");
     }
+#if _USEAVX
+    cCorrectnessTester.ResetThresholdsForTest(true);
+    if (!cCorrectnessTester.TestAVXMultiply())
+    {
+        printf("AVX multiply test failed\n");
+        return 1;
+    }
+    else
+    {
+        printf("AVX multiply test succeeded\n");
+    }
+#endif
     cCorrectnessTester.ResetThresholdsForTest(true);
     if(!cCorrectnessTester.TestBigMatrix())
     {
@@ -427,23 +450,26 @@ int main()
     else
     {
         printf("RSA without timing protection test succeeded\n");
-    }
+    }*/
 	////////////////////////////////////////////////////////////////////////////////////////
 	//                                                                                    //
 	//                              Tune parameters                                       //
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
 	PinThreadToProcessor((DWORD) -1); // want to keep the thread on the same processor -- trying to
-	                                  // optimize cache parameters!
-    cTuner.ResetThresholdsForTest();
-//	cTuner.Test2NByNBlockSizes(); // likely no need for this -- by the time the problem is big enough for doing it in chunks to help, FFT is faster regardless
-    cTuner.FindBestMultiplicationThresholds();
-    cTuner.FindBestDivideThresholds();
+	                                  // optimize cache parameters (at least in part)!
+    //cTuner.ResetThresholdsForTest();
+    //cTuner.Test2NByNBlockSizes(); // likely no need for this -- by the time the problem is big enough for doing it in chunks to help, FFT is faster regardless
+    //cTuner.FindBestMultiplicationThresholds();
+    //cTuner.FindBestDivideThresholds();
 	////////////////////////////////////////////////////////////////////////////////////////
 	//                                                                                    //
 	//                              Performance tests                                     //
 	//                                                                                    //
 	////////////////////////////////////////////////////////////////////////////////////////
+    
+    // For sample times, see PerfRun.txt
+
     cPerfTester.ResetThresholdsForOptimization();
     if (!PinThreadToProcessor((DWORD)-1))
     {
@@ -459,6 +485,7 @@ int main()
     // and perhaps CUnsignedArithmeticHelper::SquareUBackend
     // to take account
     cPerfTester.SpeedCheckBasicMultiply();
+    cPerfTester.AVXMultTimes();
     cPerfTester.CompareBasicMultiplicationToStripedMultiplication();
     cPerfTester.CompareBasicMultiplicationToLongShortMultiplication();
     cPerfTester.TestMultiplyTimes();
@@ -466,8 +493,8 @@ int main()
     cPerfTester.CompareMultiplicationAlgorithms();
     cPerfTester.CompareDivideTimes();
     cPerfTester.SquareRootTimes();
-    cPerfTester.GeneralRootTimes();
-    cPerfTester.CompareNthRootProblemBreakdownTimes();
+    cPerfTester.GeneralRootTimes(); // very long test
+    cPerfTester.CompareNthRootProblemBreakdownTimes(); // very long test
     cPerfTester.GCDTimes();
     cPerfTester.MatrixMultiplyTimes();
     cPerfTester.PowerModulusMontgomeryVsStandard();

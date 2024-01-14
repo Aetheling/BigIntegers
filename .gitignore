@@ -9,9 +9,21 @@ BestThresholds
 *.exe
 *.obj
 *.dll
+*.exp
+*.lib
 
+# reference
+*.pdb
+*.log
+*.tlog
 
 # directories to ignore
 .vs/
 Debug/
+Release/
 x64/
+
+# individual files
+BigIntegers/foo
+BigIntegers/sqrt2_a
+BigIntegers/sqrt2_b

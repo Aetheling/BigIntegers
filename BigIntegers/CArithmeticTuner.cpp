@@ -944,6 +944,7 @@ void CArithmeticTuner::FindBestDivideThresholds()
         if(30000<nTime2) nIterations = (nIterations+1)/2; // too much time!
     }
     while(nTime1>nTime2);
+    free(pWorkspace);
 }
 
 

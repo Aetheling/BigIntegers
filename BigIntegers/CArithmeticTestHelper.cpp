@@ -44,6 +44,38 @@ void CArithmeticTestHelper::ResetThresholdsForOptimization()
     c_nDivideThresholdDiff                       = 4;
 #else
     // values found to be reasonable
+#if _USEAVX
+    c_nBuildBlockSizePre = 8192;
+    c_nBuildBlockSizePost = 32768; // ignored
+    c_pnMultiplicationThresholds[eBasicMultiply] = 130;
+    c_pnMultiplicationThresholds[e3By2]          = 149;
+    c_pnMultiplicationThresholds[e5By3]          = 154;
+    c_pnMultiplicationThresholds[e7By4]          = 250;
+    c_pnMultiplicationThresholds[e9By5]          = 54494;
+    c_pnMultiplicationThresholds[e2NByN]         = 0;
+    c_pnSquareThresholds[eBasicMultiply]         = 53;
+    c_pnSquareThresholds[e3By2]                  = 211;
+    c_pnSquareThresholds[e5By3]                  = 217;
+    c_pnSquareThresholds[e7By4]                  = 337;
+    c_pnSquareThresholds[e9By5]                  = 14963;
+    c_pnSquareThresholds[e2NByN]                 = 0;
+	c_pn2NByNBreakpoints[0]                      = 967257;    // below use 5 pieces; above, 6
+	c_pn2NByNBreakpoints[1]                      = 1338767;    // below use 6 pieces; above, 7
+	c_pn2NByNBreakpoints[2]                      = 1338767;   // below use 7 pieces; above, 8
+	c_pn2NByNBreakpoints[3]                      = 1338767;   // below use 8 pieces; above, 9
+	c_pn2NByNBreakpoints[4]                      = 1404417;   // below use 9 pieces; above, 10
+	c_pn2NByNBreakpoints[5]                      = 1404417;  // below use 10 pieces; above, 11
+	c_pn2NByNBreakpoints[6]                      = 1577792;  // below use 11 pieces; above, 12
+    c_pn2NByNSquareBreakpoints[0]                = 16156;
+    c_pn2NByNSquareBreakpoints[1]                = 89155;
+    c_pn2NByNSquareBreakpoints[2]                = 582464;
+    c_pn2NByNSquareBreakpoints[3]                = 582464;
+    c_pn2NByNSquareBreakpoints[4]                = 957196;
+    c_pn2NByNSquareBreakpoints[5]                = 957196;
+    c_pn2NByNSquareBreakpoints[6]                = 8727776;
+    c_nDivideThresholdSmall                      = 11;       // at least 4 to insure correctness; 16 is heuristically good
+    c_nDivideThresholdDiff                       = 4;        // at least 4 to insure correctness; 4 is heuristically good
+#else
     c_nBuildBlockSizePre                         = 16777216;
     c_nBuildBlockSizePost                        = 16777216; // ignored
     c_pnMultiplicationThresholds[eBasicMultiply] = 54;
@@ -74,6 +106,7 @@ void CArithmeticTestHelper::ResetThresholdsForOptimization()
     c_pn2NByNSquareBreakpoints[6]                = 28661;
     c_nDivideThresholdSmall                      = 12;
     c_nDivideThresholdDiff                       = 4;
+#endif
 #endif
 #endif
 }
